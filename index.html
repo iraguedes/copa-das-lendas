@@ -470,14 +470,14 @@
   .modo-sel-btn.ativo:hover{background:#16a34a !important;}
   #selecaoGrid{display:none;margin-bottom:16px;max-height:220px;overflow-y:auto;border-radius:6px;}
   #selecaoGrid.visivel{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;}
-  .sel-card{background:#0b2e1c;border:2px solid #1a4a28;border-radius:9px;padding:8px 4px 7px;cursor:pointer;text-align:center;user-select:none;transition:border-color .14s,background .14s,transform .14s;}
+  .sel-card{background:#0b2e1c;border:1.5px solid #1a4a28;border-radius:8px;padding:5px 3px 5px;cursor:pointer;text-align:center;user-select:none;transition:border-color .14s,background .14s,transform .14s;}
   .sel-card:hover{border-color:#22c55e;background:#0e3821;transform:translateY(-2px);}
   .sel-card.escolhida{border-color:#22c55e !important;background:#14542a;}
-  .sel-card-flag{font-size:20px;line-height:1;margin-bottom:3px;}
-  .sel-card-nome{font-size:9px;font-family:'Trebuchet MS',sans-serif;font-weight:700;color:#e0e0e0;text-transform:uppercase;letter-spacing:.4px;line-height:1.2;}
-  .sel-card-era{font-size:8px;color:#6a8a68;margin-top:2px;}
+  .sel-card-flag{font-size:15px;line-height:1;margin-bottom:1px;opacity:.85;}
+  .sel-card-nome{font-size:8.5px;font-family:'Trebuchet MS',sans-serif;font-weight:700;color:#e0e0e0;text-transform:uppercase;letter-spacing:.3px;line-height:1.15;}
+  .sel-card-era{font-size:8px;color:#6a8a68;margin-top:1px;}
   /* Copa das Lendas — torneio */
-  #copaSelGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:5px;}
+  #copaSelGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:5px;}
   .copa-grupos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:10px;margin-top:10px;}
   .grupo-box{background:linear-gradient(165deg,#0c3320 0%,#091f13 100%);border:1px solid #1a4a28;border-radius:10px;padding:10px 12px;transition:border-color .2s ease, box-shadow .2s ease;box-shadow:0 4px 14px -6px rgba(0,0,0,.5);}
   .grupo-box:hover{border-color:#2a6a3e;box-shadow:0 8px 22px -8px rgba(0,0,0,.6);}
@@ -5282,7 +5282,7 @@ function abrirCopaPlantel(selId) {
     const badges = REI
       ? '<span style="background:linear-gradient(135deg,#fff1a8,#e0a020);color:#3a1d00;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;">👑 O REI</span>'
       : JC
-      ? '<span style="background:linear-gradient(135deg,#f0c040,#e07b00);color:#000;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;">★ COMPLETO</span>'
+      ? '<span style="background:linear-gradient(135deg,#f0c040,#e07b00);color:#000;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;">🐐 GOAT</span>'
       : [
         t.includes('capitao')       ? '<span class="trait-cap">CAP</span>'                                             : '',
         t.includes('finalizador')   ? '<span class="trait-fin">FIN</span>'                                             : '',
@@ -5412,7 +5412,7 @@ function mostrarPlantelSelecao(selId){
   const grupos={GOL:[],DEF:[],MEI:[],ATA:[]};
   sel.jogadores.forEach(j=>{(grupos[j.pos]||(grupos[j.pos]=[])).push(j);});
   Object.values(grupos).forEach(a=>a.sort((x,y)=>(y.titular?1:0)-(x.titular?1:0)||y.ovr-x.ovr));
-  const mini=(j)=>{const t=j.traits||[];if(t.includes('oRei'))return' 👑';if(t.includes('jogadorCompleto'))return' ★';return'';};
+  const mini=(j)=>{const t=j.traits||[];if(t.includes('oRei'))return' 👑';if(t.includes('jogadorCompleto'))return' 🐐';return'';};
   const secoes=['GOL','DEF','MEI','ATA'].map(pos=>{
     const arr=grupos[pos]||[];if(!arr.length)return'';
     const linhas=arr.map(j=>{const tit=j.titular,lenda=(j.traits||[]).includes('lenda');
@@ -6529,7 +6529,7 @@ function renderCopaPainel(selId) {
     const posL = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
     const REI = t.includes('oRei');
     const JC = t.includes('jogadorCompleto');
-    const badges = REI ? '<span style="background:linear-gradient(135deg,#fff1a8,#e0a020);color:#3a1d00;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;letter-spacing:.3px;">👑 O REI</span>' : JC ? '<span style="background:linear-gradient(135deg,#f0c040,#e07b00);color:#000;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;letter-spacing:.3px;">★ COMPLETO</span>' : [
+    const badges = REI ? '<span style="background:linear-gradient(135deg,#fff1a8,#e0a020);color:#3a1d00;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;letter-spacing:.3px;">👑 O REI</span>' : JC ? '<span style="background:linear-gradient(135deg,#f0c040,#e07b00);color:#000;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;letter-spacing:.3px;">🐐 GOAT</span>' : [
       t.includes('cabecador')     ? '<span class="trait-cap" style="background:#7f1d1d;padding:0 3px;">CAB</span>' : '',
       t.includes('driblador')     ? '<span class="trait-fin" style="background:#0f4c81;padding:0 3px;">DRB</span>' : '',
       t.includes('capitao')       ? '<span class="trait-cap">CAP</span>' : '',
@@ -8366,7 +8366,9 @@ function mostrarTela(nome){
   });
   const jogoAtivo = ['turno','simulacaoRodada','resultadoRodada','fimTemporada','copaPlantel','copaJogo'].includes(nome);
   document.getElementById('rodapeReset').classList.toggle('hidden', !jogoAtivo);
-  document.querySelector('header').classList.toggle('hidden', nome==='modoJogo');
+  // Oculta o cabeçalho grande nas telas internas da Copa (são redundantes com o título do card e liberam espaço vertical)
+  const semHeaderGrande = ['modoJogo','copaSetup','copaPlantel','copaNomesTecnicos','copaJogo'];
+  document.querySelector('header').classList.toggle('hidden', semHeaderGrande.includes(nome));
 }
 function mostrarPainelCopa(painel) {
   if (painel === 'live') return;
