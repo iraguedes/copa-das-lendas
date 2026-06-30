@@ -621,6 +621,33 @@
   .sub-player .sp{color:var(--cinza);font-size:9px;width:14px;flex-shrink:0;}
   .sub-player .sovr{color:#eab308;font-family:monospace;font-size:9px;margin-left:auto;}
   .sub-count{font-size:11px;color:var(--cinza);margin-bottom:8px;}
+
+  /* ===== Mobile — Copa das Lendas ===== */
+  @media(max-width:640px){
+    /* Plantel/Painel: escalação e tática EMPILHADOS (no celular não cabem lado a lado) */
+    .plantel-wrap{flex-direction:column;gap:12px;}
+    .plantel-esq{width:100%;}
+    .plantel-dir{width:100%;}
+    /* Substituições do intervalo: uma coluna embaixo da outra */
+    .sub-cols{flex-direction:column;gap:10px;}
+    /* Grupos em coluna única */
+    .copa-grupos-grid{grid-template-columns:1fr;}
+    /* Chaveamento: NÃO comprimir — deixa expandir e rolar horizontalmente (senão fica ilegível) */
+    .bracket-wrap{-webkit-overflow-scrolling:touch;}
+    .bracket-sym{width:max-content;min-width:100%;min-height:auto;align-items:flex-start;}
+    .bracket-half{flex:0 0 auto;}
+    .bkt-card{min-width:98px;max-width:150px;}
+    .bkt-centro-box,.bkt-terceiro-box{min-width:100px;}
+    /* Relógio ao vivo um pouco menor */
+    #copaLiveMin{font-size:30px;}
+    /* Cabeçalho do plantel: não deixar o OVR estourar */
+    .plantel-header{flex-wrap:wrap;}
+    /* Telas online: respiro confortável */
+    #copaOnlineMenu,#copaOnlineCriar,#copaOnlineEntrar,#copaOnlineLobby{padding:18px 16px;}
+    /* Tabela de grupos não pode estourar a largura do card */
+    .grupo-tbl{font-size:10.5px;}
+    .grupo-tbl td:first-child,.grupo-tbl th:first-child{max-width:100px;}
+  }
 </style>
 </head>
 <body>
