@@ -48,13 +48,23 @@
   *{box-sizing:border-box;}
   body{
     margin:0;
-    background: radial-gradient(140% 115% at 50% -18%, #114a2c 0%, #0a2916 44%, #061408 100%) fixed;
+    background:#07200f;
     color:var(--tinta);
     font-family: 'Georgia', 'Times New Roman', serif;
     min-height:100vh;
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale;
   }
+  /* Atmosfera de estádio à noite: holofote dourado no topo + profundidade + vinheta nas bordas.
+     Camada fixa (composited) — não repinta no scroll, suave no celular. */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(86% 52% at 50% -6%, rgba(245,216,0,.11), transparent 48%),
+      radial-gradient(130% 120% at 50% 16%, #12502f 0%, #0a2916 46%, #051207 80%),
+      radial-gradient(125% 108% at 50% 50%, transparent 50%, rgba(0,0,0,.52) 100%);
+  }
+  .wrap{position:relative;z-index:1;}
   ::-webkit-scrollbar{width:10px;height:10px;}
   ::-webkit-scrollbar-track{background:transparent;}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:7px;border:2px solid transparent;background-clip:padding-box;}
@@ -379,11 +389,19 @@
     text-align:center;padding:20px 16px 36px;max-width:860px;
     margin:0 auto;background:transparent;box-shadow:none;border-radius:0;overflow-x:visible;
   }
-  .copa-trophy{font-size:54px;line-height:1;margin-bottom:10px;}
+  .copa-trophy{
+    font-size:58px;line-height:1;margin-bottom:8px;
+    filter:drop-shadow(0 6px 22px rgba(245,216,0,.45));
+    animation:trofeuFlut 4.2s ease-in-out infinite;
+    transform-origin:50% 90%;
+  }
   .copa-titulo{
-    font-family:'Trebuchet MS',sans-serif;font-size:clamp(28px,5vw,56px);
-    font-weight:900;color:#f5d800;text-transform:uppercase;letter-spacing:5px;
-    text-shadow:0 2px 14px rgba(0,0,0,.65);margin:0 0 8px;
+    font-family:'Trebuchet MS',sans-serif;font-size:clamp(30px,5.4vw,58px);
+    font-weight:900;text-transform:uppercase;letter-spacing:5px;margin:0 0 8px;
+    background:linear-gradient(180deg,#fff7cc 0%,#f7da3e 36%,#e7b23a 66%,#c9912f 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+    filter:drop-shadow(0 2px 10px rgba(0,0,0,.55)) drop-shadow(0 0 26px rgba(245,216,0,.22));
   }
   .copa-sub{
     font-family:'Georgia',serif;font-size:14px;color:#b0cab0;
@@ -393,14 +411,27 @@
     display:flex;gap:10px;justify-content:center;margin-bottom:26px;flex-wrap:wrap;
   }
   .legend-card{
-    width:108px;
-    background:linear-gradient(160deg,#0e2a1a 0%,#061208 100%);
-    border:2px solid #c9962e;border-radius:10px;padding:7px 5px 9px;
-    box-shadow:0 4px 18px rgba(0,0,0,.6),0 0 0 1px rgba(210,180,80,.2) inset;
+    width:108px;position:relative;overflow:hidden;
+    background:linear-gradient(160deg,#10301d 0%,#061208 100%);
+    border:2px solid #c9962e;border-radius:12px;padding:7px 5px 9px;
+    box-shadow:0 6px 22px rgba(0,0,0,.6),0 0 0 1px rgba(210,180,80,.25) inset,0 0 24px rgba(245,216,0,.05);
     display:flex;flex-direction:column;align-items:center;gap:3px;
+    transition:transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease, border-color .22s ease;
+    animation:cardSurge .55s both cubic-bezier(.2,.7,.3,1);
   }
-  .legend-card{transition:transform .22s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease, border-color .22s ease;}
-  .legend-card:hover{transform:translateY(-5px);border-color:#f0c84a;box-shadow:0 14px 32px -6px rgba(0,0,0,.72),0 0 0 1px rgba(245,216,0,.4) inset;}
+  /* brilho diagonal sutil no topo do card (folha de ouro) */
+  .legend-card::before{
+    content:'';position:absolute;top:0;left:-30%;width:160%;height:45%;
+    background:linear-gradient(180deg,rgba(255,255,255,.10),transparent);
+    transform:skewY(-3deg);pointer-events:none;
+  }
+  .legend-card:hover{transform:translateY(-6px) scale(1.02);border-color:#f3d35a;box-shadow:0 18px 38px -8px rgba(0,0,0,.75),0 0 0 1px rgba(245,216,0,.5) inset,0 0 30px rgba(245,216,0,.12);}
+  .legend-card>*{position:relative;z-index:1;}
+  .legend-card:nth-child(1){animation-delay:.04s}
+  .legend-card:nth-child(2){animation-delay:.10s}
+  .legend-card:nth-child(3){animation-delay:.16s}
+  .legend-card:nth-child(4){animation-delay:.22s}
+  .legend-card:nth-child(5){animation-delay:.28s}
   .legend-card-stars{color:#f5d800;font-size:11px;letter-spacing:1px;}
   .legend-card-figure{width:76px;height:90px;display:block;}
   .legend-card-name{
@@ -432,7 +463,11 @@
     .legend-card-name{font-size:8.5px;}
     .copa-btns-row #btnModoSozinho,.copa-btns-row #btnModoOnline{min-width:155px;padding:11px 16px;}
   }
-  header h1{color:#f5d800;text-shadow:0 0 24px rgba(245,216,0,.35),0 2px 8px rgba(0,0,0,.6);}
+  header h1{
+    background:linear-gradient(180deg,#fff7cc 0%,#f7da3e 44%,#d9a93a 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    filter:drop-shadow(0 0 18px rgba(245,216,0,.3)) drop-shadow(0 2px 6px rgba(0,0,0,.5));
+  }
   header .sub{display:none;}
   .modo-sel-btn{flex:1;}
   .modo-sel-btn.ativo{background:#22c55e !important;border-color:#22c55e !important;color:#fff !important;}
@@ -475,10 +510,16 @@
   .minha-badge{display:inline-block;background:#22c55e;color:#000;font-size:8px;font-weight:900;text-transform:uppercase;padding:1px 4px;border-radius:2px;margin-left:3px;vertical-align:middle;}
   .copa-fase-bar{display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;gap:8px;flex-wrap:wrap;}
   .copa-fase-bar h3{margin:0;font-size:15px;color:var(--ouro);font-family:'Trebuchet MS',sans-serif;font-weight:800;letter-spacing:.5px;}
-  .campeao-box{text-align:center;padding:20px 12px;}
-  .campeao-trofeu{font-size:56px;line-height:1;margin-bottom:6px;}
+  .campeao-box{text-align:center;padding:28px 14px;position:relative;}
+  .campeao-box::before{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(60% 55% at 50% 32%, rgba(245,216,0,.16), transparent 70%);
+  }
+  .campeao-box>*{position:relative;z-index:1;}
+  .campeao-trofeu{font-size:66px;line-height:1;margin-bottom:6px;filter:drop-shadow(0 0 32px rgba(245,216,0,.6));animation:trofeuFlut 4.2s ease-in-out infinite;transform-origin:50% 90%;}
   .campeao-flag{font-size:40px;line-height:1;}
-  .campeao-nome{font-size:20px;font-weight:900;margin:5px 0 3px;}
+  .campeao-nome{font-size:23px;font-weight:900;margin:6px 0 3px;letter-spacing:1px;
+    background:linear-gradient(180deg,#fff7cc,#f0c64a 60%,#d9a93a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
   .campeao-lenda{font-size:13px;color:var(--ouro);}
   .tier-badge-S{color:#f0c040;font-weight:900;}
   .tier-badge-A{color:#c0c0c0;font-weight:900;}
@@ -647,6 +688,23 @@
     /* Tabela de grupos não pode estourar a largura do card */
     .grupo-tbl{font-size:10.5px;}
     .grupo-tbl td:first-child,.grupo-tbl th:first-child{max-width:100px;}
+  }
+
+  /* ===== Imersão — atmosfera, brilho de ouro e placar ===== */
+  @keyframes trofeuFlut{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-7px) rotate(2deg);}}
+  @keyframes cardSurge{from{opacity:0;transform:translateY(16px) scale(.95);}to{opacity:1;transform:none;}}
+  @keyframes tituloBrilho{0%{background-position:120% 0;}100%{background-position:-20% 0;}}
+  /* Título com varredura de brilho dourado (folha de ouro reluzindo sob o holofote) */
+  .copa-titulo{
+    background:linear-gradient(100deg,#caa23a 0%,#e7b23a 28%,#fff7cc 47%,#f7da3e 55%,#e0a92e 72%,#caa23a 100%);
+    background-size:220% 100%;animation:tituloBrilho 7s linear infinite;
+  }
+  /* Relógio ao vivo com cara de placar de estádio (dourado, com brilho) */
+  #copaLiveMin{color:#f7da3e;text-shadow:0 0 16px rgba(245,216,0,.45),0 2px 4px rgba(0,0,0,.5);font-family:'Trebuchet MS',sans-serif;}
+  #copaLiveBar{background:linear-gradient(90deg,#e7b23a,#f7da3e);box-shadow:0 0 10px rgba(245,216,0,.4);}
+  /* Acessibilidade: respeita "reduzir movimento" do sistema */
+  @media(prefers-reduced-motion:reduce){
+    .copa-trophy,.campeao-trofeu,.legend-card,.copa-titulo{animation:none!important;}
   }
 </style>
 </head>
@@ -6437,7 +6495,6 @@ function renderCopaBracket() {
       const lendaJog = sel.jogadores.find(j => j.traits && j.traits.includes('lenda'));
       centroHTML += `<div class="campeao-box" style="margin-top:8px;">
         <div class="campeao-trofeu">🏆</div>
-        <div class="campeao-flag">${sel.flag}</div>
         <div class="campeao-nome">${sel.nome}</div>
         <div class="campeao-lenda">★ ${lendaJog ? lendaJog.nome : sel.lenda}</div>
       </div>`;
