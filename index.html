@@ -22,7 +22,7 @@
     location.replace(location.pathname + '?' + params.toString() + location.hash);
   })();
 </script>
-<title>Liga D — Gerenciador</title>
+<title>Copa das Lendas</title>
 <style>
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
   :root{
@@ -994,7 +994,7 @@
     </div>
     <div id="copaSelGrid" style="display:none;max-height:min(220px,32vh);overflow-y:auto;padding:4px;background:#071f11;border-radius:6px;margin-bottom:10px;"></div>
     <p id="copaSetupInfo" style="font-size:12px;color:var(--cinza);margin:0 0 10px;">Escolha o modo e clique em INICIAR.</p>
-    <div id="copaSetupAcoes" style="display:flex;gap:10px;position:sticky;bottom:0;background:var(--areia);margin:0 -22px -20px;padding:12px 22px 16px;border-top:1px solid #d6cdb4;border-radius:0 0 14px 14px;">
+    <div id="copaSetupAcoes" style="display:flex;gap:10px;background:var(--areia);margin:14px -22px -20px;padding:14px 22px 16px;border-top:1px solid #d6cdb4;border-radius:0 0 14px 14px;">
       <button class="secondary" id="btnVoltarCopaSetup" type="button" style="flex:0 0 auto;">Voltar</button>
       <button id="btnIniciarCopa" type="button" style="flex:1;">▶ INICIAR</button>
     </div>
@@ -4574,7 +4574,8 @@ const BANCO_SELECOES = [
     if (CAMPEAS.has(s.pais)) s.tier = 'S';
     else if (TIERS[s.pais]) s.tier = TIERS[s.pais];
     s.jogadores.forEach(j => {
-      if (GOATS.has(j.nome)) j.traits = [...new Set([...(j.traits||[]), 'jogadorCompleto', 'lenda'])];
+      if (j.nome === 'Pelé') j.traits = [...new Set([...(j.traits||[]), 'jogadorCompleto', 'lenda', 'oRei'])];
+      else if (GOATS.has(j.nome)) j.traits = [...new Set([...(j.traits||[]), 'jogadorCompleto', 'lenda'])];
       else if (j.traits && j.traits.includes('jogadorCompleto')) j.traits = j.traits.filter(t => t !== 'jogadorCompleto');
     });
   });
@@ -4617,6 +4618,7 @@ function forcaAtaqueCopa(sel) {
   let base = avgA * 0.6 + avgM * 0.4;
   tit.forEach(j => {
     const t = j.traits || [];
+    if (t.includes('oRei'))            { base *= 1.16; return; } // O Rei (Pelé, tricampeão) — acima de todos
     if (t.includes('jogadorCompleto')) { base *= 1.12; return; } // super-trait: engloba todos
     if (t.includes('finalizador')) base *= 1.04;
     if (t.includes('cabecador'))   base *= 1.025;
@@ -4696,7 +4698,8 @@ function distribuirGolsCopa(numGols, sel, rng) {
     let p = pesos[j.pos] || 1;
     if (j.traits) {
       const t = j.traits;
-      if (t.includes('jogadorCompleto')) p *= 3.0;
+      if (t.includes('oRei')) p *= 3.9;          // O Rei (Pelé) — o maior artilheiro
+      else if (t.includes('jogadorCompleto')) p *= 3.0;
       else {
         if (t.includes('lenda'))       p *= 1.8;
         if (t.includes('finalizador')) p *= 1.5;
@@ -5266,8 +5269,11 @@ function abrirCopaPlantel(selId) {
   const makeToggleRow = (j, isTit) => {
     const t = j.traits || [];
     const star = t.includes('lenda') ? '<span style="color:#f0c040;margin-right:2px;">★</span>' : '';
+    const REI = t.includes('oRei');
     const JC = t.includes('jogadorCompleto');
-    const badges = JC
+    const badges = REI
+      ? '<span style="background:linear-gradient(135deg,#fff1a8,#e0a020);color:#3a1d00;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;">👑 O REI</span>'
+      : JC
       ? '<span style="background:linear-gradient(135deg,#f0c040,#e07b00);color:#000;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;">★ COMPLETO</span>'
       : [
         t.includes('capitao')       ? '<span class="trait-cap">CAP</span>'                                             : '',
@@ -5996,7 +6002,7 @@ function renderEscolhaBatedorPenalti(partida, ev) {
 function confirmarBatedorPenalti(partida, ev, jogador) {
   document.getElementById('copaLiveSub').classList.add('hidden');
   const t = jogador?.traits||[];
-  const taxa = t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
+  const taxa = t.includes('oRei') ? 0.94 : t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
              : t.includes('finalizador') ? 0.83 : t.includes('batedor') ? 0.81 : 0.76;
   const conv = copaRng() < taxa;
   if (conv) {
@@ -6071,7 +6077,7 @@ function iniciarShootoutInterativo(dadosTie, callback) {
 
   const processarChute = (jogador) => {
     const t = jogador?.traits||[];
-    const taxa = t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
+    const taxa = t.includes('oRei') ? 0.94 : t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
                : t.includes('finalizador') ? 0.83 : t.includes('batedor') ? 0.81 : 0.76;
     const humConv = copaRng() < taxa;
     const oppConv = oppKicks[rodada] === 1;
@@ -6407,8 +6413,9 @@ function renderCopaPainel(selId) {
     const t = j.traits || [];
     const star = t.includes('lenda') ? '<span style="color:#f0c040;margin-right:2px;">★</span>' : '';
     const posL = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
+    const REI = t.includes('oRei');
     const JC = t.includes('jogadorCompleto');
-    const badges = JC ? '<span style="background:linear-gradient(135deg,#f0c040,#e07b00);color:#000;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;letter-spacing:.3px;">★ COMPLETO</span>' : [
+    const badges = REI ? '<span style="background:linear-gradient(135deg,#fff1a8,#e0a020);color:#3a1d00;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;letter-spacing:.3px;">👑 O REI</span>' : JC ? '<span style="background:linear-gradient(135deg,#f0c040,#e07b00);color:#000;font-size:8px;font-weight:900;border-radius:3px;padding:0 5px;letter-spacing:.3px;">★ COMPLETO</span>' : [
       t.includes('cabecador')     ? '<span class="trait-cap" style="background:#7f1d1d;padding:0 3px;">CAB</span>' : '',
       t.includes('driblador')     ? '<span class="trait-fin" style="background:#0f4c81;padding:0 3px;">DRB</span>' : '',
       t.includes('capitao')       ? '<span class="trait-cap">CAP</span>' : '',
