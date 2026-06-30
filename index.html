@@ -746,21 +746,25 @@
           <path d="M37,27 L40,33 L43,27" fill="#005c1a"/>
           <!-- Número 10 -->
           <text x="40" y="49" text-anchor="middle" fill="#005c1a" font-size="11" font-weight="900" font-family="Arial,sans-serif">10</text>
-          <!-- Braço direito erguido (punho ao alto) -->
-          <path d="M51,33 L55,32 L54,40 L49,39 Z" fill="#eac900"/>
-          <path d="M52,36 Q58,22 62,9" stroke="#7a4020" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="62.5" cy="8" r="3.6" fill="#7a4020"/>
-          <!-- Braço esquerdo dobrado pra cima -->
-          <path d="M29,33 L25,32 L26,40 L31,39 Z" fill="#eac900"/>
-          <path d="M28,36 Q22,30 24,22" stroke="#7a4020" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="24" cy="21" r="3.4" fill="#7a4020"/>
+          <!-- Braço direito: SOCO RETO pra cima (punho cerrado ao alto) -->
+          <path d="M50,33 L54,33 L53,40 L48,39 Z" fill="#eac900"/>
+          <path d="M52,35 Q50.5,21 49,8" stroke="#7a4020" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <circle cx="48.5" cy="7" r="4.1" fill="#7a4020"/>
+          <!-- Braço esquerdo pra baixo, equilibrando o salto -->
+          <path d="M29,33 L25,33 L26,40 L31,39 Z" fill="#eac900"/>
+          <path d="M29,37 Q24,45 27,52" stroke="#7a4020" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <circle cx="27" cy="53" r="3.5" fill="#7a4020"/>
           <!-- Shorts verdes -->
           <rect x="26" y="59" width="28" height="9" fill="#005c1a" rx="2"/>
-          <!-- Pernas flexionadas (salto) -->
-          <rect x="28" y="67" width="10" height="11" rx="2" fill="#eac900"/>
-          <rect x="42" y="67" width="10" height="11" rx="2" fill="#eac900"/>
-          <rect x="27" y="77" width="13" height="6" rx="3" fill="#111"/>
-          <rect x="40" y="77" width="13" height="6" rx="3" fill="#111"/>
+          <!-- Pernas flexionadas e no ar (salto) -->
+          <g transform="rotate(-13 34 74)">
+            <rect x="30" y="66" width="9" height="13" rx="2.5" fill="#eac900"/>
+            <rect x="28" y="78" width="13" height="6" rx="3" fill="#111"/>
+          </g>
+          <g transform="rotate(13 46 74)">
+            <rect x="41" y="66" width="9" height="13" rx="2.5" fill="#eac900"/>
+            <rect x="39" y="78" width="13" height="6" rx="3" fill="#111"/>
+          </g>
           <!-- Cabelo black power -->
           <circle cx="33" cy="13" r="8" fill="#1a0600"/>
           <circle cx="47" cy="13" r="8" fill="#1a0600"/>
