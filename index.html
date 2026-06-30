@@ -4923,8 +4923,13 @@ function ehMinhaSel(id) {
 }
 
 function forcaComEsquema(atq, def, selId) {
-  if (!copa || !ehMinhaSel(selId)) return { atq, def };
-  const esqF = copa.minhasEsquemas?.[selId] || copa.minhaEsquema;
+  if (!copa) return { atq, def };
+  // No online, o bônus de tática vale para TODOS os times humanos (lista global, idêntica em
+  // todos os clientes) — garante força/placar determinísticos. Offline cai no ehMinhaSel de sempre.
+  const online = !!copa.selecoesHumanas;
+  const controlada = online ? copa.selecoesHumanas.includes(selId) : ehMinhaSel(selId);
+  if (!controlada) return { atq, def };
+  const esqF = online ? (copa.minhasEsquemas?.[selId] || '4-4-2') : (copa.minhasEsquemas?.[selId] || copa.minhaEsquema);
   if (!esqF) return { atq, def };
   const e = ESQUEMAS_COPA.find(e => e.f === esqF);
   if (!e) return { atq, def };
@@ -4934,8 +4939,11 @@ function forcaComEsquema(atq, def, selId) {
 }
 
 function atualizarEntrosamento() {
-  if (!copa?.minhasSelecoes) return;
-  copa.minhasSelecoes.forEach(selId => {
+  // No online usa a lista global (todos os times humanos) p/ o entrosamento ser idêntico em todos os clientes
+  const times = copa?.selecoesHumanas || copa?.minhasSelecoes;
+  if (!times) return;
+  copa.entrosamento = copa.entrosamento || {};
+  times.forEach(selId => {
     const esqAtual = copa.minhasEsquemas?.[selId] || '4-4-2';
     if (!copa.entrosamento[selId]) {
       copa.entrosamento[selId] = { esquema: esqAtual, jogos: 0 };
@@ -9920,6 +9928,7 @@ async function iniciarCopaFromOnline(data) {
   copa.onlineCopa = true;
   copa.codigoSala = copaOnlineCodigo;
   copa.minhasSelecoes = [meuSelId].filter(Boolean);
+  copa.selecoesHumanas = selIds.slice(); // lista global de times humanos
   copa.minhasEsquemas = {};
   copa.tecnicos = {};
   copaRng = criarRng(copa.seed ^ 0x9e3779b9);
@@ -9954,6 +9963,12 @@ function carregarCopaFromOnline(data) {
   copa.onlineCopa = true;
   copa.codigoSala = copaOnlineCodigo;
   copa.minhasSelecoes = [meuSelId].filter(Boolean);
+  // CRÍTICO: o estado serializado traz minhaSelecaoId do host; sem resetar, ehMinhaSel()
+  // marcaria o time do host como "meu" neste cliente (deixava o amigo mexer no meu time no intervalo
+  // e divergia a simulação). Cada cliente controla só o próprio time.
+  copa.minhaSelecaoId = meuSelId || null;
+  // Lista GLOBAL de times humanos (igual em todos os clientes) — usada no cálculo de força/tática
+  copa.selecoesHumanas = Object.values(jogs).map(j => j.selId).filter(Boolean);
   if (!copa.minhasEsquemas) copa.minhasEsquemas = {};
   if (!copa.tecnicos) copa.tecnicos = {};
   Object.entries(jogs).forEach(([, j]) => {
