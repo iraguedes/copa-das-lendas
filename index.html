@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '15'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '16'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -783,46 +783,81 @@
         <div class="legend-card-stars">★★★</div>
         <svg class="legend-card-figure" viewBox="0 0 80 94" xmlns="http://www.w3.org/2000/svg">
           <!-- Fundo -->
-          <g transform="translate(40,48) rotate(45)"><rect x="-25" y="-25" width="50" height="50" fill="#005c1a" rx="4" opacity="0.5"/></g>
+          <defs>
+            <radialGradient id="lgGlow0" cx="50%" cy="40%" r="58%">
+              <stop offset="0%" stop-color="#f5d800" stop-opacity="0.20"/>
+              <stop offset="55%" stop-color="#0a7a2a" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+            </radialGradient>
+            <clipPath id="lgJersey0"><path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z"/></clipPath>
+          </defs>
+          <circle cx="40" cy="44" r="35" fill="url(#lgGlow0)"/>
+          <g transform="translate(40,46) rotate(45)"><rect x="-23" y="-23" width="46" height="46" fill="#005c1a" rx="6" opacity="0.42"/></g>
+          <path d="M14,24 l1.3,2.6 2.6,1.3 -2.6,1.3 -1.3,2.6 -1.3,-2.6 -2.6,-1.3 2.6,-1.3 Z" fill="#f5d800" opacity="0.55"/>
+          <circle cx="66" cy="38" r="1.4" fill="#f5d800" opacity="0.45"/>
+          <!-- sombra descolada do chão (salto) -->
+          <ellipse cx="40" cy="89" rx="12" ry="2.4" fill="#000" opacity="0.30"/>
           <!-- Comemoração do Pelé: salto com o punho ao alto -->
-          <!-- Torso (camisa amarela do Brasil) -->
+          <!-- Braço esquerdo pra baixo, equilibrando o salto (aberto, visível) -->
+          <path d="M28,36 Q21.5,44 23.5,52" stroke="#7a4020" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="23.5" cy="53" r="3.7" fill="#7a4020"/>
+          <!-- Torso (camisa amarela do Brasil) com sombreamento -->
           <path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z" fill="#eac900"/>
-          <!-- Gola verde em V -->
-          <path d="M37,27 L40,33 L43,27" fill="#005c1a"/>
-          <!-- Número 10 -->
-          <text x="40" y="49" text-anchor="middle" fill="#005c1a" font-size="11" font-weight="900" font-family="Arial,sans-serif">10</text>
-          <!-- Braço direito: SOCO RETO pra cima (punho cerrado ao alto) -->
+          <g clip-path="url(#lgJersey0)">
+            <path d="M45,26 L54,26 L54,60 L43,60 Z" fill="#b89400" opacity="0.5"/>
+            <ellipse cx="33" cy="33" rx="9" ry="6" fill="#fff8d0" opacity="0.35"/>
+            <path d="M27,56 L53,56 L53,60 L27,60 Z" fill="#005c1a" opacity="0.25"/>
+          </g>
+          <!-- mangas com punho verde -->
           <path d="M50,33 L54,33 L53,40 L48,39 Z" fill="#eac900"/>
-          <path d="M52,35 Q50.5,21 49,8" stroke="#7a4020" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="48.5" cy="7" r="4.1" fill="#7a4020"/>
-          <!-- Braço esquerdo pra baixo, equilibrando o salto -->
           <path d="M29,33 L25,33 L26,40 L31,39 Z" fill="#eac900"/>
-          <path d="M29,37 Q24,45 27,52" stroke="#7a4020" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="27" cy="53" r="3.5" fill="#7a4020"/>
-          <!-- Shorts verdes -->
-          <rect x="26" y="59" width="28" height="9" fill="#005c1a" rx="2"/>
-          <!-- Pernas flexionadas e no ar (salto) -->
-          <g transform="rotate(-13 34 74)">
-            <rect x="30" y="66" width="9" height="13" rx="2.5" fill="#eac900"/>
-            <rect x="28" y="78" width="13" height="6" rx="3" fill="#111"/>
+          <path d="M25.4,36.5 L30.6,36 L31,39 L26,40 Z" fill="#005c1a" opacity="0.6"/>
+          <path d="M53.6,36.5 L48.4,36 L48,39 L53,40 Z" fill="#005c1a" opacity="0.6"/>
+          <!-- Gola verde em V -->
+          <path d="M36,27 L40,34 L44,27 L41.5,27 L40,30.4 L38.5,27 Z" fill="#005c1a"/>
+          <!-- Número 10 -->
+          <text x="40" y="50" text-anchor="middle" fill="#005c1a" font-size="11" font-weight="900" font-family="Arial,sans-serif">10</text>
+          <!-- Braço direito: SOCO pra cima, angulado pra fora (livre do cabelo) -->
+          <path d="M52,35 Q56.5,21 59,9.5" stroke="#7a4020" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="59.5" cy="8" r="4.2" fill="#7a4020"/>
+          <circle cx="57.9" cy="9.6" r="1.4" fill="#8f4d28"/>
+          <!-- Shorts verdes com cós -->
+          <rect x="26" y="59" width="28" height="9.5" fill="#005c1a" rx="2.5"/>
+          <rect x="26" y="59" width="28" height="2.2" fill="#0a7a2a" rx="1"/>
+          <!-- Pernas flexionadas no ar (salto): coxa + meião + chuteira -->
+          <g transform="rotate(-14 34 74)">
+            <rect x="30" y="64" width="9" height="6.5" rx="2.5" fill="#7a4020"/>
+            <rect x="30" y="69" width="9" height="10" rx="2.5" fill="#eac900"/>
+            <rect x="30" y="69" width="9" height="2.6" fill="#005c1a"/>
+            <rect x="27.5" y="78" width="13.5" height="6" rx="3" fill="#151515"/>
+            <rect x="27.5" y="82.2" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
           </g>
-          <g transform="rotate(13 46 74)">
-            <rect x="41" y="66" width="9" height="13" rx="2.5" fill="#eac900"/>
-            <rect x="39" y="78" width="13" height="6" rx="3" fill="#111"/>
+          <g transform="rotate(14 46 74)">
+            <rect x="41" y="64" width="9" height="6.5" rx="2.5" fill="#7a4020"/>
+            <rect x="41" y="69" width="9" height="10" rx="2.5" fill="#eac900"/>
+            <rect x="41" y="69" width="9" height="2.6" fill="#005c1a"/>
+            <rect x="39" y="78" width="13.5" height="6" rx="3" fill="#151515"/>
+            <rect x="39" y="82.2" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
           </g>
-          <!-- Cabelo black power -->
+          <!-- Cabelo black power com brilho -->
           <circle cx="33" cy="13" r="8" fill="#1a0600"/>
           <circle cx="47" cy="13" r="8" fill="#1a0600"/>
           <circle cx="40" cy="9" r="8.5" fill="#1a0600"/>
-          <!-- Cabeça -->
+          <path d="M33,6.5 Q37,4.5 42,5" stroke="#3d2410" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.8"/>
+          <!-- Cabeça com sombreamento -->
           <ellipse cx="40" cy="20" rx="11" ry="12" fill="#7a4020"/>
+          <path d="M30,24 Q40,30.5 50,24 Q46,29.5 40,29.8 Q34,29.5 30,24 Z" fill="#000" opacity="0.14"/>
           <ellipse cx="29.5" cy="20" rx="2.3" ry="3" fill="#7a4020"/>
           <ellipse cx="50.5" cy="20" rx="2.3" ry="3" fill="#7a4020"/>
-          <!-- Olhos fechados de alegria -->
-          <path d="M33.8,18.6 Q36,16.8 38.2,18.6" fill="none" stroke="#1a0600" stroke-width="1.4" stroke-linecap="round"/>
-          <path d="M41.8,18.6 Q44,16.8 46.2,18.6" fill="none" stroke="#1a0600" stroke-width="1.4" stroke-linecap="round"/>
-          <!-- Boca aberta (grito de gol) -->
-          <ellipse cx="40" cy="25" rx="3" ry="2.6" fill="#5a1414"/>
+          <ellipse cx="34" cy="16" rx="3.5" ry="2" fill="#fff" opacity="0.10"/>
+          <!-- Sobrancelhas + olhos fechados de alegria -->
+          <path d="M33.4,15.9 Q36,14.6 38.4,15.9" fill="none" stroke="#1a0600" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
+          <path d="M41.6,15.9 Q44,14.6 46.6,15.9" fill="none" stroke="#1a0600" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>
+          <path d="M33.8,18.8 Q36,17 38.2,18.8" fill="none" stroke="#1a0600" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M41.8,18.8 Q44,17 46.2,18.8" fill="none" stroke="#1a0600" stroke-width="1.5" stroke-linecap="round"/>
+          <!-- Boca aberta (grito de gol) com língua -->
+          <ellipse cx="40" cy="25" rx="3.2" ry="2.9" fill="#4a0f0f"/>
+          <ellipse cx="40" cy="26.3" rx="1.8" ry="1.2" fill="#c0392b"/>
         </svg>
         <div class="legend-card-name">PELÉ</div>
         <div class="legend-card-badge">LEGEND</div>
@@ -833,45 +868,72 @@
         <div class="legend-card-stars">★★★</div>
         <svg class="legend-card-figure" viewBox="0 0 80 94" xmlns="http://www.w3.org/2000/svg">
           <!-- Fundo -->
-          <g transform="translate(40,48) rotate(45)"><rect x="-25" y="-25" width="50" height="50" fill="#2060a0" rx="4" opacity="0.5"/></g>
+          <defs>
+            <radialGradient id="lgGlow1" cx="50%" cy="40%" r="58%">
+              <stop offset="0%" stop-color="#9fd0ff" stop-opacity="0.22"/>
+              <stop offset="55%" stop-color="#2060a0" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+            </radialGradient>
+            <clipPath id="lgJersey1"><path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z"/></clipPath>
+          </defs>
+          <circle cx="40" cy="44" r="35" fill="url(#lgGlow1)"/>
+          <g transform="translate(40,46) rotate(45)"><rect x="-23" y="-23" width="46" height="46" fill="#2060a0" rx="6" opacity="0.42"/></g>
+          <path d="M66,22 l1.3,2.6 2.6,1.3 -2.6,1.3 -1.3,2.6 -1.3,-2.6 -2.6,-1.3 2.6,-1.3 Z" fill="#f5d800" opacity="0.55"/>
+          <circle cx="14" cy="40" r="1.4" fill="#f5d800" opacity="0.45"/>
+          <ellipse cx="40" cy="87.5" rx="16" ry="3" fill="#000" opacity="0.32"/>
           <!-- Comemoração do Maradona: corrida com os dois punhos ao alto -->
           <path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z" fill="#75b2dd"/>
-          <clipPath id="jerseyClip1"><path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z"/></clipPath>
-          <g clip-path="url(#jerseyClip1)">
-            <rect x="31" y="26" width="6" height="34" fill="white" opacity="0.85"/>
-            <rect x="43" y="26" width="6" height="34" fill="white" opacity="0.85"/>
+          <g clip-path="url(#lgJersey1)">
+            <rect x="31" y="26" width="6" height="34" fill="#fff" opacity="0.9"/>
+            <rect x="43" y="26" width="6" height="34" fill="#fff" opacity="0.9"/>
+            <path d="M45,26 L54,26 L54,60 L43,60 Z" fill="#204a70" opacity="0.28"/>
+            <ellipse cx="33" cy="33" rx="9" ry="6" fill="#fff" opacity="0.30"/>
           </g>
+          <path d="M36.5,27 L40,32.5 L43.5,27 Z" fill="#00235a" opacity="0.9"/>
           <text x="40" y="50" text-anchor="middle" fill="#00235a" font-size="11" font-weight="900" font-family="Arial,sans-serif">10</text>
           <!-- Braços BEM abertos (comemoração explosiva — distinta do Messi) -->
           <path d="M29,33 L25,32 L26,40 L31,39 Z" fill="#75b2dd"/>
-          <path d="M28,35 Q19,24 13,12" stroke="#b07840" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="12.5" cy="11" r="3.7" fill="#b07840"/>
           <path d="M51,33 L55,32 L54,40 L49,39 Z" fill="#75b2dd"/>
-          <path d="M52,35 Q61,24 67,12" stroke="#b07840" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="67.5" cy="11" r="3.7" fill="#b07840"/>
-          <!-- Shorts -->
-          <rect x="26" y="59" width="28" height="9" fill="#00235a" rx="2"/>
-          <!-- Pernas em passada de corrida (uma à frente, outra atrás) -->
-          <rect x="26" y="67" width="10" height="13" rx="2" fill="#75b2dd"/>
-          <rect x="45" y="66" width="10" height="11" rx="2" fill="#75b2dd"/>
-          <rect x="21" y="80" width="14" height="6" rx="3" fill="#222"/>
-          <rect x="46" y="76" width="14" height="6" rx="3" fill="#222"/>
-          <!-- Cabelo cacheado escuro -->
+          <path d="M28,35 Q19,24 13,12" stroke="#b07840" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="12.5" cy="11" r="3.9" fill="#b07840"/>
+          <path d="M52,35 Q61,24 67,12" stroke="#b07840" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="67.5" cy="11" r="3.9" fill="#b07840"/>
+          <!-- Shorts com cós -->
+          <rect x="26" y="59" width="28" height="9.5" fill="#00235a" rx="2.5"/>
+          <rect x="26" y="59" width="28" height="2.2" fill="#1a3f7a" rx="1"/>
+          <!-- Pernas em passada: coxa + meião + chuteira -->
+          <rect x="26" y="66" width="10" height="6" rx="2.5" fill="#b07840"/>
+          <rect x="26" y="70.5" width="10" height="10" rx="2.5" fill="#c8d8e8"/>
+          <rect x="26" y="70.5" width="10" height="2.6" fill="#00235a"/>
+          <rect x="21" y="79.5" width="14" height="6" rx="3" fill="#151515"/>
+          <rect x="21" y="83.8" width="14" height="1.7" rx="0.8" fill="#3a3a3a"/>
+          <rect x="45" y="64" width="10" height="6" rx="2.5" fill="#b07840"/>
+          <rect x="45" y="68.5" width="10" height="9" rx="2.5" fill="#c8d8e8"/>
+          <rect x="45" y="68.5" width="10" height="2.6" fill="#00235a"/>
+          <rect x="46" y="76.5" width="14" height="6" rx="3" fill="#151515"/>
+          <rect x="46" y="80.8" width="14" height="1.7" rx="0.8" fill="#3a3a3a"/>
+          <!-- Cabelo cacheado escuro com brilho -->
           <ellipse cx="40" cy="8" rx="13" ry="7.5" fill="#1c0800"/>
           <circle cx="29" cy="11" r="5.5" fill="#1c0800"/>
           <circle cx="51" cy="11" r="5.5" fill="#1c0800"/>
           <circle cx="40" cy="6" r="6.5" fill="#241008"/>
-          <!-- Cabeça -->
+          <path d="M32,5.5 Q36,3.8 41,4.2" stroke="#4a2812" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.8"/>
+          <!-- Cabeça com sombreamento -->
           <ellipse cx="40" cy="20" rx="11" ry="12" fill="#b07840"/>
+          <path d="M30,24 Q40,30.5 50,24 Q46,29.5 40,29.8 Q34,29.5 30,24 Z" fill="#000" opacity="0.13"/>
           <ellipse cx="29.5" cy="20" rx="2.3" ry="3" fill="#b07840"/>
           <ellipse cx="50.5" cy="20" rx="2.3" ry="3" fill="#b07840"/>
-          <!-- Olhos -->
+          <ellipse cx="34" cy="16" rx="3.5" ry="2" fill="#fff" opacity="0.10"/>
+          <!-- Sobrancelhas + olhos -->
+          <path d="M33.4,15.4 Q36,14.2 38.4,15.4" fill="none" stroke="#1c0800" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
+          <path d="M41.6,15.4 Q44,14.2 46.6,15.4" fill="none" stroke="#1c0800" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
           <ellipse cx="36" cy="18.5" rx="2" ry="2.4" fill="#1c0800"/>
           <ellipse cx="44" cy="18.5" rx="2" ry="2.4" fill="#1c0800"/>
-          <circle cx="36.7" cy="17.8" r="0.7" fill="white"/>
-          <circle cx="44.7" cy="17.8" r="0.7" fill="white"/>
-          <!-- Boca BEM aberta (grito de gol) -->
-          <ellipse cx="40" cy="25.2" rx="3.4" ry="3.1" fill="#5a1414"/>
+          <circle cx="36.7" cy="17.8" r="0.7" fill="#fff"/>
+          <circle cx="44.7" cy="17.8" r="0.7" fill="#fff"/>
+          <!-- Boca BEM aberta (grito de gol) com língua -->
+          <ellipse cx="40" cy="25.2" rx="3.5" ry="3.2" fill="#4a0f0f"/>
+          <ellipse cx="40" cy="26.6" rx="2" ry="1.4" fill="#c0392b"/>
         </svg>
         <div class="legend-card-name">MARADONA</div>
         <div class="legend-card-badge">LEGEND</div>
@@ -882,42 +944,69 @@
         <div class="legend-card-stars">★★★</div>
         <svg class="legend-card-figure" viewBox="0 0 80 94" xmlns="http://www.w3.org/2000/svg">
           <!-- Fundo -->
-          <g transform="translate(40,48) rotate(45)"><rect x="-25" y="-25" width="50" height="50" fill="#2060a0" rx="4" opacity="0.5"/></g>
+          <defs>
+            <radialGradient id="lgGlow2" cx="50%" cy="40%" r="58%">
+              <stop offset="0%" stop-color="#9fd0ff" stop-opacity="0.22"/>
+              <stop offset="55%" stop-color="#2060a0" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+            </radialGradient>
+            <clipPath id="lgJersey2"><path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z"/></clipPath>
+          </defs>
+          <circle cx="40" cy="44" r="35" fill="url(#lgGlow2)"/>
+          <g transform="translate(40,46) rotate(45)"><rect x="-23" y="-23" width="46" height="46" fill="#2060a0" rx="6" opacity="0.42"/></g>
+          <path d="M14,26 l1.3,2.6 2.6,1.3 -2.6,1.3 -1.3,2.6 -1.3,-2.6 -2.6,-1.3 2.6,-1.3 Z" fill="#f5d800" opacity="0.55"/>
+          <circle cx="66" cy="34" r="1.4" fill="#f5d800" opacity="0.45"/>
+          <ellipse cx="40" cy="87.5" rx="15" ry="3" fill="#000" opacity="0.32"/>
           <!-- Comemoração do Messi: dois punhos ao alto, olhando ao céu -->
           <path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z" fill="#75b2dd"/>
-          <clipPath id="jerseyClip2"><path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z"/></clipPath>
-          <g clip-path="url(#jerseyClip2)">
-            <rect x="31" y="26" width="6" height="34" fill="white" opacity="0.85"/>
-            <rect x="43" y="26" width="6" height="34" fill="white" opacity="0.85"/>
+          <g clip-path="url(#lgJersey2)">
+            <rect x="31" y="26" width="6" height="34" fill="#fff" opacity="0.9"/>
+            <rect x="43" y="26" width="6" height="34" fill="#fff" opacity="0.9"/>
+            <path d="M45,26 L54,26 L54,60 L43,60 Z" fill="#204a70" opacity="0.28"/>
+            <ellipse cx="33" cy="33" rx="9" ry="6" fill="#fff" opacity="0.30"/>
           </g>
+          <path d="M36.5,27 L40,32.5 L43.5,27 Z" fill="#00235a" opacity="0.9"/>
           <text x="40" y="50" text-anchor="middle" fill="#00235a" font-size="11" font-weight="900" font-family="Arial,sans-serif">10</text>
           <!-- Braços retos para o céu, paralelos (gesto sereno — distinto do Maradona) -->
           <path d="M29,33 L25,33 L26,40 L31,39 Z" fill="#75b2dd"/>
-          <path d="M29,35 Q26,22 24,9" stroke="#c8926a" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="23.5" cy="8" r="3.6" fill="#c8926a"/>
           <path d="M51,33 L55,33 L54,40 L49,39 Z" fill="#75b2dd"/>
-          <path d="M51,35 Q54,22 56,9" stroke="#c8926a" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="56.5" cy="8" r="3.6" fill="#c8926a"/>
-          <rect x="26" y="59" width="28" height="9" fill="#00235a" rx="2"/>
-          <rect x="28" y="67" width="10" height="12" rx="2" fill="#75b2dd"/>
-          <rect x="42" y="67" width="10" height="12" rx="2" fill="#75b2dd"/>
-          <rect x="27" y="78" width="13" height="6" rx="3" fill="#222"/>
-          <rect x="40" y="78" width="13" height="6" rx="3" fill="#222"/>
-          <!-- Cabelo curto -->
+          <path d="M29,35 Q26,22 24,9" stroke="#c8926a" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="23.5" cy="8" r="3.9" fill="#c8926a"/>
+          <path d="M51,35 Q54,22 56,9" stroke="#c8926a" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="56.5" cy="8" r="3.9" fill="#c8926a"/>
+          <!-- Shorts com cós -->
+          <rect x="26" y="59" width="28" height="9.5" fill="#00235a" rx="2.5"/>
+          <rect x="26" y="59" width="28" height="2.2" fill="#1a3f7a" rx="1"/>
+          <!-- Pernas: coxa + meião branco com faixa celeste + chuteira -->
+          <rect x="28" y="66" width="10" height="6" rx="2.5" fill="#c8926a"/>
+          <rect x="28" y="70.5" width="10" height="9" rx="2.5" fill="#e8eef4"/>
+          <rect x="28" y="70.5" width="10" height="2.6" fill="#75b2dd"/>
+          <rect x="27" y="78.5" width="13.5" height="6" rx="3" fill="#151515"/>
+          <rect x="27" y="82.7" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
+          <rect x="42" y="66" width="10" height="6" rx="2.5" fill="#c8926a"/>
+          <rect x="42" y="70.5" width="10" height="9" rx="2.5" fill="#e8eef4"/>
+          <rect x="42" y="70.5" width="10" height="2.6" fill="#75b2dd"/>
+          <rect x="40.5" y="78.5" width="13.5" height="6" rx="3" fill="#151515"/>
+          <rect x="40.5" y="82.7" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
+          <!-- Cabelo curto com brilho -->
           <path d="M29,14 Q30,7 40,6.5 Q50,7 51,14 Q44,10 40,10 Q36,10 29,14 Z" fill="#1a0800"/>
+          <path d="M33,8.6 Q37,7 42,7.4" stroke="#3d2410" stroke-width="1.3" fill="none" stroke-linecap="round" opacity="0.85"/>
           <!-- Cabeça -->
           <ellipse cx="40" cy="20" rx="11" ry="12" fill="#c8926a"/>
           <ellipse cx="29.5" cy="20" rx="2.3" ry="3" fill="#c8926a"/>
           <ellipse cx="50.5" cy="20" rx="2.3" ry="3" fill="#c8926a"/>
+          <ellipse cx="34" cy="15.5" rx="3.5" ry="2" fill="#fff" opacity="0.10"/>
           <!-- Barba -->
-          <path d="M30,23 Q31,31 40,33 Q49,31 50,23 Q45,27 40,27 Q35,27 30,23 Z" fill="#2a1005" opacity="0.8"/>
-          <!-- Olhos -->
+          <path d="M30,23 Q31,31 40,33 Q49,31 50,23 Q45,27 40,27 Q35,27 30,23 Z" fill="#2a1005" opacity="0.85"/>
+          <!-- Sobrancelhas + olhos -->
+          <path d="M33.4,15.2 Q36,14 38.4,15.2" fill="none" stroke="#1a0800" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
+          <path d="M41.6,15.2 Q44,14 46.6,15.2" fill="none" stroke="#1a0800" stroke-width="1.2" stroke-linecap="round" opacity="0.75"/>
           <ellipse cx="36" cy="18" rx="2" ry="2.4" fill="#1a0800"/>
           <ellipse cx="44" cy="18" rx="2" ry="2.4" fill="#1a0800"/>
-          <circle cx="36.7" cy="17.3" r="0.7" fill="white"/>
-          <circle cx="44.7" cy="17.3" r="0.7" fill="white"/>
+          <circle cx="36.7" cy="17.3" r="0.7" fill="#fff"/>
+          <circle cx="44.7" cy="17.3" r="0.7" fill="#fff"/>
           <!-- Sorriso sereno (boca fechada, olhando ao céu) -->
-          <path d="M36.5,24.5 Q40,26.5 43.5,24.5" fill="none" stroke="#2a1005" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M36.5,24.3 Q40,26.3 43.5,24.3" fill="none" stroke="#f0d8c0" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
         <div class="legend-card-name">MESSI</div>
         <div class="legend-card-badge">LEGEND</div>
@@ -928,39 +1017,71 @@
         <div class="legend-card-stars">★★</div>
         <svg class="legend-card-figure" viewBox="0 0 80 94" xmlns="http://www.w3.org/2000/svg">
           <!-- Fundo -->
-          <g transform="translate(40,48) rotate(45)"><rect x="-25" y="-25" width="50" height="50" fill="#b84000" rx="4" opacity="0.5"/></g>
+          <defs>
+            <radialGradient id="lgGlow3" cx="50%" cy="40%" r="58%">
+              <stop offset="0%" stop-color="#ffb060" stop-opacity="0.22"/>
+              <stop offset="55%" stop-color="#b84000" stop-opacity="0.14"/>
+              <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+            </radialGradient>
+            <clipPath id="lgJersey3"><path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z"/></clipPath>
+          </defs>
+          <circle cx="40" cy="44" r="35" fill="url(#lgGlow3)"/>
+          <g transform="translate(40,46) rotate(45)"><rect x="-23" y="-23" width="46" height="46" fill="#b84000" rx="6" opacity="0.42"/></g>
+          <path d="M15,20 l1.3,2.6 2.6,1.3 -2.6,1.3 -1.3,2.6 -1.3,-2.6 -2.6,-1.3 2.6,-1.3 Z" fill="#f5d800" opacity="0.55"/>
+          <circle cx="65" cy="44" r="1.4" fill="#f5d800" opacity="0.45"/>
+          <ellipse cx="40" cy="87.5" rx="15" ry="3" fill="#000" opacity="0.32"/>
           <!-- Comemoração do Cruyff: braço erguido, capitão da Laranja Mecânica -->
+          <!-- Braço esquerdo apoiado (atrás do torso) -->
+          <path d="M28,37 Q23,45 29,51" stroke="#f0d0a0" stroke-width="5" fill="none" stroke-linecap="round"/>
+          <circle cx="29.5" cy="51.5" r="3.4" fill="#f0d0a0"/>
           <path d="M27,34 Q27,29 34,27 L46,27 Q53,29 53,34 L52,59 L28,59 Z" fill="#f97316"/>
+          <g clip-path="url(#lgJersey3)">
+            <path d="M45,26 L54,26 L54,60 L43,60 Z" fill="#9a3d00" opacity="0.35"/>
+            <ellipse cx="33" cy="33" rx="9" ry="6" fill="#ffd9a8" opacity="0.35"/>
+            <rect x="27" y="56.5" width="26" height="3.5" fill="#1a1a1a" opacity="0.85"/>
+          </g>
           <!-- Gola preta -->
-          <path d="M37,27 L40,33 L43,27" fill="none" stroke="#1a1a1a" stroke-width="2"/>
-          <text x="40" y="49" text-anchor="middle" fill="white" font-size="11" font-weight="900" font-family="Arial,sans-serif">14</text>
-          <!-- Braço direito erguido na altura da cabeça (mão mais baixa) + braçadeira de capitão -->
+          <path d="M36,27 L40,33.5 L44,27 L41.5,27 L40,30 L38.5,27 Z" fill="#1a1a1a"/>
+          <text x="40" y="50" text-anchor="middle" fill="#fff" font-size="11" font-weight="900" font-family="Arial,sans-serif">14</text>
+          <!-- mangas -->
           <path d="M51,33 L55,32 L54,40 L49,39 Z" fill="#f97316"/>
-          <path d="M52,37 Q60,31 64,22" stroke="#f0d0a0" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <rect x="53" y="30" width="6" height="3.4" rx="1" fill="#e0a020" stroke="#1a1a1a" stroke-width="0.4"/>
-          <circle cx="64.5" cy="21" r="3.6" fill="#f0d0a0"/>
-          <!-- Braço esquerdo apoiado -->
           <path d="M29,34 L25,35 L26,42 L31,40 Z" fill="#f97316"/>
-          <path d="M28,37 Q23,45 29,51" stroke="#f0d0a0" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-          <!-- Shorts pretos -->
-          <rect x="26" y="59" width="28" height="9" fill="#1a1a1a" rx="2"/>
-          <rect x="28" y="67" width="10" height="12" rx="2" fill="#f97316"/>
-          <rect x="42" y="67" width="10" height="12" rx="2" fill="#f97316"/>
-          <rect x="27" y="78" width="13" height="6" rx="3" fill="#111"/>
-          <rect x="40" y="78" width="13" height="6" rx="3" fill="#111"/>
-          <!-- Cabelo anos 70 -->
+          <!-- Braço direito erguido + braçadeira de capitão -->
+          <path d="M52,37 Q60,31 64,22" stroke="#f0d0a0" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <rect x="53" y="30.5" width="6.4" height="3.6" rx="1.2" fill="#e0a020" stroke="#1a1a1a" stroke-width="0.5"/>
+          <circle cx="64.5" cy="21" r="3.9" fill="#f0d0a0"/>
+          <!-- Shorts pretos com cós -->
+          <rect x="26" y="59" width="28" height="9.5" fill="#1a1a1a" rx="2.5"/>
+          <rect x="26" y="59" width="28" height="2.2" fill="#3a3a3a" rx="1"/>
+          <!-- Pernas: coxa + meião laranja com faixa preta + chuteira -->
+          <rect x="28" y="66" width="10" height="6" rx="2.5" fill="#f0d0a0"/>
+          <rect x="28" y="70.5" width="10" height="9.5" rx="2.5" fill="#f97316"/>
+          <rect x="28" y="70.5" width="10" height="2.6" fill="#1a1a1a"/>
+          <rect x="27" y="79" width="13.5" height="6" rx="3" fill="#151515"/>
+          <rect x="27" y="83.2" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
+          <rect x="42" y="66" width="10" height="6" rx="2.5" fill="#f0d0a0"/>
+          <rect x="42" y="70.5" width="10" height="9.5" rx="2.5" fill="#f97316"/>
+          <rect x="42" y="70.5" width="10" height="2.6" fill="#1a1a1a"/>
+          <rect x="40.5" y="79" width="13.5" height="6" rx="3" fill="#151515"/>
+          <rect x="40.5" y="83.2" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
+          <!-- Cabelo anos 70 com brilho -->
           <ellipse cx="40" cy="9" rx="13" ry="7" fill="#8b5a1e"/>
           <path d="M27,11 Q25,19 26,25" fill="none" stroke="#8b5a1e" stroke-width="5" stroke-linecap="round"/>
           <path d="M53,11 Q55,19 54,25" fill="none" stroke="#8b5a1e" stroke-width="5" stroke-linecap="round"/>
-          <!-- Cabeça -->
+          <path d="M31,6.5 Q36,4.5 42,5" stroke="#b57f36" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.85"/>
+          <!-- Cabeça com sombreamento -->
           <ellipse cx="40" cy="20" rx="11" ry="12" fill="#f0d0a0"/>
+          <path d="M30,24 Q40,30.5 50,24 Q46,29.5 40,29.8 Q34,29.5 30,24 Z" fill="#000" opacity="0.10"/>
           <ellipse cx="29.5" cy="20" rx="2.3" ry="3" fill="#f0d0a0"/>
           <ellipse cx="50.5" cy="20" rx="2.3" ry="3" fill="#f0d0a0"/>
-          <!-- Olhos -->
+          <ellipse cx="34" cy="16" rx="3.5" ry="2" fill="#fff" opacity="0.18"/>
+          <!-- Sobrancelhas + olhos -->
+          <path d="M33.4,15.6 Q36,14.4 38.4,15.6" fill="none" stroke="#5a3a10" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+          <path d="M41.6,15.6 Q44,14.4 46.6,15.6" fill="none" stroke="#5a3a10" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
           <ellipse cx="36" cy="18.5" rx="2" ry="2.4" fill="#2a1800"/>
           <ellipse cx="44" cy="18.5" rx="2" ry="2.4" fill="#2a1800"/>
-          <circle cx="36.7" cy="17.8" r="0.7" fill="white"/>
-          <circle cx="44.7" cy="17.8" r="0.7" fill="white"/>
+          <circle cx="36.7" cy="17.8" r="0.7" fill="#fff"/>
+          <circle cx="44.7" cy="17.8" r="0.7" fill="#fff"/>
           <!-- Sorriso -->
           <path d="M36,24 Q40,27.5 44,24" fill="none" stroke="#2a1800" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
@@ -973,39 +1094,67 @@
         <div class="legend-card-stars">★★</div>
         <svg class="legend-card-figure" viewBox="0 0 80 94" xmlns="http://www.w3.org/2000/svg">
           <!-- Fundo -->
-          <g transform="translate(40,48) rotate(45)"><rect x="-25" y="-25" width="50" height="50" fill="#7a0000" rx="4" opacity="0.5"/></g>
+          <defs>
+            <radialGradient id="lgGlow4" cx="50%" cy="40%" r="58%">
+              <stop offset="0%" stop-color="#ff6060" stop-opacity="0.20"/>
+              <stop offset="55%" stop-color="#7a0000" stop-opacity="0.16"/>
+              <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+            </radialGradient>
+            <clipPath id="lgJersey4"><path d="M28,34 Q28,29 34,27 L46,27 Q52,29 52,34 L51,57 L29,57 Z"/></clipPath>
+          </defs>
+          <circle cx="40" cy="44" r="35" fill="url(#lgGlow4)"/>
+          <g transform="translate(40,46) rotate(45)"><rect x="-23" y="-23" width="46" height="46" fill="#7a0000" rx="6" opacity="0.45"/></g>
+          <path d="M64,20 l1.3,2.6 2.6,1.3 -2.6,1.3 -1.3,2.6 -1.3,-2.6 -2.6,-1.3 2.6,-1.3 Z" fill="#f5d800" opacity="0.55"/>
+          <circle cx="15" cy="42" r="1.4" fill="#f5d800" opacity="0.45"/>
+          <ellipse cx="40" cy="88" rx="18" ry="3" fill="#000" opacity="0.32"/>
           <!-- Comemoração do CR7: o "Siuuu" — braços atrás, pernas afastadas -->
+          <!-- Braços para baixo e atrás (punhos cerrados, atrás do torso) -->
+          <path d="M28,37 Q22,47 21,56" stroke="#c8854a" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="21" cy="57" r="3.8" fill="#c8854a"/>
+          <path d="M52,37 Q58,47 59,56" stroke="#c8854a" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+          <circle cx="59" cy="57" r="3.8" fill="#c8854a"/>
           <path d="M28,34 Q28,29 34,27 L46,27 Q52,29 52,34 L51,57 L29,57 Z" fill="#dc2626"/>
-          <!-- Gola verde -->
-          <path d="M37,27 L40,33 L43,27" fill="none" stroke="#006400" stroke-width="2"/>
-          <text x="40" y="46" text-anchor="middle" fill="white" font-size="11" font-weight="900" font-family="Arial,sans-serif">7</text>
-          <!-- Braços para baixo e atrás (punhos cerrados) -->
+          <g clip-path="url(#lgJersey4)">
+            <path d="M44,26 L53,26 L53,58 L42,58 Z" fill="#7a0000" opacity="0.4"/>
+            <ellipse cx="33" cy="33" rx="9" ry="6" fill="#ff9a9a" opacity="0.30"/>
+          </g>
+          <!-- mangas -->
           <path d="M29,34 L25,35 L26,42 L31,40 Z" fill="#dc2626"/>
-          <path d="M28,37 Q22,47 21,56" stroke="#c8854a" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="21" cy="57" r="3.6" fill="#c8854a"/>
           <path d="M51,34 L55,35 L54,42 L49,40 Z" fill="#dc2626"/>
-          <path d="M52,37 Q58,47 59,56" stroke="#c8854a" stroke-width="5" fill="none" stroke-linecap="round"/>
-          <circle cx="59" cy="57" r="3.6" fill="#c8854a"/>
-          <!-- Shorts -->
-          <rect x="28" y="56" width="24" height="9" fill="#7a0000" rx="2"/>
-          <!-- Pernas afastadas (stance do Siuuu) -->
-          <path d="M30,65 L25,79 L32,79 L34,65 Z" fill="#dc2626"/>
-          <path d="M50,65 L55,79 L48,79 L46,65 Z" fill="#dc2626"/>
-          <rect x="22" y="79" width="13" height="6" rx="3" fill="#111"/>
-          <rect x="45" y="79" width="13" height="6" rx="3" fill="#111"/>
-          <!-- Cabelo CR7 (com risca lateral) -->
+          <!-- Gola verde -->
+          <path d="M36,27 L40,33.5 L44,27 L41.5,27 L40,30 L38.5,27 Z" fill="#006400"/>
+          <text x="40" y="47" text-anchor="middle" fill="#fff" font-size="11" font-weight="900" font-family="Arial,sans-serif">7</text>
+          <!-- Shorts com cós verde -->
+          <rect x="28" y="56" width="24" height="9.5" fill="#7a0000" rx="2.5"/>
+          <rect x="28" y="56" width="24" height="2.2" fill="#006400" rx="1"/>
+          <!-- Pernas afastadas (stance do Siuuu): meião + sombra + chuteira -->
+          <path d="M30,65 L24.5,79 L32,79 L34,65 Z" fill="#dc2626"/>
+          <path d="M30,65 L28.8,68 L34.6,68 L34,65 Z" fill="#8f1414" opacity="0.6"/>
+          <path d="M50,65 L55.5,79 L48,79 L46,65 Z" fill="#dc2626"/>
+          <path d="M50,65 L51.2,68 L45.4,68 L46,65 Z" fill="#8f1414" opacity="0.6"/>
+          <rect x="21" y="79" width="13.5" height="6" rx="3" fill="#151515"/>
+          <rect x="21" y="83.2" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
+          <rect x="45.5" y="79" width="13.5" height="6" rx="3" fill="#151515"/>
+          <rect x="45.5" y="83.2" width="13.5" height="1.8" rx="0.9" fill="#3a3a3a"/>
+          <!-- Cabelo CR7 com brilho -->
           <path d="M29,12 Q31,6 40,6 Q49,6 51,12 Q47,9 40,9 Q33,10 29,12 Z" fill="#1a0800"/>
-          <!-- Cabeça -->
+          <path d="M33,7.6 Q37,6.2 42,6.6" stroke="#3d2410" stroke-width="1.3" fill="none" stroke-linecap="round" opacity="0.85"/>
+          <!-- Cabeça com sombreamento -->
           <ellipse cx="40" cy="20" rx="11" ry="12" fill="#c8854a"/>
+          <path d="M30,24 Q40,30.5 50,24 Q46,29.5 40,29.8 Q34,29.5 30,24 Z" fill="#000" opacity="0.12"/>
           <ellipse cx="29.5" cy="20" rx="2.3" ry="3" fill="#c8854a"/>
           <ellipse cx="50.5" cy="20" rx="2.3" ry="3" fill="#c8854a"/>
-          <!-- Olhos intensos -->
+          <ellipse cx="34" cy="16" rx="3.5" ry="2" fill="#fff" opacity="0.10"/>
+          <!-- Sobrancelhas decididas + olhos intensos -->
+          <path d="M33.2,15.6 L38.4,16.4" stroke="#1a0800" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/>
+          <path d="M46.8,15.6 L41.6,16.4" stroke="#1a0800" stroke-width="1.3" stroke-linecap="round" opacity="0.85"/>
           <ellipse cx="36" cy="18.5" rx="2" ry="2.4" fill="#1a0800"/>
           <ellipse cx="44" cy="18.5" rx="2" ry="2.4" fill="#1a0800"/>
-          <circle cx="36.7" cy="17.8" r="0.7" fill="white"/>
-          <circle cx="44.7" cy="17.8" r="0.7" fill="white"/>
-          <!-- Boca aberta (Siuuu) -->
-          <ellipse cx="40" cy="25" rx="2.4" ry="3" fill="#5a1414"/>
+          <circle cx="36.7" cy="17.8" r="0.7" fill="#fff"/>
+          <circle cx="44.7" cy="17.8" r="0.7" fill="#fff"/>
+          <!-- Boca aberta (Siuuu!) -->
+          <ellipse cx="40" cy="25" rx="2.6" ry="3.1" fill="#4a0f0f"/>
+          <ellipse cx="40" cy="26.4" rx="1.4" ry="1.3" fill="#c0392b"/>
         </svg>
         <div class="legend-card-name">C. RONALDO</div>
         <div class="legend-card-badge">LEGEND</div>
@@ -1500,7 +1649,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v15</div>
+  <div class="rodapezinho">v16</div>
 </div>
 
 <script>
