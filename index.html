@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '14'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '15'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1224,7 +1224,7 @@
   <!-- COPA ONLINE: MENU -->
   <div id="copaOnlineMenu" class="card tela-central hidden" style="text-align:center;">
     <div style="font-size:48px;line-height:1;margin-bottom:8px;">🏆</div>
-    <h2 style="color:var(--ouro);margin:0 0 8px;">Copa das Lendas Online</h2>
+    <h2 style="color:var(--ouro);margin:0 0 8px;justify-content:center;text-align:center;">Copa das Lendas Online</h2>
     <p style="font-size:13px;color:var(--cinza);margin-bottom:22px;">Jogue com amigos — cada um controla uma seleção histórica.</p>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <button id="btnCopaCriarSala" type="button">Criar sala</button>
@@ -1500,7 +1500,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v14</div>
+  <div class="rodapezinho">v15</div>
 </div>
 
 <script>
