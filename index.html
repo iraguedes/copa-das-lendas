@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '17'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '18'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1262,6 +1262,7 @@
       <button type="button" id="btnAbaCopaBracket">Mata-Mata</button>
       <button type="button" id="btnAbaCopaVivo" style="display:none;background:#22c55e;color:#000;font-weight:900;animation:selGlow .8s ease-in-out infinite alternate;">◉ Ao Vivo</button>
       <button type="button" id="btnAbaCopaArt">Artilheiros</button>
+      <button type="button" id="btnAbaCopaRegras">Regras</button>
       <button type="button" class="secondary" id="btnSairCopa">Sair</button>
     </div>
     <div id="painelCopaPainel" class="hidden">
@@ -1301,6 +1302,14 @@
         <div style="font-size:10px;color:rgba(232,245,233,.35);letter-spacing:.8px;margin-top:2px;">Copa das Lendas</div>
       </div>
       <div id="copaArtList"></div>
+    </div>
+    <div id="painelCopaRegras" class="hidden">
+      <div style="text-align:center;padding:14px 0 12px;border-bottom:1px solid rgba(255,255,255,.07);margin-bottom:10px;background:linear-gradient(180deg,rgba(234,179,8,.06) 0%,transparent 100%);border-radius:8px 8px 0 0;">
+        <div style="font-size:26px;margin-bottom:4px;filter:drop-shadow(0 0 6px rgba(234,179,8,.4));">📖</div>
+        <div style="font-family:'Trebuchet MS',sans-serif;font-weight:900;font-size:15px;color:var(--areia);letter-spacing:2px;text-transform:uppercase;">Regras &amp; Formato</div>
+        <div style="font-size:10px;color:rgba(232,245,233,.35);letter-spacing:.8px;margin-top:2px;">Como funciona a Copa das Lendas</div>
+      </div>
+      <div id="copaRegrasContent"></div>
     </div>
   </div>
 
@@ -1655,7 +1664,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v17</div>
+  <div class="rodapezinho">v18</div>
 </div>
 
 <script>
@@ -5989,7 +5998,8 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
         let narrativa = null;
         if (jog === 'Diego Maradona' && (jogo.b === 'ing1966' || jogo.b === 'ing1990')) {
           narrativa = copaRng() < 0.5 ? '🖐️ A MÃO DE DEUS!' : '⚽ O GOL DO SÉCULO!';
-        } else if (isLenda) {
+        } else {
+          // Dispara para qualquer jogador com narrativa própria (apelidos), tenha trait lenda ou não
           const ns = NARRATIVAS_LENDA[jog];
           if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)];
         }
@@ -6350,7 +6360,7 @@ function regenerarSegundaMetade(partida) {
         const jogador = sel.jogadores.find(j => j.nome === jog);
         const isLenda = jogador?.traits?.includes('lenda') || jogador?.traits?.includes('jogadorCompleto');
         let narrativa = null;
-        if (isLenda) { const ns = NARRATIVAS_LENDA[jog]; if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)]; }
+        { const ns = NARRATIVAS_LENDA[jog]; if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)]; }
         partida.eventos.push({ tipo:'gol', time, minuto:min, jogador:jog, narrativa });
       }
     });
@@ -6870,22 +6880,28 @@ let copaModoPlantel = 'setup'; // 'setup' | 'jornada' — contexto do btnConfirm
 const MS_MIN = 222; // ~20s por jornada (90 ticks)
 
 const NARRATIVAS_LENDA = {
-  'Pelé':             ['⚡ PELÉ! O Rei do Futebol volta a brilhar!','⚡ Mais um para o REI! Pelé é eterno!','⚡ O REI PELÉ! O único tricampeão marca de novo!'],
-  'Diego Maradona':   ['⚡ MARADONA! Que gênio absurdo!','⚡ LA MANO DE DIOS? Maradona novamente!','⚡ O GOL DO SÉCULO! Maradona dribla todos!'],
-  'Lionel Messi':     ['⚡ MESSI! O ser de outro planeta!','⚡ MESSI, O MELHOR DOS TEMPOS MODERNOS, marca mais um!'],
-  'Cristiano Ronaldo':['⚡ SIUUUUUU! CRISTIANO RONALDO marca de novo!','⚡ SIUUUUUU! A comemoração mais icônica do futebol!','⚡ CR7! O recordista de longevidade não para de marcar!'],
-  'Ronaldo':          ['⚡ RONALDO FENÔMENO! O melhor 9 de todos os tempos!','⚡ RONALDO! Imparável!'],
+  'Pelé':             ['⚡ PELÉ! O Rei do Futebol volta a brilhar!','⚡ Mais um para o REI! Pelé é eterno!','⚡ O REI PELÉ! O único tricampeão marca de novo!','👑 O REI DO FUTEBOL! Ajoelhem-se diante de Pelé!'],
+  'Diego Maradona':   ['⚡ MARADONA! Que gênio absurdo!','⚡ LA MANO DE DIOS? Maradona novamente!','⚡ O GOL DO SÉCULO! Maradona dribla todos!','⚡ EL PIBE DE ORO! O menino de ouro ilumina a Copa!'],
+  'Lionel Messi':     ['⚡ MESSI! O ser de outro planeta!','⚡ MESSI, O MELHOR DOS TEMPOS MODERNOS, marca mais um!','⚡ LA PULGA! Messi pica a defesa inteira e marca!','⚡ ANKARA MESSI, ANKARA MESSI! GOOOOL!'],
+  'Cristiano Ronaldo':['⚡ SIUUUUUU! CRISTIANO RONALDO marca de novo!','⚡ SIUUUUUU! A comemoração mais icônica do futebol!','⚡ CR7! O recordista de longevidade não para de marcar!','🤖 ROBOZÃO! A máquina de gols não desliga!'],
+  'Ronaldo':          ['⚡ RONALDO FENÔMENO! O melhor 9 de todos os tempos!','⚡ RONALDO! Imparável!','⚡ O FENÔMENO! Corta, dribla e fuzila!'],
+  'Ronaldo R9':       ['⚡ RONALDO FENÔMENO! O melhor 9 de todos os tempos!','⚡ R9! O Fenômeno é imparável!','⚡ O FENÔMENO! Deixou o goleiro sentado no gramado!'],
+  'Ronaldinho':       ['⚡ RONALDINHO GAÚCHO! O BRUXO fez mágica de novo!','🪄 O BRUXO! Ronaldinho enfeitiça a defesa e marca!','⚡ RONALDINHO! Sorriso no rosto e bola na rede!'],
+  'Adriano':          ['⚡ ADRIANO IMPERADOR! Chute imperial, sem chance pro goleiro!','👑 O IMPERADOR! Adriano atropela a defesa e marca!'],
   'Johan Cruyff':     ['⚡ CRUYFF! Uma aula de futebol total!'],
   'Franz Beckenbauer':['⚡ BECKENBAUER! O Kaiser comanda!'],
   'Garrincha':        ['⚡ GARRINCHA! A alegria do povo!','⚡ Garrincha dribla e marca! Brasil 1958 é eterno!'],
-  'Zico':             ['⚡ ZICO! O melhor jogador que nunca ganhou a Copa!'],
-  'Romário':          ['⚡ ROMÁRIO! Gênio na área!','⚡ Romário — ele foi o melhor!'],
+  'Zico':             ['⚡ ZICO! O melhor jogador que nunca ganhou a Copa!','🐔 O GALINHO DE QUINTINO! Zico cobra e é golaço!'],
+  'Romário':          ['⚡ ROMÁRIO! Gênio na área!','⚡ Romário — ele foi o melhor!','⚡ O BAIXINHO! Romário só precisa de meio metro pra decidir!'],
   'Ferenc Puskás':    ['⚡ PUSKÁS! A Locomotiva Galopante marca!'],
   'Paolo Rossi':      ['⚡ PAOLO ROSSI! O herói do Espanha 82!'],
   'Eusébio':          ['⚡ EUSÉBIO! A Pantera Negra ruge!'],
   'Roberto Baggio':   ['⚡ BAGGIO! O Divino Rabo de Cavalo!'],
-  'Zinedine Zidane':  ['⚡ ZIDANE! Arte pura!'],
+  'Zinedine Zidane':  ['⚡ ZIDANE! Arte pura!','⚡ ZIZOU! Elegância que termina em gol!'],
   'Thomas Müller':    ['⚡ MÜLLER! O Raumdeuter marca de novo!'],
+  'Kylian Mbappé':    ['⚡ MBAPPÉ! DONATELLO em velocidade máxima!','🐢 A TARTARUGA VOADORA! Mbappé deixa todo mundo pra trás!'],
+  'Erling Haaland':   ['☄️ HAALAND! O COMETA cruza a área e explode no gol!','⚡ O COMETA HAALAND! Apareceu e destruiu!'],
+  'Vini Jr':          ['⚡ VINI JR! Pura MALVADEZA na área!','😈 MALVADEZA! Vini Jr dança e o gol sai! Baila, Vini!'],
 };
 // Frases de goleiros lendários ao defender pênalti / fazer grandona (mais podem ser adicionadas)
 const GOLEIRO_FRASES = {
@@ -6918,7 +6934,8 @@ function gerarPartidaLive(grupo, jogoIdx) {
         let narrativa = null;
         if (jog === 'Diego Maradona' && (jogo.b === 'ing1966' || jogo.b === 'ing1990' || jogo.b === 'ing2026')) {
           narrativa = copaRng() < 0.5 ? '🖐️ A MÃO DE DEUS! Maradona marca com a mão?' : '⚽ O GOL DO SÉCULO! Maradona dribla 5 jogadores!';
-        } else if (isLenda) {
+        } else {
+          // Dispara para qualquer jogador com narrativa própria (apelidos), tenha trait lenda ou não
           const ns = NARRATIVAS_LENDA[jog];
           if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)];
         }
@@ -8379,6 +8396,66 @@ function renderCopaArtilheiros() {
       }).join('')}
     </div>` : '';
   box.innerHTML = `<div style="display:flex;gap:10px;align-items:flex-start;justify-content:center;margin:8px 0 18px;">${podHTML}</div>` + rowsHTML + craquesHTML;
+}
+
+// Aba Regras & Formato — explica o torneio, critérios, táticas, atributos e premiações.
+// Conteúdo estático (renderiza uma vez); números espelham o motor do jogo.
+function renderCopaRegras() {
+  const box = document.getElementById('copaRegrasContent');
+  if (!box || box.dataset.pronto) return;
+  box.dataset.pronto = '1';
+  const ouro = s => `<b style="color:#f0c040;font-weight:800;">${s}</b>`;
+  const li = (ico, html) => `<div style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:rgba(232,245,233,.85);line-height:1.55;"><span style="flex-shrink:0;width:18px;text-align:center;">${ico}</span><span style="min-width:0;">${html}</span></div>`;
+  const card = (icone, titulo, linhas) => `
+    <div style="background:linear-gradient(168deg,#0d2617 0%,#081a0f 100%);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:15px 16px;">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;border-bottom:1px solid rgba(217,164,74,.18);padding-bottom:8px;">
+        <span style="font-size:19px;">${icone}</span>
+        <span style="font-size:11px;font-weight:900;letter-spacing:1.6px;text-transform:uppercase;color:var(--ouro);">${titulo}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">${linhas.join('')}</div>
+    </div>`;
+  const badge = (bg, label) => `<span style="background:${bg};color:#fff;font-size:8.5px;font-weight:900;border-radius:3px;padding:1px 5px;letter-spacing:.3px;">${label}</span>`;
+  box.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;padding:2px 0 12px;">
+    ${card('🏆','Formato do Torneio',[
+      li('🌍', `${ouro('48 seleções')} sorteadas de um banco de ${ouro('133 times históricos')} (1930–2026), sem repetir país.`),
+      li('🔤', `${ouro('12 grupos')} (A–L) com 4 times. Cada time faz ${ouro('3 jogos')}, um por jornada.`),
+      li('✅', `Avançam o ${ouro('1º e o 2º')} de cada grupo + os ${ouro('8 melhores 3ºs')} = 32 classificados.`),
+      li('⚔️', `Mata-mata: ${ouro('16 avos → oitavas → quartas → semis → final')} (+ disputa de 3º lugar).`),
+      li('⏱️', `Empate no mata-mata: ${ouro('prorrogação')} de 30 min e, persistindo, ${ouro('pênaltis')} — interativos quando o time é seu.`),
+    ])}
+    ${card('📊','Critérios de Desempate',[
+      li('1️⃣', `${ouro('Pontos')} (vitória 3, empate 1).`),
+      li('2️⃣', `${ouro('Saldo de gols')}.`),
+      li('3️⃣', `${ouro('Gols marcados')}.`),
+      li('🥉', `Entre os 3ºs colocados dos 12 grupos, os ${ouro('8 melhores')} por esses mesmos critérios pegam as últimas vagas.`),
+    ])}
+    ${card('⚙️','Táticas & Intervalo',[
+      li('📐', `Cada esquema troca ataque por defesa: ${ouro('3-4-3')} +10A/−8D · ${ouro('4-4-2')} equilibrado · ${ouro('5-4-1')} −7A/+8D — e mais 7 opções.`),
+      li('🤝', `${ouro('Entrosamento')}: manter a mesma tática soma ${ouro('+1,5% por jogo')} (até +6%). Trocar zera.`),
+      li('🔁', `No ${ouro('intervalo')}: até ${ouro('4 substituições')} e troca de tática (recalcula o 2º tempo). No online a partida é idêntica para todos — ajustes valem para a próxima rodada.`),
+      li('📍', `No campo tático você escolhe ${ouro('onde cada jogador atua')}. Fora da posição natural: ${ouro('−10% de força')} (−28% se envolver o gol).`),
+    ])}
+    ${card('⭐','Lendas & Atributos',[
+      li('💪', `${ouro('OVR')} é a qualidade base. A força do time vem dos 11 em campo, por setor.`),
+      li('🎖️', `Especialidades aumentam força e chance de marcar: ${badge('#166534','FIN')} finalizador · ${badge('#7f1d1d','CAB')} cabeceador · ${badge('#7c3aed','VEL')} velocista · ${badge('#0f4c81','DRB')} driblador · ${badge('#0369a1','ARM')} armador · ${badge('#166534','DES')} desarmador · ${badge('#854d0e','FAL')} faltas · ${badge('#b45309','PEN')} pênaltis · ${badge('#6d28d9','CAP')} capitão.`),
+      li('⭐', `${ouro('★ Lendas')} pesam mais na simulação e têm ${ouro('narrações próprias')} ao marcar (SIUUU, O Bruxo, La Pulga…).`),
+      li('👑', `${ouro('O Rei')} (Pelé) e ${ouro('🐐 GOAT')} são os maiores multiplicadores do jogo.`),
+    ])}
+    ${card('🩹','Física & Disciplina',[
+      li('🔋', `${ouro('Cansaço')}: titulares se desgastam a cada partida; reservas e o descanso entre rodadas recuperam. Abaixo de 50, o rendimento cai até ${ouro('−30%')}.`),
+      li('🟨', `${ouro('2 amarelos')} (acumulados) = suspensão automática do jogo seguinte.`),
+      li('🟥', `${ouro('Vermelho')}: fora da partida na hora — o time segue com um a menos e ${ouro('ele não pode ser substituído')} — e suspenso do próximo jogo.`),
+      li('🤕', `${ouro('Lesão')}: sai da partida (substitua no intervalo!) e perde o jogo seguinte.`),
+      li('🚫', `Suspensos e lesionados aparecem bloqueados no campo tático e voltam sozinhos após cumprir a ausência.`),
+    ])}
+    ${card('🏅','Premiações & Extras',[
+      li('⚽', `${ouro('Artilheiro')}: os gols contados são exatamente os que você viu em campo.`),
+      li('⭐', `${ouro('Craque da partida')} em cada jogo — gols pesam muito; vitória e OVR desempatam.`),
+      li('🏅', `${ouro('Melhor da Copa')}: quem mais vezes foi craque — revelado na festa do título, junto do MVP do campeão.`),
+      li('😰', `Perdeu por ${ouro('3+ gols')}? Prepare-se para as ${ouro('CHICOTADAS PSICOLÓGICAS')}.`),
+      li('📖', `Toque em qualquer seleção (grupos, tabelas) para ver o elenco completo dela.`),
+    ])}
+  </div>`;
 }
 
 function renderCopaJogo() {
@@ -9956,15 +10033,16 @@ function mostrarPainelCopa(painel) {
   if (painel === 'live') return;
   // NÃO cancela o timer — partidas continuam rodando em background
   document.getElementById('painelCopaLive').classList.add('hidden');
-  ['Painel','Grupos','Bracket','Art'].forEach(p => {
+  ['Painel','Grupos','Bracket','Art','Regras'].forEach(p => {
     document.getElementById('painelCopa'+p).classList.toggle('hidden', p.toLowerCase() !== painel);
   });
   // A aba "Grupos" é a aba de FASE: mostra Grupos na fase de grupos e o Chaveamento no mata-mata.
   // Por isso 'bracket' também acende a aba de fase (btnAbaCopaGrupos).
-  const btnMap = { painel:'btnAbaCopaPainel', grupos:'btnAbaCopaGrupos', bracket:'btnAbaCopaGrupos', art:'btnAbaCopaArt' };
-  ['btnAbaCopaPainel','btnAbaCopaGrupos','btnAbaCopaArt'].forEach(id => document.getElementById(id).classList.remove('ativa'));
+  const btnMap = { painel:'btnAbaCopaPainel', grupos:'btnAbaCopaGrupos', bracket:'btnAbaCopaGrupos', art:'btnAbaCopaArt', regras:'btnAbaCopaRegras' };
+  ['btnAbaCopaPainel','btnAbaCopaGrupos','btnAbaCopaArt','btnAbaCopaRegras'].forEach(id => document.getElementById(id).classList.remove('ativa'));
   if (btnMap[painel]) document.getElementById(btnMap[painel]).classList.add('ativa');
   if (painel === 'painel') renderCopaPainel();
+  if (painel === 'regras') renderCopaRegras();
   if (painel === 'bracket') requestAnimationFrame(ajustarZoomBracket);
   document.getElementById('btnAbaCopaPainel').style.display = '';
   atualizarAbaFase();
@@ -11624,6 +11702,9 @@ document.getElementById('btnAbaCopaBracket').addEventListener('click', ()=>{
 document.getElementById('btnAbaCopaArt').addEventListener('click', ()=>{
   mostrarPainelCopa('art');
   renderCopaArtilheiros();
+});
+document.getElementById('btnAbaCopaRegras').addEventListener('click', ()=>{
+  mostrarPainelCopa('regras');
 });
 document.getElementById('btnAbaCopaVivo').addEventListener('click', ()=>{
   ['Painel','Grupos','Bracket','Art'].forEach(p => document.getElementById('painelCopa'+p).classList.add('hidden'));
