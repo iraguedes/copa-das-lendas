@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '16'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '17'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -297,7 +297,7 @@
   .placar-vivo.gol-flash{background:rgba(217,164,74,.5);}
   .time-grupo{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;}
   .time-grupo-direita{justify-content:flex-end;}
-  .time-nome-vivo{overflow:hidden;text-overflow:ellipsis;}
+  .time-nome-vivo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .eventos-vivo{display:inline-flex;gap:1px;font-size:12px;flex-shrink:0;}
   .gol-recente{font-size:11px;font-weight:700;color:var(--terracota);white-space:nowrap;flex-shrink:0;}
   .opcoes-painel{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--cinza);}
@@ -708,6 +708,12 @@
     .plantel-dir{width:100%;}
     /* Substituições do intervalo: uma coluna embaixo da outra */
     .sub-cols{flex-direction:column;gap:10px;}
+    /* Live: nomes menores e badges compactos para caber sem quebrar */
+    #painelCopaLive .placar-vivo .time-nome-vivo{font-size:11.5px !important;}
+    #painelCopaLive .badge.humano{font-size:8px !important;padding:0 4px !important;}
+    /* Nameplates das tabelas de grupo mais compactos */
+    .sel-nameplate .sel-name-txt{font-size:10px !important;}
+    .sel-nameplate{padding:2px 5px !important;}
     /* Grupos em coluna única */
     .copa-grupos-grid{grid-template-columns:1fr;}
     /* Chaveamento: NÃO comprimir — deixa expandir e rolar horizontalmente (senão fica ilegível) */
@@ -1172,7 +1178,7 @@
   <!-- TELA: COPA SETUP -->
   <div id="copaSetup" class="card tela-central hidden" style="max-width:540px;display:flex;flex-direction:column;">
     <div class="copa-trophy" style="text-align:center;font-size:42px;margin-bottom:2px;line-height:1;">🏆</div>
-    <h2 style="margin:0 0 4px;text-align:center;">Copa das Lendas</h2>
+    <h2 style="margin:0 0 4px;text-align:center;justify-content:center;">Copa das Lendas</h2>
     <p style="font-size:13px;color:var(--cinza);margin:0 0 14px;text-align:center;">48 seleções históricas. Uma Copa. Uma lenda. <span style="color:var(--ouro);">★</span></p>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0;">
       <button type="button" id="btnCopaAleatorio" class="secondary modo-sel-btn ativo">Aleatório 🎲</button>
@@ -1649,7 +1655,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v16</div>
+  <div class="rodapezinho">v17</div>
 </div>
 
 <script>
@@ -6282,7 +6288,7 @@ function simularRodadaBracketCopa(copa, rng) {
 
 function nomeCurtoSel(sel) {
   if (!sel) return '?';
-  return `${sel.flag} ${sel.pais} ${sel.ano}`;
+  return `${sel.pais} ${sel.ano}`; // sem sel.flag: emoji de bandeira vira letras no Windows
 }
 function ehMinhaSel(id) {
   if (!copa) return false;
@@ -7940,8 +7946,8 @@ function renderCopaPainel(selId) {
     const sels = Object.values(copa.selMap);
     const cards = sels.sort((a,b)=>b.ovr-a.ovr).map(s =>
       `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-top:1px solid rgba(255,255,255,.05);font-size:11px;color:var(--areia);">
-        <span>${s.flag}</span>
-        <span class="sel-nameplate" style="background:${s.cor1||'#1a4428'};"><span class="sel-code-box">${codSel(s)}</span><span class="sel-name-txt">${s.pais} ${s.ano}</span></span>
+        <span style="width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,${s.cor1||'#888'} 48%,${s.cor2||s.cor1||'#888'} 52%);border:1px solid rgba(255,255,255,.3);flex-shrink:0;display:inline-block;"></span>
+        <span class="sel-nameplate" style="background:${s.cor1||'#1a4428'};"><span class="sel-name-txt">${s.pais} ${s.ano}</span></span>
         <span style="font-family:monospace;color:#eab308;margin-left:auto;">${s.ovr}</span>
         <span class="tier-badge-${s.tier}" style="font-size:9px;">${s.tier}</span>
        </div>`
@@ -8316,7 +8322,7 @@ function renderCopaArtilheiros() {
     const lenda = (jogadorObj[nome]?.traits || []).includes('lenda');
     const minha = ehMinhaSel(sel?.id);
     const primeiro = i === 0;
-    return `<div style="flex:1;max-width:190px;${primeiro?'':'padding-top:20px;'}">
+    return `<div style="flex:1;min-width:0;max-width:190px;${primeiro?'':'padding-top:20px;'}">
       <div style="background:linear-gradient(168deg,${acc}26 0%,#0a1d10 62%);border:1.5px solid ${primeiro?medalClr[0]:acc+'55'};border-radius:13px;padding:${primeiro?'18px 10px 14px':'13px 8px 11px'};text-align:center;position:relative;overflow:hidden;${primeiro?`box-shadow:0 0 26px ${medalClr[0]}30;`:''}">
         <div style="position:absolute;inset:0;background:radial-gradient(70% 45% at 50% 0%,${acc}1e,transparent 70%);pointer-events:none;"></div>
         <div style="position:relative;">
@@ -11727,7 +11733,7 @@ function popularDropdownSelecoes(selectId) {
     times.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
-      opt.textContent = `${s.flag} ${s.pais} ${s.ano} — OVR ${s.ovr}`;
+      opt.textContent = `${s.pais} ${s.ano} — OVR ${s.ovr}`;
       og.appendChild(opt);
     });
     sel.appendChild(og);
@@ -11892,7 +11898,7 @@ function renderLobbyCopaOnline(data) {
       ? `<span style="color:#22c55e;font-weight:700;font-size:12px;">✔ Pronto</span>`
       : `<span style="color:#9ca3af;font-size:12px;">aguardando…</span>`;
     const selHtml = sel
-      ? `${sel.flag} ${sel.pais} <span style="color:var(--cinza);font-size:11px;">${sel.ano}</span>`
+      ? `<span style="width:11px;height:11px;border-radius:50%;background:linear-gradient(135deg,${sel.cor1||'#888'} 48%,${sel.cor2||sel.cor1||'#888'} 52%);border:1px solid rgba(255,255,255,.3);display:inline-block;vertical-align:middle;margin-right:5px;"></span>${sel.pais} <span style="color:var(--cinza);font-size:11px;">${sel.ano}</span>`
       : '<span style="color:#6b7280">–</span>';
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);${sou?'background:rgba(255,255,255,.04);border-radius:6px;':''}">
       <span style="width:8px;height:8px;border-radius:50%;background:${online?'#22c55e':'#6b7280'};flex-shrink:0;display:inline-block;"></span>
