@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '33'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '34'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1680,7 +1680,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v33</div>
+  <div class="rodapezinho">v34</div>
 </div>
 
 <script>
@@ -6266,7 +6266,9 @@ function finalizarRodadaBracketLive() {
       if (liveInd) liveInd.style.display = 'none';
       document.getElementById('painelCopaLive').classList.add('hidden');
       renderCopaBracket(); renderCopaArtilheiros();
-      mostrarPainelCopa('painel');
+      // Final ou disputa de 3º lugar concluída: mostra a aba Mata-Mata (onde o banner do
+      // campeão é renderizado) em vez do Painel — é a conclusão natural da copa.
+      mostrarPainelCopa(proxKey === 'fim' ? 'bracket' : 'painel');
       if (copa.onlineCopa) salvarCopaOnline();
     };
     if (goleadasBkt.length) {
@@ -8556,7 +8558,7 @@ function renderCopaPainel(selId) {
           })()}
         </div>
         <table class="plantel-tbl">
-          <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th style="font-size:8px;letter-spacing:.6px;" title="Vigor físico (0–100): cai a cada partida e recupera no descanso">⚡ VIGOR</th></tr></thead>
+          <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th style="font-size:8px;letter-spacing:.6px;" title="Vigor físico (0–100): cai a cada partida e recupera no descanso">VIGOR</th></tr></thead>
           <tbody>
             <tr class="plantel-sep"><td colspan="5" style="color:${hdrTxt};opacity:.7;">● TITULARES (${tit.length}) — ${esq}</td></tr>
             ${tit.map(j=>mkRowToggle(j,true)).join('')}
