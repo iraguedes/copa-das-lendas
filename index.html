@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '38'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '39'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1681,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v38</div>
+  <div class="rodapezinho">v39</div>
 </div>
 
 <script>
@@ -6417,9 +6417,17 @@ function finalizarRodadaBracketLive() {
       if (liveInd) liveInd.style.display = 'none';
       document.getElementById('painelCopaLive').classList.add('hidden');
       renderCopaBracket(); renderCopaArtilheiros();
-      // Final ou disputa de 3º lugar concluída: mostra a aba Mata-Mata (onde o banner do
-      // campeão é renderizado) em vez do Painel — é a conclusão natural da copa.
-      mostrarPainelCopa(proxKey === 'fim' ? 'bracket' : 'painel');
+      // Sem nenhum time humano restando na copa (todos eliminados, ou modo espectador — offline;
+      // o online tem seu próprio fluxo de "todos prontos" e não deve ser mexido aqui): em vez de
+      // esperar clique no Painel, encadeia sozinho a rodada seguinte até a copa terminar de vez.
+      const semTimeHumano = !copa.onlineCopa && proxKey !== 'fim' && (!copa.minhasSelecoes || copa.minhasSelecoes.length === 0);
+      if (semTimeHumano) {
+        iniciarRodadaBracketLive();
+      } else {
+        // Final ou disputa de 3º lugar concluída: mostra a aba Mata-Mata (onde o banner do
+        // campeão é renderizado) em vez do Painel — é a conclusão natural da copa.
+        mostrarPainelCopa(proxKey === 'fim' ? 'bracket' : 'painel');
+      }
       if (copa.onlineCopa) salvarCopaOnline();
     };
     if (goleadasBkt.length) {
@@ -8522,15 +8530,19 @@ function finalizarJornada() {
       const sel = copa.selMap[selId];
       if (sel) autoEscalar(sel, copa.minhasEsquemas?.[selId] || copa.minhaEsquema || '4-4-2');
     });
+    // Sem nenhum time humano na copa (modo espectador — offline; online tem seu próprio fluxo
+    // de "todos prontos" e não deve ser mexido aqui): em vez de esperar clique, encadeia sozinho
+    // a próxima jornada/rodada até a copa terminar.
+    const semTimeHumano = !copa.onlineCopa && (!copa.minhasSelecoes || copa.minhasSelecoes.length === 0);
     if (copa.jornadaAtual >= 3) {
       copa.grupos.forEach(g => g.simulado = true);
       montarBracket(copa, copaRng);
       copa.faseAtual = 'bracket';
       renderCopaBracket();
-      mostrarPainelCopa('painel');
+      if (semTimeHumano) { iniciarRodadaBracketLive(); } else { mostrarPainelCopa('painel'); }
     } else {
-      mostrarPainelCopa('painel');
       renderCopaGrupos();
+      if (semTimeHumano) { iniciarJornada(); } else { mostrarPainelCopa('painel'); }
     }
     if (copa.onlineCopa) salvarCopaOnline();
   };
@@ -9419,10 +9431,65 @@ function mostrarCampanhaCopaOverlay(selId) {
   abrirOverlayGenericoCopa('📈', `Campanha — ${nomeMeu}`, `<div style="max-height:56vh;overflow-y:auto;">${corpo}</div>`, 480);
 }
 // Exibe a Seleção da Copa (copa.selecaoDaCopa, calculada por elegerSelecaoDaCopa no fim da copa).
+// Campo visual da Seleção da Copa — mesmo estilo SVG de renderCampoTatico, mas cada jogador
+// aparece com a cor do PRÓPRIO time (times diferentes, não uma seleção só) e clicar nele abre
+// o elenco de onde ele veio. Sem edição, sem cansaço/moral — é um retrato final, não um time em jogo.
+function renderCampoSelecaoDaCopa(selecaoDaCopa) {
+  const W = 220, H = 320;
+  const lineCor = 'rgba(255,255,255,.18)';
+  const linhas = [
+    { key: 'GOL', count: 1 }, { key: 'DEF', count: 4 }, { key: 'MEI', count: 3 }, { key: 'ATA', count: 3 },
+  ];
+  const nLinhas = linhas.length;
+  const yFor = i => H * 0.90 - (H * 0.80 * i / (nLinhas - 1));
+  const circles = [];
+  linhas.forEach((linha, li) => {
+    const y = yFor(li);
+    const jogadores = selecaoDaCopa[linha.key] || [];
+    for (let i = 0; i < linha.count; i++) {
+      const c = jogadores[i];
+      if (!c) continue;
+      const x = W * (i + 1) / (linha.count + 1);
+      const selTime = copa.selMap[c.selId];
+      const cor = selTime?.cor1 || '#1a6b35';
+      const circleTxt = corContraste(cor);
+      const nomeSeguro = (c.nome && String(c.nome).trim()) || '?';
+      const lastName = nomeSeguro.split(' ').slice(-1)[0];
+      const dispName = lastName.length > 9 ? lastName.slice(0, 8) + '.' : lastName;
+      circles.push({ x, y, nome: dispName, ovr: c.ovr, cor, circleTxt, selId: c.selId });
+    }
+  });
+  const halfY = H / 2;
+  const pX1 = W * 0.22, pX2 = W * 0.78, pY = H * 0.15, gaY = H * 0.065, pW = W * 0.56;
+  const field = `
+    <rect x="0" y="0" width="${W}" height="${H}" fill="#1a5c2a"/>
+    <rect x="8" y="8" width="${W - 16}" height="${H - 16}" fill="none" stroke="${lineCor}" stroke-width="1.5"/>
+    <line x1="8" y1="${halfY}" x2="${W - 8}" y2="${halfY}" stroke="${lineCor}" stroke-width="1"/>
+    <circle cx="${W / 2}" cy="${halfY}" r="${H * 0.09}" fill="none" stroke="${lineCor}" stroke-width="1"/>
+    <circle cx="${W / 2}" cy="${halfY}" r="2" fill="${lineCor}"/>
+    <rect x="${pX1}" y="8" width="${pW}" height="${pY}" fill="none" stroke="${lineCor}" stroke-width="1"/>
+    <rect x="${W * 0.35}" y="8" width="${W * 0.3}" height="${gaY}" fill="none" stroke="${lineCor}" stroke-width="1"/>
+    <rect x="${W * 0.38}" y="4" width="${W * 0.24}" height="5" fill="none" stroke="${lineCor}" stroke-width="1.5"/>
+    <rect x="${pX1}" y="${H - 8 - pY}" width="${pW}" height="${pY}" fill="none" stroke="${lineCor}" stroke-width="1"/>
+    <rect x="${W * 0.35}" y="${H - 8 - gaY}" width="${W * 0.3}" height="${gaY}" fill="none" stroke="${lineCor}" stroke-width="1"/>
+    <rect x="${W * 0.38}" y="${H - 9}" width="${W * 0.24}" height="5" fill="none" stroke="${lineCor}" stroke-width="1.5"/>
+  `;
+  const playersSVG = circles.map(({ x, y, nome, ovr, cor, circleTxt, selId }) => `
+    <g style="cursor:pointer;" onclick="mostrarPlantelSelecao('${selId}')">
+      <circle cx="${x}" cy="${y}" r="18" fill="transparent"/>
+      <circle cx="${x}" cy="${y}" r="15" fill="${cor}" stroke="#f0c040" stroke-width="2"/>
+      <text x="${x}" y="${y + 4}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="900" fill="${circleTxt}" font-family="monospace">${ovr}</text>
+      <text x="${x}" y="${y + 24}" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,.9)" font-family="sans-serif" style="text-shadow:0 1px 2px #000;">${nome}</text>
+    </g>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="campo-tatico" style="display:block;border-radius:6px;margin:0 auto;max-width:260px;">
+    ${field}${playersSVG}
+  </svg>`;
+}
 function mostrarSelecaoDaCopaOverlay() {
   if (!copa || !copa.selecaoDaCopa) return;
   const POS_LABEL = { GOL: 'Goleiro', DEF: 'Zaga/Laterais', MEI: 'Meio-campo', ATA: 'Ataque' };
   const POS_ICON = { GOL: '🧤', DEF: '🛡️', MEI: '⚙️', ATA: '⚔️' };
+  const campoHTML = renderCampoSelecaoDaCopa(copa.selecaoDaCopa);
   const corpo = ['GOL', 'DEF', 'MEI', 'ATA'].map(pos => {
     const jogadores = copa.selecaoDaCopa[pos] || [];
     if (!jogadores.length) return '';
@@ -9443,7 +9510,7 @@ function mostrarSelecaoDaCopaOverlay() {
       ${linhas}
     </div>`;
   }).join('');
-  abrirOverlayGenericoCopa('🌟', 'Melhor Onze da Copa', `<div style="max-height:60vh;overflow-y:auto;">${corpo}</div>`, 480);
+  abrirOverlayGenericoCopa('🌟', 'Melhor Onze da Copa', `<div style="max-height:70vh;overflow-y:auto;">${campoHTML}<div style="margin-top:10px;">${corpo}</div></div>`, 480);
 }
 
 // Fantasmas / Revanche: registra quem eliminou seu time no mata-mata desta copa, pra avisar se
