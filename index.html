@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '32'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '33'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1680,7 +1680,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v32</div>
+  <div class="rodapezinho">v33</div>
 </div>
 
 <script>
@@ -6025,25 +6025,6 @@ function classificacaoGrupo(grupo, selMap) {
 // golsPorJogadorDaPartida (eventos reais). Sem timeline pra reconstruir, não há substituição/
 // expulsão "ao vivo" pra respeitar; se um dia isso mudar, considere gerar um golsDist mínimo
 // com os mesmos critérios de elegibilidade do caminho ao vivo pra manter paridade estatística.
-function simularFaseGrupos(copa, rng) {
-  copa.grupos.forEach(g => {
-    g.jogos.forEach(jogo => {
-      if (jogo.golsA !== null) return;
-      const selA = copa.selMap[jogo.a], selB = copa.selMap[jogo.b];
-      const res = simularJogoCopa(selA, selB, rng);
-      jogo.golsA = res.golsA; jogo.golsB = res.golsB;
-      const ga = distribuirGolsCopa(res.golsA, selA, rng);
-      const gb = distribuirGolsCopa(res.golsB, selB, rng);
-      jogo.gols = { [jogo.a]: ga, [jogo.b]: gb };
-      [ga, gb].forEach(m => Object.entries(m).forEach(([nome, n]) => {
-        copa.artilheiros[nome] = (copa.artilheiros[nome] || 0) + n;
-      }));
-    });
-    g.simulado = true;
-  });
-  copa.faseAtual = 'bracket';
-}
-
 function qualificadosDosGrupos(copa) {
   const primeiros = [], segundos = [], terceiros = [];
   copa.grupos.forEach(g => {
@@ -6269,7 +6250,7 @@ function finalizarRodadaBracketLive() {
         const sel = copa.selMap[selId];
         if (sel) autoEscalar(sel, copa.minhasEsquemas?.[selId] || copa.minhaEsquema || '4-4-2');
       });
-      simularRodadaBracketCopa._avancarRodada(copa, rodadaKey);
+      avancarRodadaBracketCopa(copa, rodadaKey);
       const bkt = copa.bracket;
       const proxKey = bkt.rodadaAtual;
       if (proxKey && proxKey !== 'fim') {
@@ -6314,7 +6295,7 @@ function finalizarRodadaBracketLive() {
   processarShootouts();
 }
 // Auxiliar: avança rodada no bracket sem simular
-simularRodadaBracketCopa._avancarRodada = function(copa, rodada) {
+function avancarRodadaBracketCopa(copa, rodada) {
   const bkt = copa.bracket;
   const jogos = rodada==='final_3' ? [bkt.final,bkt.terceiro].filter(Boolean) : (bkt[rodada]||[]);
   if (rodada==='final_3') {
@@ -6336,7 +6317,7 @@ simularRodadaBracketCopa._avancarRodada = function(copa, rodada) {
     for (let i=0; i<vencedores.length/2; i++)
       bkt[proxKey].push({ a:vencedores[i*2], b:vencedores[i*2+1], golsA:null, golsB:null, pens:null, vencedorId:null });
   }
-};
+}
 
 function montarBracket(copa, rng) {
   const classificados = qualificadosDosGrupos(copa);
@@ -6350,55 +6331,6 @@ function montarBracket(copa, rng) {
   copa.bracket = { r32, r16:[], qf:[], sf:[], terceiro:null, final:null, rodadaAtual:'r32' };
 }
 
-// Mesma ressalva de simularFaseGrupos: simulação instantânea, artilheiros vêm de
-// distribuirGolsCopa (estatístico), não de golsPorJogadorDaPartida (eventos ao vivo).
-function simularRodadaBracketCopa(copa, rng) {
-  const bkt = copa.bracket;
-  const rodada = bkt.rodadaAtual;
-  if (rodada === 'fim') return;
-
-  const jogosBatch = rodada === 'final_3'
-    ? [bkt.final, bkt.terceiro].filter(Boolean)
-    : (bkt[rodada] || []);
-
-  jogosBatch.forEach(jogo => {
-    if (!jogo || jogo.vencedorId) return;
-    const selA = copa.selMap[jogo.a], selB = copa.selMap[jogo.b];
-    const res = simularEliminatorioCopa(selA, selB, rng);
-    jogo.golsA = res.golsA; jogo.golsB = res.golsB;
-    jogo.pens = res.pens;
-    jogo.vencedorId = res.vencedorId;
-    const ga = distribuirGolsCopa(res.golsA, selA, rng);
-    const gb = distribuirGolsCopa(res.golsB, selB, rng);
-    [ga, gb].forEach(m => Object.entries(m).forEach(([n, c]) => {
-      copa.artilheiros[n] = (copa.artilheiros[n] || 0) + c;
-    }));
-  });
-
-  if (rodada === 'final_3') {
-    copa.campeao = bkt.final ? bkt.final.vencedorId : null;
-    copa.faseAtual = 'fim';
-    bkt.rodadaAtual = 'fim';
-    salvarHistoricoCopa();
-    if (ehMinhaSel(copa.campeao)) tocarSomVitoriaCopa();
-    return;
-  }
-
-  const vencedores = jogosBatch.map(j => j.vencedorId);
-  const perdedores = jogosBatch.map(j => j.a === j.vencedorId ? j.b : j.a);
-  const proximos = { r32:'r16', r16:'qf', qf:'sf', sf:'final_3' };
-  bkt.rodadaAtual = proximos[rodada];
-
-  if (rodada === 'sf') {
-    bkt.terceiro = { a:perdedores[0], b:perdedores[1], golsA:null, golsB:null, pens:null, vencedorId:null };
-    bkt.final    = { a:vencedores[0], b:vencedores[1], golsA:null, golsB:null, pens:null, vencedorId:null };
-  } else {
-    const proxKey = proximos[rodada];
-    bkt[proxKey] = [];
-    for (let i = 0; i < vencedores.length / 2; i++)
-      bkt[proxKey].push({ a:vencedores[i*2], b:vencedores[i*2+1], golsA:null, golsB:null, pens:null, vencedorId:null });
-  }
-}
 
 // --- Rendering da Copa ---
 
@@ -7666,7 +7598,14 @@ function continuarSegundaMetade() {
     renderSubstituicoes(next.partida, next.selId);
     return;
   }
-  if (copa?.onlineCopa) {
+  // Só sincroniza tática pelo Firestore no intervalo REAL dos 45' — a pausa pré-prorrogação
+  // (liveBracketEmProrrogacao) não oferece troca de tática (renderSubstituicoes já esconde esse
+  // bloco quando emProrrogacao), então não há nada pra sincronizar. Sem essa checagem, entrar
+  // de novo em aguardarIntervaloOnlineCopa aqui reaproveitava o rodadaStatus/taticasIntervalo
+  // ainda "sujos" do intervalo anterior e disparava regenerarSegundaMetadeCore de novo — mas
+  // agora com a partida já em prorrogação, apagando os gols de ET já pré-gerados (91-120) sem
+  // recriá-los (a regeneração só sorteia gols entre 46-89).
+  if (copa?.onlineCopa && !liveBracketEmProrrogacao) {
     aguardarIntervaloOnlineCopa();
     return;
   }
@@ -7720,14 +7659,37 @@ async function confirmarTaticaIntervaloCopa() {
     let estAtual = null;
     if (data.estado) { try { estAtual = JSON.parse(data.estado); } catch (e) {} }
     const jogs = data.jogadores || {};
-    const pendentes = Object.entries(jogs).filter(([, j]) => selAindaTemPendenciaNoBracket(estAtual, j.selId));
-    const todosProntos = pendentes.length > 0
-      ? pendentes.every(([id]) => prontos[id])
-      : Object.keys(jogs).every(id => prontos[id]);
-    if (todosProntos) data.rodadaStatus = 'intervalo_confirmado';
+    if (calcularTodosProntosCopa(jogs, prontos, estAtual)) data.rodadaStatus = 'intervalo_confirmado';
     data.versao = (data.versao || 0) + 1;
     tx.set(ref, data);
   });
+}
+// Confirma o intervalo em nome de um jogador que RECONECTOU (recarregou a página) enquanto a
+// sala estava em 'intervalo' — esse cliente nunca teve a tela de substituição aberta (perdeu
+// a fila local), então nunca chamaria confirmarTaticaIntervaloCopa() sozinho, e sem isso os
+// demais jogadores da sala ficariam esperando a confirmação dele indefinidamente. Não mexe em
+// taticasIntervalo (o copa local dele está desatualizado — não há tática legítima a contribuir
+// aqui, só desbloquear a sala). A própria tela desse jogador continua desatualizada até a
+// rodada resolver e ressincronizar via 'resolvida'.
+async function autoConfirmarIntervaloReconexaoCopa() {
+  if (!copaOnlineCodigo || !copaOnlineJogadorId) return;
+  const ref = copaOnlineRef(copaOnlineCodigo);
+  try {
+    await window.__fs.runTransaction(window.__fs.db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.rodadaStatus !== 'intervalo') return;
+      const prontos = { ...(data.prontoIntervalo || {}), [copaOnlineJogadorId]: true };
+      data.prontoIntervalo = prontos;
+      let estAtual = null;
+      if (data.estado) { try { estAtual = JSON.parse(data.estado); } catch (e) {} }
+      const jogs = data.jogadores || {};
+      if (calcularTodosProntosCopa(jogs, prontos, estAtual)) data.rodadaStatus = 'intervalo_confirmado';
+      data.versao = (data.versao || 0) + 1;
+      tx.set(ref, data);
+    });
+  } catch (e) { console.warn('autoConfirmarIntervaloReconexaoCopa:', e); }
 }
 async function forcarIntervaloOnlineCopa() {
   if (!copaOnlineCodigo) return;
@@ -7938,7 +7900,10 @@ function iniciarShootoutInterativo(dadosTie, callback) {
   let titOpp = [...(selOpp?.jogadores||[])].filter(j=>j.titular && !foraDaPartida.has(j.nome)).sort((a,b)=>prioridadeBatedor(b)-prioridadeBatedor(a) || b.ovr-a.ovr);
   if (!titOpp.length) titOpp = [...(selOpp?.jogadores||[])].filter(j=>j.titular);
   let humGols = 0, oppGols = 0, rodada = 0;
-  const oppKicks = Array.from({length:20}, () => copaRng() < 0.76 ? 1 : 0);
+  // Gerado sob demanda (não um array de tamanho fixo): morte súbita não tem limite de rodadas,
+  // e um array fixo de 20 fazia o oponente "errar" tudo automaticamente além disso (índice
+  // undefined, comparação com 1 sempre falsa) numa morte súbita raríssima mas possível.
+  const oppKicks = [];
   const log = [];
   const subDiv = document.getElementById('copaLiveSub');
   const banner = document.getElementById('copaLiveBanner');
@@ -8056,6 +8021,7 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     const taxa = acertouGoleiro ? Math.max(0.25, taxaBase - 0.35) : Math.min(0.97, taxaBase + 0.12);
     const humConv = copaRng() < taxa;
     ultimoCantoHum = cantoHum;
+    if (oppKicks[rodada] === undefined) oppKicks[rodada] = copaRng() < 0.76 ? 1 : 0;
     const oppConv = oppKicks[rodada] === 1;
     if (humConv) { humGols++; tocarSomGolCopa(); }
     if (oppConv) oppGols++;
@@ -8076,6 +8042,11 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     const pens = { golsA: isMeuA ? humGols : oppGols, golsB: isMeuA ? oppGols : humGols };
     jogo.golsA = gA; jogo.golsB = gB; jogo.pens = pens;
     jogo.vencedorId = pens.golsA > pens.golsB ? jogo.a : jogo.b;
+    // Por consistência com o caminho normal do bracket (linha ajustarDificuldadeAdaptativa em
+    // finalizarRodadaBracketLive) — aqui gA/gB são sempre iguais (é por isso que foi a pênaltis),
+    // então o saldo sempre dá 0 e não muda copa.dificuldadeOffset hoje; existe só pra não deixar
+    // esse caminho estruturalmente diferente do resto caso a fórmula mude no futuro.
+    ajustarDificuldadeAdaptativa(partida.a, partida.b, gA, gB);
     // Credita os marcadores REAIS dos eventos processados (consistente com o que foi visto ao vivo)
     const golsReaisPen = golsPorJogadorDaPartida(partida);
     partida.golsDist = golsReaisPen;
@@ -12597,6 +12568,23 @@ function selAindaTemPendenciaNoBracket(estado, selId) {
   }
   return false; // não está em nenhuma rodada atual: eliminado (ou não se classificou dos grupos)
 }
+// Mesmo critério de 45s usado pra exibir a bolinha verde/cinza no lobby (renderLobbyCopaOnline)
+// — usado aqui pra excluir do gate de "pronto" quem caiu/fechou a aba e nunca vai confirmar,
+// senão a sala trava esperando alguém que já foi embora.
+function jogadorComHeartbeatAtivoCopa(j) {
+  return (Date.now() - (j?.heartbeat || 0)) < 45000;
+}
+// Calcula quem falta confirmar (troca de tática no intervalo, ou pronto pra próxima rodada):
+// só conta quem ainda tem pendência no bracket E está com heartbeat ativo. Se ninguém com
+// pendência estiver ativo (todos sumiram), cai no fallback de exigir todos os jogadores da
+// sala (mesmo comportamento manual de sempre, via botão "avançar mesmo assim").
+function calcularTodosProntosCopa(jogs, prontos, estAtual) {
+  const pendentesBracket = Object.entries(jogs).filter(([, j]) => selAindaTemPendenciaNoBracket(estAtual, j.selId));
+  const pendentesAtivos = pendentesBracket.filter(([, j]) => jogadorComHeartbeatAtivoCopa(j));
+  if (pendentesBracket.length === 0) return Object.keys(jogs).every(id => prontos[id]);
+  if (pendentesAtivos.length === 0) return Object.keys(jogs).every(id => prontos[id]);
+  return pendentesAtivos.every(([id]) => prontos[id]);
+}
 
 async function confirmarProntoRodadaCopa() {
   if (!copaOnlineCodigo || !copaOnlineJogadorId) return;
@@ -12622,16 +12610,9 @@ async function confirmarProntoRodadaCopa() {
     const prontos = { ...(data.prontoParaRodada || {}), [copaOnlineJogadorId]: true };
     data.prontoParaRodada = prontos;
     const jogs = data.jogadores || {};
-    // Só quem AINDA TEM jogo pendente (não foi eliminado) precisa confirmar — o eliminado
-    // apenas assiste e não trava quem segue vivo na competição.
-    const pendentes = Object.entries(jogs).filter(([, j]) => selAindaTemPendenciaNoBracket(estAtual, j.selId));
-    // Se ninguém mais tem jogo pendente (todos eliminados na mesma rodada), pendentes fica vazio —
-    // nesse caso exige todos os jogadores da sala prontos (via botão "avançar mesmo assim"),
-    // senão a sala travaria pra sempre sem ninguém elegível pra confirmar.
-    const todosProntos = pendentes.length > 0
-      ? pendentes.every(([id]) => prontos[id])
-      : Object.keys(jogs).every(id => prontos[id]);
-    if (todosProntos) {
+    // Só quem AINDA TEM jogo pendente (não foi eliminado) e está com heartbeat ativo precisa
+    // confirmar — o eliminado apenas assiste, e quem sumiu não trava quem segue jogando.
+    if (calcularTodosProntosCopa(jogs, prontos, estAtual)) {
       data.rodadaStatus = 'iniciando';
       data.seedRodada = Math.floor(Math.random() * 2147483647);
     }
@@ -12837,6 +12818,16 @@ function entrarNaSalaCopaEAssinar(codigo, jogadorId) {
       mostrarTela('copaJogo');
       if (copa.faseAtual === 'grupos') iniciarJornada();
       else { if (!copa.bracket) montarBracket(copa, copaRng); iniciarRodadaBracketLive(); }
+      return;
+    }
+
+    // Reconectou/recarregou enquanto a sala estava em intervalo: esse cliente perdeu o estado
+    // ao vivo (livePartidas/liveSubQueue) e nunca reabriria a tela de substituição certa — sem
+    // confirmar em nome dele, os outros jogadores ficariam esperando pra sempre. Só mitiga se
+    // ele não estiver ativamente em live (senão já está lidando com o próprio intervalo normal).
+    if ((status === 'intervalo' || status === 'intervalo_confirmado') && ehNovoEvento) {
+      copaOnlineUltimoEvento = eventoKey;
+      if (!emLive && !naPlantel) autoConfirmarIntervaloReconexaoCopa();
       return;
     }
 
