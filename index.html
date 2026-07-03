@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '41'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '42'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1681,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v41</div>
+  <div class="rodapezinho">v42</div>
 </div>
 
 <script>
@@ -5749,6 +5749,17 @@ const MENTALIDADE_MULT = {
 function mentalidadeDaSelecao(selId) {
   return MENTALIDADE_SELECOES[selId] || 'equilibrada';
 }
+// Disciplina por seleção: multiplicador na taxa de cartão/falta — curadoria pontual, >1 = mais
+// cartões (indisciplinada), <1 = menos (disciplinada). Diferente da mentalidade/entrosamento,
+// isso vale pros DOIS lados de qualquer partida (CPU incluído) — cartão já é gerado igual pros
+// dois times hoje, então dá pra diferenciar sem precisar de nenhuma "IA" nova pro adversário.
+const DISCIPLINA_SELECOES = {
+  arg1990: 1.35, ned1974: 1.3, urs1966: 1.2, arg1978: 1.15,
+  ale1990: 0.8, esp2010: 0.8, jpn2022: 0.7, ger2014: 0.85,
+};
+function disciplinaMultCopa(selId) {
+  return DISCIPLINA_SELECOES[selId] ?? 1;
+}
 function forcaAtaqueCopa(sel) {
   const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
   // Penalidade por plantel incompleto (referência: 11 titulares = 100%)
@@ -6213,17 +6224,18 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
     const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
     if (!tit.length) return;
     const rndP = () => tit[Math.floor(copaRng() * tit.length)];
-    const numAma = poisson(0.28, copaRng);
+    const discMult = disciplinaMultCopa(sel.id); // >1 = time indisciplinado, mais cartão/falta
+    const numAma = poisson(0.28 * discMult, copaRng);
     const jaAmarelo = new Set();
     for (let i = 0; i < Math.min(numAma, 3); i++) {
       const p = rndP(); const min = Math.floor(copaRng() * 85) + 3;
       if (!jaAmarelo.has(p.nome)) {
         jaAmarelo.add(p.nome);
         eventos.push({ tipo:'amarelo', time, minuto:min, jogador:p.nome });
-        if (copaRng() < 0.18) eventos.push({ tipo:'vermelho', time, minuto:Math.min(min+Math.floor(copaRng()*35)+10,90), jogador:p.nome, motivo:'duplo_amarelo' });
+        if (copaRng() < 0.18 * discMult) eventos.push({ tipo:'vermelho', time, minuto:Math.min(min+Math.floor(copaRng()*35)+10,90), jogador:p.nome, motivo:'duplo_amarelo' });
       }
     }
-    if (copaRng() < 0.05) eventos.push({ tipo:'vermelho', time, minuto:Math.floor(copaRng()*80)+10, jogador:rndP().nome, motivo:'direto' });
+    if (copaRng() < 0.05 * discMult) eventos.push({ tipo:'vermelho', time, minuto:Math.floor(copaRng()*80)+10, jogador:rndP().nome, motivo:'direto' });
     const avgCan = tit.reduce((s,j)=>s+(j.cansaco??100),0)/tit.length;
     const lChance = avgCan<40?0.45:avgCan<65?0.30:0.18;
     if (copaRng() < lChance) {
@@ -7308,8 +7320,9 @@ function gerarPartidaLive(grupo, jogoIdx) {
     const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
     if (!tit.length) return;
     const rndPlayer = () => tit[Math.floor(copaRng() * tit.length)];
+    const discMult = disciplinaMultCopa(sel.id); // >1 = time indisciplinado, mais cartão/falta
     // Amarelos: ~1.5 por jogo por time
-    const numAma = poisson(0.28, copaRng);
+    const numAma = poisson(0.28 * discMult, copaRng);
     const jaAmarelo = new Set();
     for (let i = 0; i < Math.min(numAma, 3); i++) {
       const p = rndPlayer();
@@ -7321,14 +7334,14 @@ function gerarPartidaLive(grupo, jogoIdx) {
         jaAmarelo.add(p.nome);
         eventos.push({ tipo:'amarelo', time, minuto: min, jogador: p.nome });
         // Chance de segundo amarelo mais tarde
-        if (copaRng() < 0.18) {
+        if (copaRng() < 0.18 * discMult) {
           const min2 = Math.min(min + Math.floor(copaRng() * 35) + 10, 90);
           eventos.push({ tipo:'vermelho', time, minuto: min2, jogador: p.nome, motivo:'duplo_amarelo' });
         }
       }
     }
     // Vermelho direto: ~5%
-    if (copaRng() < 0.05) {
+    if (copaRng() < 0.05 * discMult) {
       eventos.push({ tipo:'vermelho', time, minuto: Math.floor(copaRng() * 80) + 10, jogador: rndPlayer().nome, motivo:'direto' });
     }
     // Lesão: chance maior quando jogadores estão cansados
