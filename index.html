@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '19'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '20'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1669,7 +1669,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v19</div>
+  <div class="rodapezinho">v20</div>
 </div>
 
 <script>
@@ -6088,7 +6088,7 @@ function iniciarRodadaBracketLive() {
   if (liveInd) liveInd.style.display='';
   atualizarEntrosamento();
   iniciarLiveGrid();
-  liveTimer = setInterval(tickLive, MS_MIN);
+  liveTimer = setInterval(tickLive, velocidadeLiveMs());
 }
 
 function finalizarRodadaBracketLive() {
@@ -6884,6 +6884,14 @@ let copaConfigQueue = [];   // [selId] fila de times a configurar antes de cada 
 let copaConfigCallback = null; // chamado depois que todos configuraram
 let copaModoPlantel = 'setup'; // 'setup' | 'jornada' — contexto do btnConfirmarPlantel
 const MS_MIN = 222; // ~20s por jornada (90 ticks)
+// Sem NENHUM time humano nas partidas ao vivo no momento: ninguém precisa acompanhar minuto a
+// minuto, então acelera bastante o relógio até o desfecho (não instantâneo, mas ~6x mais rápido).
+// Com pelo menos um time humano em jogo (mesmo que outro jogador tenha sido eliminado), mantém
+// o ritmo normal — só CPU x CPU justifica pular etapas.
+function velocidadeLiveMs() {
+  const temHumano = livePartidas.some(p => ehMinhaSel(p.a) || ehMinhaSel(p.b));
+  return temHumano ? MS_MIN : Math.max(20, Math.round(MS_MIN / 6));
+}
 
 const NARRATIVAS_LENDA = {
   'Pelé':             ['⚡ PELÉ! O Rei do Futebol volta a brilhar!','⚡ Mais um para o REI! Pelé é eterno!','⚡ O REI PELÉ! O único tricampeão marca de novo!','👑 O REI DO FUTEBOL! Ajoelhem-se diante de Pelé!'],
@@ -7106,6 +7114,9 @@ function iniciarLiveGrid() {
   } else {
     document.getElementById('copaLiveGrid').innerHTML = ativas.map(p => buildRow(p, null)).join('') + finSection;
   }
+  // Sobe a página: sem isso, quem estava rolado pra baixo (grupos, plantel) precisava
+  // rolar pra cima pra achar a própria partida, mesmo ela vindo sempre primeiro na lista.
+  window.scrollTo(0, 0);
 }
 
 function atualizarClockLive() {
@@ -7314,12 +7325,8 @@ function tickLive() {
         setTimeout(() => banner.classList.add('hidden'), 3000);
         document.getElementById('copaLiveTitulo').textContent =
           document.getElementById('copaLiveTitulo').textContent.replace('ao vivo','⏱️ PRORROGAÇÃO');
-        // Sem time humano na prorrogação: acelera o relógio (2x) — só o ritmo muda, o resultado é o mesmo
-        const humanaNaET = empatadas.some(p => ehMinhaSel(p.a) || ehMinhaSel(p.b));
-        if (!humanaNaET && liveTimer) {
-          clearInterval(liveTimer);
-          liveTimer = setInterval(tickLive, Math.max(60, Math.round(MS_MIN / 2)));
-        }
+        // Recalcula a velocidade: se nenhuma partida em prorrogação tem time humano, acelera.
+        if (liveTimer) { clearInterval(liveTimer); liveTimer = setInterval(tickLive, velocidadeLiveMs()); }
         return;
       }
       clearInterval(liveTimer); liveTimer = null;
@@ -7489,7 +7496,7 @@ function continuarSegundaMetade() {
   }
   document.getElementById('copaLiveBanner').classList.add('hidden');
   liveSubPendente = false;
-  liveTimer = setInterval(tickLive, MS_MIN);
+  liveTimer = setInterval(tickLive, velocidadeLiveMs());
 }
 
 // ── Pênalti durante a partida ─────────────────────────────────────
@@ -7569,7 +7576,7 @@ function confirmarBatedorPenalti(partida, ev, jogador) {
   banner.classList.remove('hidden');
   setTimeout(() => banner.classList.add('hidden'), 3000);
   livePenaltiPendente = false; livePenaltiPartida = null; livePenaltiEv = null;
-  liveTimer = setInterval(tickLive, MS_MIN);
+  liveTimer = setInterval(tickLive, velocidadeLiveMs());
 }
 
 // ── Shootout interativo (bracket, após prorrogação empatada) ──────
@@ -7835,7 +7842,7 @@ function iniciarJornada() {
   if (liveInd) liveInd.style.display = '';
   atualizarEntrosamento();
   iniciarLiveGrid();
-  liveTimer = setInterval(tickLive, MS_MIN);
+  liveTimer = setInterval(tickLive, velocidadeLiveMs());
 }
 
 function plantelHTML(sel, esqF) {
@@ -8160,6 +8167,15 @@ function renderCopaPainel(selId) {
         ${(() => {
           const _showBtn = (!liveTimer && copa.faseAtual==='grupos' && copa.jornadaAtual<3) || (!liveTimer && copa.faseAtual!=='grupos' && copa.faseAtual!=='fim' && copa.bracket);
           if (!_showBtn) return '';
+          // Online, no mata-mata, com a seleção já eliminada: só acompanha, não trava quem segue vivo.
+          // O link "avançar" fica de reforço só pro caso raro de TODOS os jogadores da sala já
+          // terem caído — sem ele, a rodada CPU x CPU não teria quem confirmasse.
+          if (copa.onlineCopa && copa.bracket && ehMinhaSel(sel.id) && !selAindaTemPendenciaNoBracket(copa, sel.id)) {
+            return `<div style="margin-top:10px;padding:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;text-align:center;font-size:12.5px;color:var(--cinza);">
+              🏁 Eliminado — acompanhe o andamento da copa
+              <div id="btnAvancarEliminado" style="margin-top:6px;font-size:11px;color:#6b9a76;cursor:pointer;text-decoration:underline;">avançar mesmo assim ›</div>
+            </div>`;
+          }
           const _rawCor = sel.cor1||'#22c55e';
           const _corBtn = luminanciaCor(_rawCor)<0.08 ? (sel.cor2||'#22c55e') : _rawCor;
           const _txtBtn = corContraste(_corBtn);
@@ -8218,6 +8234,11 @@ function renderCopaPainel(selId) {
       if (!copa.bracket) montarBracket(copa, copaRng);
       iniciarRodadaBracketLive();
     }
+  });
+  const btnAvancarElim = conteudo.querySelector('#btnAvancarEliminado');
+  if (btnAvancarElim) btnAvancarElim.addEventListener('click', () => {
+    btnAvancarElim.textContent = 'aguardando…';
+    confirmarProntoRodadaCopa().catch(() => {});
   });
 }
 
@@ -11955,6 +11976,23 @@ async function alternarProntoCopaLobby(codigo, jogadorId) {
   });
 }
 
+// Um selId "tem pendência" quando ainda tem partida a jogar na competição: sempre true
+// na fase de grupos (todos disputam as 3 jornadas); no mata-mata, só quem ainda não perdeu.
+// Usada para o gate de "pronto" online não esperar por quem já foi eliminado.
+function selAindaTemPendenciaNoBracket(estado, selId) {
+  if (!estado || !estado.bracket) return true; // fase de grupos: ninguém eliminado ainda
+  const bkt = estado.bracket;
+  const finais = [bkt.final, bkt.terceiro].filter(Boolean);
+  const jgF = finais.find(j => j && (j.a === selId || j.b === selId));
+  if (jgF) return !jgF.vencedorId;
+  const rounds = ['sf', 'qf', 'r16', 'r32'];
+  for (const k of rounds) {
+    const jg = (bkt[k] || []).find(j => j && (j.a === selId || j.b === selId));
+    if (jg) return !jg.vencedorId;
+  }
+  return false; // não está em nenhuma rodada atual: eliminado (ou não se classificou dos grupos)
+}
+
 async function confirmarProntoRodadaCopa() {
   if (!copaOnlineCodigo || !copaOnlineJogadorId) return;
   const ref = copaOnlineRef(copaOnlineCodigo);
@@ -11965,22 +12003,24 @@ async function confirmarProntoRodadaCopa() {
     if (data.rodadaStatus !== 'resolvida' && data.rodadaStatus !== 'aguardando') return;
     // Merge my lineup into shared estado
     const meuSelId = data.jogadores?.[copaOnlineJogadorId]?.selId;
-    if (data.estado && copa && meuSelId) {
-      try {
-        const est = JSON.parse(data.estado);
-        if (copa.selMap[meuSelId] && est.selMap[meuSelId])
-          est.selMap[meuSelId].jogadores = copa.selMap[meuSelId].jogadores;
-        if (copa.minhasEsquemas?.[meuSelId]) {
-          est.minhasEsquemas = est.minhasEsquemas || {};
-          est.minhasEsquemas[meuSelId] = copa.minhasEsquemas[meuSelId];
-        }
-        data.estado = JSON.stringify(est);
-      } catch(e) {}
+    let estAtual = null;
+    if (data.estado) { try { estAtual = JSON.parse(data.estado); } catch(e) {} }
+    if (estAtual && copa && meuSelId) {
+      if (copa.selMap[meuSelId] && estAtual.selMap[meuSelId])
+        estAtual.selMap[meuSelId].jogadores = copa.selMap[meuSelId].jogadores;
+      if (copa.minhasEsquemas?.[meuSelId]) {
+        estAtual.minhasEsquemas = estAtual.minhasEsquemas || {};
+        estAtual.minhasEsquemas[meuSelId] = copa.minhasEsquemas[meuSelId];
+      }
+      data.estado = JSON.stringify(estAtual);
     }
     const prontos = { ...(data.prontoParaRodada || {}), [copaOnlineJogadorId]: true };
     data.prontoParaRodada = prontos;
     const jogs = data.jogadores || {};
-    if (Object.keys(jogs).length > 0 && Object.keys(jogs).every(id => prontos[id])) {
+    // Só quem AINDA TEM jogo pendente (não foi eliminado) precisa confirmar — o eliminado
+    // apenas assiste e não trava quem segue vivo na competição.
+    const pendentes = Object.entries(jogs).filter(([, j]) => selAindaTemPendenciaNoBracket(estAtual, j.selId));
+    if (pendentes.length > 0 && pendentes.every(([id]) => prontos[id])) {
       data.rodadaStatus = 'iniciando';
       data.seedRodada = Math.floor(Math.random() * 2147483647);
     }
