@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '37'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '38'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1248,6 +1248,7 @@
         <div id="plCampoTatico"></div>
         <div id="plProxAdversario"></div>
         <div id="plVerGrupos"></div>
+        <div id="plVerCampanha"></div>
         <span id="copaPlayerInfo" style="display:block;font-size:12px;color:var(--areia);opacity:.7;margin-top:10px;text-align:center;"></span>
         <button id="btnConfirmarPlantel" class="plantel-confirm" type="button" style="margin-top:10px;">▶ JOGAR</button>
       </div>
@@ -1680,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v37</div>
+  <div class="rodapezinho">v38</div>
 </div>
 
 <script>
@@ -5731,6 +5732,23 @@ function escalacaoValidaCopa(sel, esqF) {
   tit.forEach(j => { c[posCampoCopa(j)] = (c[posCampoCopa(j)] || 0) + 1; });
   return c.GOL === counts.GOL && c.DEF === counts.DEF && c.MEI === counts.MEI && c.ATA === counts.ATA;
 }
+// Mentalidade tática por seleção: um pequeno multiplicador de ataque/defesa que dá personalidade
+// própria a algumas seleções icônicas — sem motor novo, só amplifica/reduz os mesmos números que
+// já alimentam lambdaGolsCopa (aplicado no fim de forcaAtaqueCopa/forcaDefesaCopa). Seleções fora
+// da tabela ficam "equilibrada" (sem efeito nenhum) — é curadoria pontual, não cobre as 133.
+const MENTALIDADE_SELECOES = {
+  bra1970: 'ofensiva', bra1982: 'ofensiva', ned1974: 'ofensiva', hun1954: 'ofensiva',
+  ita1982: 'defensiva', ita1994: 'defensiva', gre2014: 'defensiva', uru1950: 'defensiva',
+  fra1998: 'equilibrada', ale1990: 'equilibrada', ger2014: 'equilibrada', esp2010: 'equilibrada',
+};
+const MENTALIDADE_MULT = {
+  ofensiva:    { atq: 1.08, def: 0.94 },
+  defensiva:   { atq: 0.94, def: 1.08 },
+  equilibrada: { atq: 1,    def: 1    },
+};
+function mentalidadeDaSelecao(selId) {
+  return MENTALIDADE_SELECOES[selId] || 'equilibrada';
+}
 function forcaAtaqueCopa(sel) {
   const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
   // Penalidade por plantel incompleto (referência: 11 titulares = 100%)
@@ -5767,6 +5785,7 @@ function forcaAtaqueCopa(sel) {
     if (t.includes('lenda'))       base *= 1.01;
     if (t.includes('capitao'))     base *= 1.005;
   });
+  base *= MENTALIDADE_MULT[mentalidadeDaSelecao(sel.id)].atq;
   return base;
 }
 function forcaDefesaCopa(sel) {
@@ -5798,6 +5817,7 @@ function forcaDefesaCopa(sel) {
     if (t.includes('capitao'))        base *= 1.005;
     if (t.includes('armador'))        base *= 1.01;
   });
+  base *= MENTALIDADE_MULT[mentalidadeDaSelecao(sel.id)].def;
   return base;
 }
 function lambdaGolsCopa(atq, def) {
@@ -5920,7 +5940,27 @@ function simularEliminatorioCopa(selA, selB, rng) {
   return { golsA, golsB, pens, vencedorId };
 }
 
-function distribuirGolsCopa(numGols, sel, rng) {
+// Lendas decisivas: crescem na hora do mata-mata (só pesam mais em jogos eliminatórios —
+// "emMataMata" abaixo). Curadoria pontual de nomes conhecidos por grandes atuações decisivas,
+// não é um trait no cadastro do jogador (mesmo padrão de GOLEIRO_FRASES: tabela leve por nome).
+const LENDAS_DECISIVAS = new Set([
+  'Pelé', 'Diego Maradona', 'Lionel Messi', 'Cristiano Ronaldo', 'Zinedine Zidane',
+  'Ronaldo', 'Ronaldo R9', 'Franz Beckenbauer', 'Roberto Baggio',
+]);
+// Narrativa especial quando uma lenda decisiva marca NO MATA-MATA — sorteada com 50% de chance
+// no lugar da narrativa normal do jogador (reutiliza o mesmo mecanismo de NARRATIVAS_LENDA).
+const NARRATIVAS_DECISIVO = {
+  'Pelé':              ['👑 PELÉ CRESCE NA HORA DECISIVA! O Rei aparece quando mais importa!'],
+  'Diego Maradona':    ['⚡ MARADONA CHAMA A RESPONSABILIDADE! Na hora decisiva, ele aparece!'],
+  'Lionel Messi':      ['⚡ MESSI CRESCE NO MATA-MATA! Quando decide, ele decide!'],
+  'Cristiano Ronaldo': ['⚡ CR7 NA HORA DA VERDADE! Nos jogos que importam, ele sempre aparece!'],
+  'Zinedine Zidane':   ['⚡ ZIDANE CRESCE NO MATA-MATA! Frieza total na hora decisiva!'],
+  'Ronaldo':           ['⚡ RONALDO FENÔMENO ASSUME! No jogo decisivo, o Fenômeno aparece!'],
+  'Ronaldo R9':        ['⚡ R9 NA HORA DA VERDADE! O Fenômeno não falha quando mais importa!'],
+  'Franz Beckenbauer': ['⚡ O KAISER ASSUME O COMANDO! Decisão na hora decisiva!'],
+  'Roberto Baggio':    ['⚡ BAGGIO CRESCE NO MATA-MATA! O Divino aparece quando precisa!'],
+};
+function distribuirGolsCopa(numGols, sel, rng, emMataMata) {
   if (numGols === 0) return {};
   const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
   const pesos = { ATA:6, MEI:3, DEF:1, GOL:0 }; // goleiro só marca de pênalti (escolhido como batedor)
@@ -5937,6 +5977,7 @@ function distribuirGolsCopa(numGols, sel, rng) {
         if (t.includes('velocista'))   p *= 1.1;
       }
     }
+    if (emMataMata && LENDAS_DECISIVAS.has(j.nome)) p *= 1.6; // cresce na hora decisiva
     return { nome: j.nome, p };
   });
   const total = pool.reduce((s, w) => s + w.p, 0);
@@ -6134,13 +6175,13 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
   const lambdaA = lambdaGolsCopa(mA.atq, mB.def), lambdaB = lambdaGolsCopa(mB.atq, mA.def);
   const nA = poisson(lambdaA, copaRng);
   const nB = poisson(lambdaB, copaRng);
-  const dA = distribuirGolsCopa(nA, selA, copaRng);
-  const dB = distribuirGolsCopa(nB, selB, copaRng);
+  const dA = distribuirGolsCopa(nA, selA, copaRng, true); // mata-mata: lendas decisivas pesam mais
+  const dB = distribuirGolsCopa(nB, selB, copaRng, true);
   // Prorrogação (30 min — pre-gerada, só usada se empate aos 90)
   const etA = poisson(lambdaGolsCopa(mA.atq, mB.def) * 0.33, copaRng);
   const etB = poisson(lambdaGolsCopa(mB.atq, mA.def) * 0.33, copaRng);
-  const dEtA = distribuirGolsCopa(etA, selA, copaRng);
-  const dEtB = distribuirGolsCopa(etB, selB, copaRng);
+  const dEtA = distribuirGolsCopa(etA, selA, copaRng, true);
+  const dEtB = distribuirGolsCopa(etB, selB, copaRng, true);
 
   const eventos = [];
   const addGols = (dist, sel, time, minMin, minMax) => {
@@ -6150,6 +6191,10 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
         let narrativa = null;
         if (jog === 'Diego Maradona' && (jogo.b === 'ing1966' || jogo.b === 'ing1990')) {
           narrativa = copaRng() < 0.5 ? '🖐️ A MÃO DE DEUS!' : '⚽ O GOL DO SÉCULO!';
+        } else if (LENDAS_DECISIVAS.has(jog) && NARRATIVAS_DECISIVO[jog] && copaRng() < 0.5) {
+          // Toda partida gerada aqui é mata-mata — lenda decisiva cresce na hora que importa.
+          const nd = NARRATIVAS_DECISIVO[jog];
+          narrativa = nd[Math.floor(copaRng() * nd.length)];
         } else {
           // Dispara para qualquer jogador com narrativa própria (apelidos), tenha trait lenda ou não
           const ns = NARRATIVAS_LENDA[jog];
@@ -6291,6 +6336,7 @@ function finalizarRodadaBracketLive() {
     const golsReaisBkt = golsPorJogadorDaPartida(p);
     p.golsDist = golsReaisBkt;
     jogo.gols = golsReaisBkt;
+    jogo.golsEventos = golsEventosDaPartida(p); // replay textual de gols
     Object.values(golsReaisBkt).forEach(m => {
       Object.entries(m).forEach(([n, c]) => { copa.artilheiros[n] = (copa.artilheiros[n]||0) + c; });
     });
@@ -6436,6 +6482,28 @@ function elegerTitulosDaCopa() {
   }
   copa.titulosDaCopa = { maoDeAlface, zebraOficial };
 }
+// Seleção da Copa: melhor onze por posição, agregando o desempenho de TODOS os titulares de
+// TODOS os 48 times ao longo da copa inteira (OVR base + gols + vezes eleito craque da partida).
+// Não é um "onze real" de nenhum time — é um ranking cross-copa, tipo Bola de Ouro da posição.
+function elegerSelecaoDaCopa() {
+  const candidatos = [];
+  Object.values(copa.selMap).forEach(sel => {
+    sel.jogadores.filter(j => j.titular).forEach(j => {
+      const gols = copa.artilheiros[j.nome] || 0;
+      const craqueVezes = copa.craques[j.nome] || 0;
+      const score = j.ovr + gols * 4 + craqueVezes * 8;
+      candidatos.push({ nome: j.nome, selId: sel.id, pos: j.pos, ovr: j.ovr, gols, craqueVezes, score });
+    });
+  });
+  const porPos = { GOL: [], DEF: [], MEI: [], ATA: [] };
+  candidatos.forEach(c => { if (porPos[c.pos]) porPos[c.pos].push(c); });
+  const QTD_POR_POS = { GOL: 1, DEF: 4, MEI: 3, ATA: 3 };
+  const selecao = {};
+  Object.keys(QTD_POR_POS).forEach(pos => {
+    selecao[pos] = [...porPos[pos]].sort((a, b) => b.score - a.score).slice(0, QTD_POR_POS[pos]);
+  });
+  copa.selecaoDaCopa = selecao;
+}
 // Auxiliar: avança rodada no bracket sem simular
 function avancarRodadaBracketCopa(copa, rodada) {
   const bkt = copa.bracket;
@@ -6443,6 +6511,7 @@ function avancarRodadaBracketCopa(copa, rodada) {
   if (rodada==='final_3') {
     copa.campeao = bkt.final?.vencedorId||null; copa.faseAtual='fim'; bkt.rodadaAtual='fim';
     elegerTitulosDaCopa();
+    elegerSelecaoDaCopa();
     salvarHistoricoCopa();
     if (ehMinhaSel(copa.campeao)) tocarSomVitoriaCopa();
     return;
@@ -6575,14 +6644,19 @@ function regenerarSegundaMetadeCore(partida) {
   const nB2 = poisson(lambdaGolsCopa(mB.atq, mA.def) * 0.55, copaRng);
   partida.finalA = partida.golsA + nA2;
   partida.finalB = partida.golsB + nB2;
-  const dA2 = distribuirGolsCopa(nA2, selA, copaRng);
-  const dB2 = distribuirGolsCopa(nB2, selB, copaRng);
+  const dA2 = distribuirGolsCopa(nA2, selA, copaRng, !!partida.eliminatorio);
+  const dB2 = distribuirGolsCopa(nB2, selB, copaRng, !!partida.eliminatorio);
   const addGols = (dist, sel, time) => {
     Object.entries(dist).forEach(([jog, qtd]) => {
       for (let i = 0; i < qtd; i++) {
         const min = Math.floor(copaRng() * 44) + 46;
         let narrativa = null;
-        { const ns = NARRATIVAS_LENDA[jog]; if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)]; }
+        if (partida.eliminatorio && LENDAS_DECISIVAS.has(jog) && NARRATIVAS_DECISIVO[jog] && copaRng() < 0.5) {
+          const nd = NARRATIVAS_DECISIVO[jog];
+          narrativa = nd[Math.floor(copaRng() * nd.length)];
+        } else {
+          const ns = NARRATIVAS_LENDA[jog]; if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)];
+        }
         partida.eventos.push({ tipo:'gol', time, minuto:min, jogador:jog, narrativa });
       }
     });
@@ -6787,6 +6861,16 @@ function abrirCopaPlantel(selId) {
       <span style="font-size:13px;flex-shrink:0;">📋</span>
       <div style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--areia);">Ver Grupos da Copa</div>
       <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span></div>` : '';
+
+  // Botão Ver Campanha — só aparece depois que essa seleção já jogou ao menos 1 partida
+  const vcEl = document.getElementById('plVerCampanha');
+  if (vcEl) {
+    const jaJogou = copa && (copa.jornadaAtual > 0 || (copa.bracket && copa.faseAtual !== 'grupos'));
+    vcEl.innerHTML = jaJogou ? `<div onclick="mostrarCampanhaCopaOverlay('${selId}')" style="margin-top:8px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 11px;display:flex;align-items:center;gap:9px;">
+      <span style="font-size:13px;flex-shrink:0;">📈</span>
+      <div style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--areia);">Ver Campanha</div>
+      <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span></div>` : '';
+  }
 
   // Colorir painel de táticas (lado direito)
   const dir = document.querySelector('#copaPlantel .plantel-dir');
@@ -7011,7 +7095,9 @@ function renderCopaGrupos() {
       const dotA = sA ? `<span style="width:7px;height:7px;border-radius:50%;background:${sA.cor1||'#888'};flex-shrink:0;display:inline-block;margin-right:3px;"></span>` : '';
       const dotB = sB ? `<span style="width:7px;height:7px;border-radius:50%;background:${sB.cor1||'#888'};flex-shrink:0;display:inline-block;margin-left:3px;"></span>` : '';
       const nA = sA ? sA.pais : j.a, nB = sB ? sB.pais : j.b;
-      return `<div class="grupo-jogo-l">
+      const temReplay = j.golsEventos && j.golsEventos.length > 0;
+      const replayAttrs = temReplay ? ` data-grupo-id="${g.id}" data-jogo-idx="${g.jogos.indexOf(j)}" style="cursor:pointer;"` : '';
+      return `<div class="grupo-jogo-l"${replayAttrs}>
         <span class="rj-eq">${dotA}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nA}</span></span>
         <span class="rj-sc">${j.golsA}–${j.golsB}</span>
         <span class="rj-eq rj-eq-dir"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nB}</span>${dotB}</span>
@@ -7031,6 +7117,14 @@ function renderCopaGrupos() {
   }).join('');
   // Clicar numa seleção da tabela de grupos abre o elenco dela
   grid.querySelectorAll('[data-ver-sel]').forEach(el => el.addEventListener('click', () => mostrarPlantelSelecao(el.dataset.verSel)));
+  // Clicar num resultado (com gols) abre o replay textual da partida
+  grid.querySelectorAll('[data-jogo-idx]').forEach(el => el.addEventListener('click', () => {
+    const g = copa.grupos.find(gr => gr.id === el.dataset.grupoId);
+    const jogo = g && g.jogos[Number(el.dataset.jogoIdx)];
+    if (!jogo) return;
+    const sA = copa.selMap[jogo.a], sB = copa.selMap[jogo.b];
+    mostrarReplayGolsCopa(jogo, sA ? nomeCurtoSel(sA) : jogo.a, sB ? nomeCurtoSel(sB) : jogo.b);
+  }));
 }
 
 function bktSelRow(sel, selId, gols, isWin, penStr) {
@@ -7064,7 +7158,9 @@ function bktCardHTML(j) {
   const c1 = selA?.cor1 || '#0d2e1a';
   const c2 = selB?.cor1 || '#0d2e1a';
   const gradBg = `background:linear-gradient(170deg,${c1}28 0%,#0a1f12 38%,#0a1f12 62%,${c2}28 100%);`;
-  return `<div class="bkt-card${minha?' minha':''}" style="${gradBg}">
+  const temReplay = j.golsEventos && j.golsEventos.length > 0;
+  const replayAttrs = temReplay ? ` data-replay-a="${j.a}" data-replay-b="${j.b}"` : '';
+  return `<div class="bkt-card${minha?' minha':''}"${replayAttrs} style="${gradBg}${temReplay?'cursor:pointer;':''}">
     ${bktSelRow(selA, j.a, sim?j.golsA:null, winA, penA)}
     <div style="height:1px;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.1) 30%,rgba(255,255,255,.1) 70%,transparent 100%);"></div>
     ${bktSelRow(selB, j.b, sim?j.golsB:null, winB, penB)}
@@ -7426,6 +7522,15 @@ function golsPorJogadorDaPartida(p) {
     if (marcou && ev.jogador && ev.jogador !== '?' && porLado[ev.time]) porLado[ev.time][ev.jogador] = (porLado[ev.time][ev.jogador] || 0) + 1;
   });
   return { [p.a]: porLado.A, [p.b]: porLado.B };
+}
+// Lista compacta (minuto/lado/jogador/narrativa) dos gols realmente processados na partida —
+// persistida em jogo.golsEventos nos 3 pontos de finalização, alimenta o replay textual de gols.
+function golsEventosDaPartida(p) {
+  return (p.eventos || []).slice(0, p.eventoIdx || 0)
+    .filter(ev => (ev.tipo === 'gol' || !ev.tipo) || (ev.tipo === 'penalti' && ev.resultado === 'gol'))
+    .filter(ev => ev.jogador && ev.jogador !== '?')
+    .map(ev => ({ minuto: ev.minuto, time: ev.time, jogador: ev.jogador, narrativa: ev.narrativa || null, pen: ev.tipo === 'penalti' }))
+    .sort((a, b) => a.minuto - b.minuto);
 }
 // Badges persistentes por lado: expulsões, lesões e amarelos acumulados na partida
 function badgesStatusLive(p, lado) {
@@ -8283,6 +8388,7 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     const golsReaisPen = golsPorJogadorDaPartida(partida);
     partida.golsDist = golsReaisPen;
     jogo.gols = golsReaisPen;
+    jogo.golsEventos = golsEventosDaPartida(partida); // replay textual de gols
     Object.values(golsReaisPen).forEach(m => {
       Object.entries(m).forEach(([n, c]) => { copa.artilheiros[n] = (copa.artilheiros[n]||0) + c; });
     });
@@ -8352,6 +8458,7 @@ function finalizarJornada() {
     const golsReais = golsPorJogadorDaPartida(p);
     p.golsDist = golsReais;
     jogo.gols = golsReais;
+    jogo.golsEventos = golsEventosDaPartida(p); // replay textual de gols
     Object.values(golsReais).forEach(m => {
       Object.entries(m).forEach(([nome, n]) => { copa.artilheiros[nome] = (copa.artilheiros[nome]||0) + n; });
     });
@@ -8812,6 +8919,14 @@ function renderCopaPainel(selId) {
             <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span></div>`;
         })()}
         ${(() => {
+          const jaJogou = copa.jornadaAtual > 0 || (copa.bracket && copa.faseAtual !== 'grupos');
+          if (!jaJogou) return '';
+          return `<div onclick="mostrarCampanhaCopaOverlay('${selId}')" style="margin-top:8px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 11px;display:flex;align-items:center;gap:9px;">
+            <span style="font-size:13px;flex-shrink:0;">📈</span>
+            <div style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--areia);">Ver Campanha</div>
+            <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span></div>`;
+        })()}
+        ${(() => {
           const _showBtn = (!liveTimer && copa.faseAtual==='grupos' && copa.jornadaAtual<3) || (!liveTimer && copa.faseAtual!=='grupos' && copa.faseAtual!=='fim' && copa.bracket);
           if (!_showBtn) return '';
           // Online, no mata-mata, com a seleção já eliminada: só acompanha, não trava quem segue vivo.
@@ -9008,6 +9123,7 @@ function renderCopaBracket() {
           if (!blocos.length) return '';
           return `<div style="display:flex;gap:12px;justify-content:center;margin-top:8px;flex-wrap:wrap;border-top:1px solid rgba(217,164,74,.2);padding-top:8px;">${blocos.join('')}</div>`;
         })()}
+        ${copa.selecaoDaCopa ? `<div onclick="mostrarSelecaoDaCopaOverlay()" style="margin-top:10px;cursor:pointer;text-align:center;font-size:11px;font-weight:800;color:#f0c040;border-top:1px solid rgba(217,164,74,.2);padding-top:8px;">🌟 Ver Melhor Onze da Copa ›</div>` : ''}
       </div>`;
     }
   }
@@ -9020,6 +9136,13 @@ function renderCopaBracket() {
       <div class="bracket-half dir">${colDirHTML}</div>
     </div></div></div>`;
   ajustarZoomBracket();
+  // Clicar num card decidido (com gols registrados) abre o replay textual da partida
+  document.querySelectorAll('#copaBracketRounds [data-replay-a]').forEach(el => el.addEventListener('click', () => {
+    const jogo = acharJogoBracketPorIds(el.dataset.replayA, el.dataset.replayB);
+    if (!jogo) return;
+    const sA = copa.selMap[jogo.a], sB = copa.selMap[jogo.b];
+    mostrarReplayGolsCopa(jogo, sA ? nomeCurtoSel(sA) : jogo.a, sB ? nomeCurtoSel(sB) : jogo.b);
+  }));
 }
 
 // Auto-zoom: escala o chaveamento para caber inteiro na tela (sem rolagem horizontal).
@@ -9220,6 +9343,107 @@ function mostrarArtilheirosCopaOverlay() {
 }
 function mostrarRegrasCopaOverlay() {
   abrirOverlayGenericoCopa('📖', 'Regras & Formato', construirRegrasCopaHTML(), 920);
+}
+// Replay textual dos gols de uma partida já encerrada (jogo.golsEventos, persistido nos 3 pontos
+// de finalização: finalizarJornada, finalizarRodadaBracketLive, finalizarShootout).
+function mostrarReplayGolsCopa(jogo, nomeA, nomeB) {
+  const eventos = jogo.golsEventos || [];
+  const penTxt = jogo.pens ? ` (pên. ${jogo.pens.golsA}x${jogo.pens.golsB})` : '';
+  const linhas = eventos.length ? eventos.map(ev => {
+    const nomeTime = ev.time === 'A' ? nomeA : nomeB;
+    const penMarca = ev.pen ? ' 🎯' : '';
+    const narrTxt = ev.narrativa ? `<div style="font-size:10.5px;color:#f0c040;margin-top:3px;">${ev.narrativa}</div>` : '';
+    return `<div style="padding:9px 11px;border-bottom:1px solid rgba(255,255,255,.06);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;font-weight:900;color:#eab308;flex-shrink:0;width:32px;">${ev.minuto}'</span>
+        <span style="flex:1;font-size:12.5px;color:var(--areia);">⚽${penMarca} <b>${ev.jogador}</b> <span style="color:var(--cinza);font-size:10.5px;">(${nomeTime})</span></span>
+      </div>
+      ${narrTxt}
+    </div>`;
+  }).join('') : `<p style="text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;">Sem gols nesta partida.</p>`;
+  abrirOverlayGenericoCopa('⚽', `${nomeA} ${jogo.golsA}×${jogo.golsB}${penTxt} ${nomeB}`, `<div style="max-height:56vh;overflow-y:auto;">${linhas}</div>`, 480);
+}
+// Acha o jogo do bracket (qualquer rodada) que envolve exatamente esses dois ids, na ordem certa.
+function acharJogoBracketPorIds(idA, idB) {
+  const bkt = copa.bracket; if (!bkt) return null;
+  const todos = [
+    ...(bkt.r32 || []), ...(bkt.r16 || []), ...(bkt.qf || []), ...(bkt.sf || []),
+    ...(bkt.terceiro ? [bkt.terceiro] : []), ...(bkt.final ? [bkt.final] : []),
+  ];
+  return todos.find(j => j.a === idA && j.b === idB) || null;
+}
+// Campanha da seleção: todas as partidas já jogadas por esse time (grupos + mata-mata), na ordem
+// em que aconteceram — usa só dado que já existe em copa.grupos/copa.bracket, sem persistir nada novo.
+function mostrarCampanhaCopaOverlay(selId) {
+  if (!copa) return;
+  const sel = copa.selMap[selId];
+  const nomeMeu = sel ? nomeCurtoSel(sel) : selId;
+  const linhas = [];
+  (copa.grupos || []).forEach(g => {
+    g.jogos.forEach(j => {
+      if (j.golsA === null || (j.a !== selId && j.b !== selId)) return;
+      const souA = j.a === selId;
+      const oponId = souA ? j.b : j.a;
+      const selOp = copa.selMap[oponId];
+      const meusGols = souA ? j.golsA : j.golsB, golsOp = souA ? j.golsB : j.golsA;
+      linhas.push({ fase: `Grupo ${g.id}`, oponente: selOp ? nomeCurtoSel(selOp) : oponId, meusGols, golsOp, pens: null });
+    });
+  });
+  const FASE_LABEL = { r32: '16 Avos', r16: 'Oitavas', qf: 'Quartas', sf: 'Semifinal', terceiro: '3º Lugar', final: 'Final' };
+  const bkt = copa.bracket;
+  if (bkt) {
+    [['r32', bkt.r32], ['r16', bkt.r16], ['qf', bkt.qf], ['sf', bkt.sf], ['terceiro', bkt.terceiro ? [bkt.terceiro] : []], ['final', bkt.final ? [bkt.final] : []]]
+      .forEach(([key, jogos]) => (jogos || []).forEach(j => {
+        if (j.golsA === null || (j.a !== selId && j.b !== selId)) return;
+        const souA = j.a === selId;
+        const oponId = souA ? j.b : j.a;
+        const selOp = copa.selMap[oponId];
+        const meusGols = souA ? j.golsA : j.golsB, golsOp = souA ? j.golsB : j.golsA;
+        const pens = j.pens ? (souA ? `${j.pens.golsA}x${j.pens.golsB}` : `${j.pens.golsB}x${j.pens.golsA}`) : null;
+        linhas.push({ fase: FASE_LABEL[key] || key, oponente: selOp ? nomeCurtoSel(selOp) : oponId, meusGols, golsOp, pens });
+      }));
+  }
+  const corpo = linhas.length ? linhas.map(l => {
+    const venceu = l.meusGols > l.golsOp || (l.meusGols === l.golsOp && l.pens && Number(l.pens.split('x')[0]) > Number(l.pens.split('x')[1]));
+    const empatou = l.meusGols === l.golsOp && !l.pens;
+    const cor = venceu ? '#22c55e' : empatou ? '#eab308' : '#ef4444';
+    const resultado = venceu ? 'V' : empatou ? 'E' : 'D';
+    const penTxt = l.pens ? ` (pên. ${l.pens})` : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);">
+      <span style="width:20px;height:20px;border-radius:50%;background:${cor}22;border:1px solid ${cor};color:${cor};font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${resultado}</span>
+      <span style="font-size:9.5px;color:var(--cinza);text-transform:uppercase;letter-spacing:.4px;width:64px;flex-shrink:0;">${l.fase}</span>
+      <span style="flex:1;font-size:12.5px;color:var(--areia);">vs ${l.oponente}</span>
+      <span style="font-size:12px;font-weight:900;color:var(--areia);">${l.meusGols}×${l.golsOp}${penTxt}</span>
+    </div>`;
+  }).join('') : `<p style="text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;">Nenhuma partida disputada ainda.</p>`;
+  abrirOverlayGenericoCopa('📈', `Campanha — ${nomeMeu}`, `<div style="max-height:56vh;overflow-y:auto;">${corpo}</div>`, 480);
+}
+// Exibe a Seleção da Copa (copa.selecaoDaCopa, calculada por elegerSelecaoDaCopa no fim da copa).
+function mostrarSelecaoDaCopaOverlay() {
+  if (!copa || !copa.selecaoDaCopa) return;
+  const POS_LABEL = { GOL: 'Goleiro', DEF: 'Zaga/Laterais', MEI: 'Meio-campo', ATA: 'Ataque' };
+  const POS_ICON = { GOL: '🧤', DEF: '🛡️', MEI: '⚙️', ATA: '⚔️' };
+  const corpo = ['GOL', 'DEF', 'MEI', 'ATA'].map(pos => {
+    const jogadores = copa.selecaoDaCopa[pos] || [];
+    if (!jogadores.length) return '';
+    const linhas = jogadores.map(c => {
+      const sel = copa.selMap[c.selId];
+      const nomeTime = sel ? nomeCurtoSel(sel) : c.selId;
+      const extras = [c.gols ? `⚽ ${c.gols}` : '', c.craqueVezes ? `⭐ ${c.craqueVezes}x craque` : ''].filter(Boolean).join(' · ');
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);">
+        <span style="flex:1;min-width:0;">
+          <div style="font-size:12.5px;font-weight:700;color:var(--areia);">${c.nome}</div>
+          <div style="font-size:9.5px;color:var(--cinza);">${nomeTime}${extras ? ' · ' + extras : ''}</div>
+        </span>
+        <span style="font-family:monospace;color:#eab308;font-weight:900;font-size:12px;">${c.ovr}</span>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;color:#f0c040;padding:4px 10px;">${POS_ICON[pos]} ${POS_LABEL[pos]}</div>
+      ${linhas}
+    </div>`;
+  }).join('');
+  abrirOverlayGenericoCopa('🌟', 'Melhor Onze da Copa', `<div style="max-height:60vh;overflow-y:auto;">${corpo}</div>`, 480);
 }
 
 // Fantasmas / Revanche: registra quem eliminou seu time no mata-mata desta copa, pra avisar se
