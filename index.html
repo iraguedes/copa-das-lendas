@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '29'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '30'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1199,7 +1199,6 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-shrink:0;">
       <span style="font-size:12px;color:var(--cinza);flex-shrink:0;">Dificuldade:</span>
       <div id="copaDificuldadeRow" style="display:flex;gap:6px;">
-        <button type="button" class="secondary modo-sel-btn dif-btn" data-dif="facil">Fácil</button>
         <button type="button" class="secondary modo-sel-btn dif-btn ativo" data-dif="normal">Normal</button>
         <button type="button" class="secondary modo-sel-btn dif-btn" data-dif="dificil">Difícil</button>
       </div>
@@ -1681,7 +1680,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v29</div>
+  <div class="rodapezinho">v30</div>
 </div>
 
 <script>
@@ -6179,6 +6178,7 @@ function iniciarRodadaBracketLive() {
 }
 
 function finalizarRodadaBracketLive() {
+  if (livePartidas.some(p => p.minha)) tocarSomApitoFinalCopa();
   // Cura lesões e desconta suspensões que já estavam ativas ANTES desta rodada — o jogador
   // acabou de CUMPRIR a pendência ficando de fora da partida que só agora terminou. Tem que
   // rodar ANTES de processar os eventos desta rodada (abaixo), senão uma expulsão/lesão NOVA
@@ -6427,7 +6427,7 @@ function forcaComEsquema(atq, def, selId) {
   return { atq: atq * (1 + e.a / 100) * (1 + entr), def: def * (1 + e.d / 100) * (1 + entr) };
 }
 
-const DIFICULDADE_MULT = { facil: 0.90, normal: 1, dificil: 1.12 };
+const DIFICULDADE_MULT = { normal: 1, dificil: 1.12 };
 // Aplica o seletor de dificuldade (só modo local — online fica sempre neutro/justo pra
 // não favorecer nenhum jogador humano da sala): ajusta a força do lado CONTROLADO POR CPU
 // quando exatamente um dos dois times é humano. CPU vs CPU e humano vs humano ficam neutros.
@@ -8120,6 +8120,7 @@ function iniciarShootoutInterativo(dadosTie, callback) {
 }
 
 function finalizarJornada() {
+  if (livePartidas.some(p => p.minha)) tocarSomApitoFinalCopa();
   // Cura lesões e desconta suspensões que já estavam ativas ANTES desta partida — ou seja, o
   // jogador acabou de CUMPRIR a pendência ficando de fora da partida que só agora terminou.
   // Isso tem que rodar ANTES de processar os eventos desta partida (abaixo): senão uma
@@ -9349,7 +9350,7 @@ let copaSelecaoEscolhida = null;
 let copaEsquema = '4-4-2';
 let jogadoresCopa = [];    // [{selId, esquema}] acumulado antes de iniciar
 let copaNumJogadores = 1;  // quantos jogadores humanos na Copa
-let copaDificuldadeEscolhida = 'normal'; // 'facil' | 'normal' | 'dificil' — só afeta modo local (ver aplicarDificuldadeCopa)
+let copaDificuldadeEscolhida = 'normal'; // 'normal' | 'dificil' — só afeta modo local (ver aplicarDificuldadeCopa)
 let copaPlayerAtual = 0;   // índice do jogador configurando agora (0-based)
 let copaRandomQueue = [];  // seleções pré-sorteadas no modo aleatório
 let copaRandomSeed = null; // seed do tmpCopa no modo aleatório (para recriar com mesmos times)
@@ -9401,16 +9402,30 @@ function tocarSomGolCopa() {
     noise.connect(bandpass); bandpass.connect(noiseGain); noiseGain.connect(ctx.destination);
     noise.start(t0); noise.stop(t0 + dur);
   } catch (e) {}
-  // Camada 2: arpejo comemorativo (o som original, mantido como reforço melódico)
-  [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => tocarTomCopa(ctx, freq, t0 + i * 0.09, 0.22, 'triangle', 0.18));
-  // Camada 3: narração "Goool!" via Web Speech API — sem precisar de nenhum arquivo de áudio.
+}
+// Apito de fim de jogo: 2 bipes curtos + 1 prolongado (padrão clássico de apito final), com
+// leve tremolo pra não soar como um bipe puro de sintetizador.
+function tocarSomApitoFinalCopa() {
+  const ctx = getAudioCtxCopa(); if (!ctx) return;
+  const t0 = ctx.currentTime;
   try {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel(); // corta narração de gol anterior se ainda estiver falando
-      const u = new SpeechSynthesisUtterance('Goooolaço!');
-      u.lang = 'pt-BR'; u.rate = 0.8; u.pitch = 1.25; u.volume = 0.85;
-      speechSynthesis.speak(u);
-    }
+    [{ off: 0, dur: 0.16 }, { off: 0.22, dur: 0.16 }, { off: 0.44, dur: 0.5 }].forEach(({ off, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(2800, t0 + off);
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      lfo.frequency.value = 28; lfoGain.gain.value = 60;
+      lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+      gain.gain.setValueAtTime(0, t0 + off);
+      gain.gain.linearRampToValueAtTime(0.16, t0 + off + 0.01);
+      gain.gain.setValueAtTime(0.16, t0 + off + dur - 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + off + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t0 + off); lfo.start(t0 + off);
+      osc.stop(t0 + off + dur + 0.02); lfo.stop(t0 + off + dur + 0.02);
+    });
   } catch (e) {}
 }
 function tocarSomCartaoVermelhoCopa() {
@@ -9430,7 +9445,6 @@ function alternarSomCopa() {
   const btn = document.getElementById('btnMuteSomCopa');
   if (btn) btn.textContent = somCopaAtivado ? '🔊' : '🔇';
   if (somCopaAtivado) getAudioCtxCopa(); // inicia/retoma o contexto já dentro do próprio gesto de clique
-  else { try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
 }
 
 function luminanciaCor(hex) {
