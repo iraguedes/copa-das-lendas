@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '18'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '19'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -636,9 +636,9 @@
   .live-banner.fim{background:#22c55e;color:#0a2415;}
   /* Copa nav elegante */
   #copaJogo{color:var(--areia);}
-  #copaJogo>.abas-mercado{background:linear-gradient(180deg,#0c2013 0%,#081710 100%);border-radius:14px;border:1px solid rgba(217,164,74,.16);padding:6px 8px;gap:4px;margin-bottom:16px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);}
-  #copaJogo>.abas-mercado button{background:transparent;color:rgba(232,245,233,.45);border:none;border-radius:9px;font-size:10.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:8px 16px;transition:all .15s ease;}
-  #copaJogo>.abas-mercado button:hover{color:rgba(232,245,233,.9);background:rgba(255,255,255,.06);}
+  #copaJogo>.abas-mercado, #copaPlantelMenu{background:linear-gradient(180deg,#0c2013 0%,#081710 100%);border-radius:14px;border:1px solid rgba(217,164,74,.16);padding:6px 8px;gap:4px;margin-bottom:16px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);display:flex;}
+  #copaJogo>.abas-mercado button, #copaPlantelMenu button{background:transparent;color:rgba(232,245,233,.45);border:none;border-radius:9px;font-size:10.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:8px 16px;transition:all .15s ease;}
+  #copaJogo>.abas-mercado button:hover, #copaPlantelMenu button:hover{color:rgba(232,245,233,.9);background:rgba(255,255,255,.06);}
   #copaJogo>.abas-mercado button.ativa{color:#0a1a10;background:linear-gradient(135deg,#f0c040 0%,#d9a44a 100%);box-shadow:0 2px 10px rgba(217,164,74,.35);}
   #copaJogo>.abas-mercado #btnSairCopa{color:rgba(232,245,233,.28);margin-left:auto;font-size:9.5px;padding:7px 13px;border:1px solid rgba(255,255,255,.08);border-radius:8px;}
   #copaJogo>.abas-mercado #btnSairCopa:hover{color:#fca5a5;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);}
@@ -1203,6 +1203,11 @@
 
   <!-- TELA: COPA PLANTEL -->
   <div id="copaPlantel" class="hidden" style="padding:16px 16px 60px;">
+    <div id="copaPlantelMenu">
+      <button type="button" onclick="mostrarGruposCopaOverlay()">📋 Grupos</button>
+      <button type="button" onclick="mostrarArtilheirosCopaOverlay()">⚽ Artilheiros</button>
+      <button type="button" onclick="mostrarRegrasCopaOverlay()">📖 Regras</button>
+    </div>
     <div class="plantel-wrap">
       <div class="plantel-esq">
         <div id="plHeaderCard" style="border-radius:10px;padding:12px 14px;margin-bottom:10px;">
@@ -1270,7 +1275,7 @@
     </div>
     <div id="painelCopaLive" class="hidden">
       <div style="text-align:center;padding:10px 0 6px;">
-        <div style="font-size:11px;font-weight:600;letter-spacing:1px;color:var(--cinza);text-transform:uppercase;margin-bottom:4px;" id="copaLiveTitulo">Jornada 1 de 3 — em andamento</div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:1px;color:var(--cinza);text-transform:uppercase;margin-bottom:4px;" id="copaLiveTitulo">Partida 1 da Fase de Grupos — em andamento</div>
         <div class="relogio-jogo" id="copaLiveMin" style="font-size:36px;">0'</div>
         <div class="barra-progresso-jogo" style="margin:4px 8px 0;"><div class="barra-progresso-fill" id="copaLiveBar"></div></div>
       </div>
@@ -1282,7 +1287,7 @@
       <div class="copa-fase-bar">
         <h3 id="copaFaseTitulo">Fase de Grupos</h3>
         <div style="display:flex;gap:8px;">
-          <button id="btnSimularFaseCopa" type="button" class="pequeno">▶ Iniciar Jornada 1</button>
+          <button id="btnSimularFaseCopa" type="button" class="pequeno">▶ Jogar Partida 1</button>
           <button id="btnMontarBracket" type="button" class="pequeno hidden">▶ Montar Mata-Mata</button>
         </div>
       </div>
@@ -1664,7 +1669,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v18</div>
+  <div class="rodapezinho">v19</div>
 </div>
 
 <script>
@@ -5860,6 +5865,7 @@ function iniciarStatusJogadores(selMap) {
   Object.values(selMap).forEach(sel => {
     sel.jogadores.forEach(j => {
       if (j.cansaco === undefined) j.cansaco = 100;
+      if (j.cansaco > 100) j.cansaco = 100; // sana estados antigos que passaram do teto
       if (j.lesionado === undefined) j.lesionado = false;
       if (j.amarelos === undefined) j.amarelos = 0;
       if (j.suspenso === undefined) j.suspenso = 0;
@@ -6160,7 +6166,7 @@ function finalizarRodadaBracketLive() {
       // Recuperação entre rodadas do bracket: cura lesões, desconta suspensões, auto-escala
       Object.values(copa.selMap).forEach(sel => {
         sel.jogadores.forEach(j => {
-          if (j.lesionado) { j.lesionado = false; j.cansaco = Math.max(25, (j.cansaco||0) + 20); }
+          if (j.lesionado) { j.lesionado = false; j.cansaco = Math.min(100, Math.max(25, (j.cansaco||0) + 20)); }
           if (j.suspenso > 0) j.suspenso--;
           // Recuperação natural entre rodadas do mata-mata
           j.cansaco = Math.min(100, (j.cansaco||0) + 12);
@@ -6750,10 +6756,10 @@ function renderCopaGrupos() {
     btnMonta.style.display = copa.faseAtual === 'grupos' ? '' : 'none';
   } else {
     btnSim.style.display = '';
-    btnSim.textContent = j === 0 ? '▶ Iniciar Jornada 1' : `▶ Iniciar Jornada ${j + 1}`;
+    btnSim.textContent = j === 0 ? '▶ Jogar Partida 1' : `▶ Jogar Partida ${j + 1}`;
     btnMonta.style.display = 'none';
   }
-  document.getElementById('copaFaseTitulo').textContent = todasSimuladas ? 'Fase de Grupos — Concluída' : `Fase de Grupos — Jornada ${Math.min(j + 1, 3)}/3`;
+  document.getElementById('copaFaseTitulo').textContent = todasSimuladas ? 'Fase de Grupos — Concluída' : `Fase de Grupos — Partida ${Math.min(j + 1, 3)} de 3`;
 
   const POS_BG  = ['#22c55e','#eab308','#6b7a74','#ef4444'];
   const POS_CLR = ['#000',   '#000',   '#fff',   '#fff'];
@@ -7105,7 +7111,7 @@ function iniciarLiveGrid() {
 function atualizarClockLive() {
   const min = liveMinuto;
   const maxMin = liveBracketEmProrrogacao ? 120 : 90;
-  const displayMin = min >= maxMin ? `${maxMin}'` : (liveBracketEmProrrogacao && min > 90 ? `${min}' ET` : `${min}'`);
+  const displayMin = min >= maxMin ? `${maxMin}'` : `${min}'`; // sem "ET" — o título já mostra PRORROGAÇÃO
   document.getElementById('copaLiveMin').textContent = displayMin;
   document.getElementById('copaLiveBar').style.width = Math.min((min / maxMin) * 100, 100) + '%';
 }
@@ -7308,6 +7314,12 @@ function tickLive() {
         setTimeout(() => banner.classList.add('hidden'), 3000);
         document.getElementById('copaLiveTitulo').textContent =
           document.getElementById('copaLiveTitulo').textContent.replace('ao vivo','⏱️ PRORROGAÇÃO');
+        // Sem time humano na prorrogação: acelera o relógio (2x) — só o ritmo muda, o resultado é o mesmo
+        const humanaNaET = empatadas.some(p => ehMinhaSel(p.a) || ehMinhaSel(p.b));
+        if (!humanaNaET && liveTimer) {
+          clearInterval(liveTimer);
+          liveTimer = setInterval(tickLive, Math.max(60, Math.round(MS_MIN / 2)));
+        }
         return;
       }
       clearInterval(liveTimer); liveTimer = null;
@@ -7567,7 +7579,10 @@ function iniciarShootoutInterativo(dadosTie, callback) {
   const selHum = copa.selMap[isMeuA ? jogo.a : jogo.b];
   const posOrd = { GOL:0, DEF:1, MEI:2, ATA:3 };
   const posL = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
-  const tit = [...(selHum?.jogadores||[]).filter(j=>j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4));
+  // Elegíveis: titulares em campo, sem quem foi expulso/lesionado NESTA partida
+  const foraDaPartida = new Set([...(partida.vermelhosA||[]), ...(partida.vermelhosB||[]), ...(partida.lesaoA||[]), ...(partida.lesaoB||[])]);
+  let tit = [...(selHum?.jogadores||[])].filter(j=>j.titular && !foraDaPartida.has(j.nome)).sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4));
+  if (!tit.length) tit = [...(selHum?.jogadores||[])].filter(j=>j.titular); // salvaguarda: nunca ficar sem batedor
   let humGols = 0, oppGols = 0, rodada = 0;
   const oppKicks = Array.from({length:20}, () => copaRng() < 0.76 ? 1 : 0);
   const log = [];
@@ -7576,40 +7591,61 @@ function iniciarShootoutInterativo(dadosTie, callback) {
   banner.textContent = '⚽ DISPUTA DE PÊNALTIS!';
   banner.className = 'live-banner intervalo'; banner.classList.remove('hidden');
 
-  const mostrarPicker = () => {
-    const maxRound = rodada < 5 ? 5 : rodada + 1;
-    const roundLabel = rodada < 5 ? `Rodada ${rodada+1} de 5` : `Morte Súbita — Bola ${rodada-4}`;
-    const logHtml = log.length ? `<div style="font-size:10px;color:var(--cinza);margin-bottom:6px;text-align:center;letter-spacing:.5px;">${log.join('  ')}</div>` : '';
-    const rows = tit.map(j => {
+  // Regra oficial: a ordem de TODOS os batedores é definida antes da 1ª cobrança — ninguém
+  // bate pela 2ª vez até que todo o time apto tenha batido uma vez (o ciclo se repete na
+  // morte súbita a partir do início da mesma ordem escolhida aqui).
+  let ordemBatedores = [];
+
+  const mostrarSelecaoOrdem = () => {
+    const restantes = tit.filter(j => !ordemBatedores.includes(j));
+    const linhaOrdem = ordemBatedores.length
+      ? `<div style="font-size:10px;color:var(--cinza);margin-bottom:7px;line-height:1.6;">${ordemBatedores.map((j,i)=>`<b style="color:#f0c040;">${i+1}ª</b> ${j.nome}`).join(' · ')}</div>`
+      : '';
+    const rows = restantes.map(j => {
       const t = j.traits||[];
       const star = t.includes('lenda') ? '<span style="color:#f0c040;">★</span> ' : '';
       const isPen = t.includes('pegadorPenalti'), isFin = t.includes('finalizador');
       const bg = isPen ? 'rgba(234,179,8,.15)' : 'rgba(255,255,255,.04)';
       const badge = isPen ? '<span class="trait-pen" style="margin-left:4px;">PEN 90%</span>'
                   : isFin ? '<span class="trait-fin" style="margin-left:4px;">FIN 83%</span>' : '<span style="color:var(--cinza);font-size:9px;margin-left:4px;">76%</span>';
-      return `<div class="sub-player" data-sht-nome="${j.nome.replace(/"/g,'&quot;')}" style="cursor:pointer;background:${bg};border-radius:5px;padding:4px 8px;display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+      return `<div class="sub-player" data-ord-nome="${j.nome.replace(/"/g,'&quot;')}" style="cursor:pointer;background:${bg};border-radius:5px;padding:4px 8px;display:flex;align-items:center;gap:8px;margin-bottom:2px;">
         <span style="color:var(--cinza);font-size:10px;width:14px;">${posL[j.pos]||j.pos}</span>
         <span style="flex:1;font-size:12px;color:var(--areia);">${star}${j.nome}</span>
         <span style="color:#eab308;font-family:monospace;font-size:11px;">${j.ovr}</span>${badge}
       </div>`;
     }).join('');
+    const completo = ordemBatedores.length >= tit.length;
+    subDiv.innerHTML = `<div class="sub-wrap" style="border:1px solid #eab308;">
+      <div style="font-size:11px;font-weight:900;color:#eab308;margin-bottom:4px;text-align:center;">Escolha a ordem dos batedores (${ordemBatedores.length}/${tit.length})</div>
+      <div style="font-size:10px;color:var(--cinza);text-align:center;margin-bottom:6px;">Toque na ordem em que cada um vai bater. Ninguém repete antes de todos baterem uma vez.</div>
+      ${linhaOrdem}
+      <div style="max-height:190px;overflow-y:auto;">${rows}</div>
+      <button id="btnConfirmarOrdemPen" type="button" class="pequeno" style="width:100%;margin-top:8px;${completo?'':'opacity:.35;pointer-events:none;'}">▶ Confirmar ordem e iniciar cobranças</button>
+    </div>`;
+    subDiv.classList.remove('hidden');
+    subDiv.querySelectorAll('[data-ord-nome]').forEach(el => {
+      el.addEventListener('click', () => {
+        const jogador = tit.find(j => j.nome === el.dataset.ordNome);
+        if (jogador && !ordemBatedores.includes(jogador)) { ordemBatedores.push(jogador); mostrarSelecaoOrdem(); }
+      });
+    });
+    const btnConf = document.getElementById('btnConfirmarOrdemPen');
+    if (btnConf) btnConf.addEventListener('click', () => { if (completo) processarChute(); });
+  };
+
+  const mostrarPlacarRodada = () => {
+    const roundLabel = rodada <= 5 ? `Rodada ${rodada} de 5` : `Morte Súbita — Volta ${Math.ceil((rodada-5)/ordemBatedores.length)+1}`;
+    const logHtml = log.length ? `<div style="font-size:10px;color:var(--cinza);margin-bottom:2px;text-align:center;letter-spacing:.3px;">${log[log.length-1]}</div>` : '';
     subDiv.innerHTML = `<div class="sub-wrap" style="border:1px solid #eab308;">
       <div style="font-size:11px;font-weight:900;color:#eab308;margin-bottom:4px;text-align:center;">${roundLabel}</div>
       <div style="font-size:16px;font-weight:900;color:var(--areia);text-align:center;margin-bottom:6px;">${humGols} × ${oppGols}</div>
       ${logHtml}
-      <div style="font-size:10px;color:var(--cinza);margin-bottom:5px;">Escolha o batedor:</div>
-      <div style="max-height:200px;overflow-y:auto;">${rows}</div>
     </div>`;
     subDiv.classList.remove('hidden');
-    subDiv.querySelectorAll('[data-sht-nome]').forEach(el => {
-      el.addEventListener('click', () => {
-        const jogador = tit.find(j => j.nome === el.dataset.shtNome);
-        processarChute(jogador);
-      });
-    });
   };
 
-  const processarChute = (jogador) => {
+  const processarChute = () => {
+    const jogador = ordemBatedores[rodada % ordemBatedores.length];
     const t = jogador?.traits||[];
     const taxa = t.includes('oRei') ? 0.94 : t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
                : t.includes('finalizador') ? 0.83 : t.includes('batedor') ? 0.81 : 0.76;
@@ -7617,13 +7653,14 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     const oppConv = oppKicks[rodada] === 1;
     if (humConv) humGols++;
     if (oppConv) oppGols++;
-    log.push(`R${rodada+1}: ${humConv?'⚽':'🧤'} ${oppConv?'⚽':'🧤'}`);
+    log.push(`${humConv?'⚽':'🧤'} ${jogador?.nome||'?'}  ×  ${oppConv?'⚽':'🧤'}`);
     rodada++;
+    mostrarPlacarRodada();
     const restam = Math.max(0, 5 - rodada);
     const fimAntecipado = rodada >= 5 || (rodada >= 3 && Math.abs(humGols - oppGols) > restam);
-    if (fimAntecipado && humGols !== oppGols) { setTimeout(finalizarShootout, 500); }
-    else if (rodada >= 5 && humGols !== oppGols) { setTimeout(finalizarShootout, 500); }
-    else { setTimeout(mostrarPicker, 700); }
+    if (fimAntecipado && humGols !== oppGols) { setTimeout(finalizarShootout, 900); }
+    else if (rodada >= 5 && humGols !== oppGols) { setTimeout(finalizarShootout, 900); }
+    else { setTimeout(processarChute, 900); }
   };
 
   const finalizarShootout = () => {
@@ -7652,7 +7689,7 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     setTimeout(() => { banner.classList.add('hidden'); callback(); }, 3500);
   };
 
-  mostrarPicker();
+  mostrarSelecaoOrdem();
 }
 
 function finalizarJornada() {
@@ -7729,7 +7766,7 @@ function finalizarJornada() {
     Object.values(copa.selMap).forEach(sel => {
       sel.jogadores.forEach(j => {
         // Lesão cura entre jornadas (mínimo de cansaço ao voltar)
-        if (j.lesionado) { j.lesionado = false; j.cansaco = Math.max(25, (j.cansaco||0) + 20); }
+        if (j.lesionado) { j.lesionado = false; j.cansaco = Math.min(100, Math.max(25, (j.cansaco||0) + 20)); }
         // Suspensão desconta 1 partida; se chegou a 0, player volta
         if (j.suspenso > 0) j.suspenso--;
       });
@@ -7761,7 +7798,7 @@ function finalizarJornada() {
     banner.className = 'live-banner'; banner.classList.remove('hidden');
     setTimeout(() => {
       banner.style.cssText = '';
-      banner.textContent = `✅ Jornada ${copa.jornadaAtual} concluída!`;
+      banner.textContent = `✅ Partida ${copa.jornadaAtual} da Fase de Grupos concluída!`;
       banner.className = 'live-banner fim';
       setTimeout(_prosseguirJornada, 1500);
     }, 3000);
@@ -8030,13 +8067,13 @@ function renderCopaPainel(selId) {
       t.includes('armador')       ? '<span class="trait-fin" style="background:#0369a1;padding:0 3px;">ARM</span>' : '',
     ].filter(Boolean).join('');
     // Status: cansaco, lesão, pendurado
-    const can = j.cansaco ?? 100;
+    const can = Math.min(100, j.cansaco ?? 100);
     const canColor = can >= 70 ? '#22c55e' : can >= 40 ? '#eab308' : '#ef4444';
     const statusIcons = [
       j.lesionado ? '<span title="Lesionado" style="color:#ef4444;font-size:12px;">🤕</span>' : '',
       j.amarelos > 0 ? '<span title="Pendurado" style="font-size:11px;">🟨</span>' : '',
     ].filter(Boolean).join('');
-    const canEl = `<span title="Cansaço: ${can}%" style="display:inline-flex;align-items:center;gap:2px;"><span style="width:5px;height:5px;border-radius:50%;background:${canColor};flex-shrink:0;display:inline-block;"></span><span style="font-size:8px;font-family:monospace;color:${canColor};font-weight:700;">${can}</span></span>`;
+    const canEl = `<span title="Vigor físico: ${can}/100 — cai a cada partida e recupera no descanso" style="display:inline-flex;align-items:center;gap:2px;"><span style="width:5px;height:5px;border-radius:50%;background:${canColor};flex-shrink:0;display:inline-block;"></span><span style="font-size:8px;font-family:monospace;color:${canColor};font-weight:700;">${can}</span></span>`;
     // Toggle: círculo maior e mais visível
     const tglBg = isTit ? canColor : 'transparent';
     const tglBdr = `2px solid rgba(255,255,255,.45)`;
@@ -8097,7 +8134,7 @@ function renderCopaPainel(selId) {
           ${(() => { const ent = copa.entrosamento?.[selId]; const j = ent?.jogos ?? 0; if (j === 0) return ''; const pct = j * 1.5; const dots = '●'.repeat(j) + '○'.repeat(4-j); return `<div class="plantel-stat" title="Entrosamento: ${j} jogo(s) com a mesma tática (+${pct}% ATK/DEF)"><span class="lbl" style="color:${hdrSub};">ENT</span><span style="color:#22c55e;font-size:11px;font-weight:700;" >+${pct}%</span></div>`; })()}
         </div>
         <table class="plantel-tbl">
-          <thead><tr><th></th><th>P</th><th>Nome</th><th>For</th><th></th></tr></thead>
+          <thead><tr><th></th><th>P</th><th>Nome</th><th>For</th><th style="font-size:8px;letter-spacing:.6px;" title="Vigor físico (0–100): cai a cada partida e recupera no descanso">⚡ VIGOR</th></tr></thead>
           <tbody>
             <tr class="plantel-sep"><td colspan="5" style="color:${hdrTxt};opacity:.7;">● TITULARES (${tit.length}) — ${esq}</td></tr>
             ${tit.map(j=>mkRowToggle(j,true)).join('')}
@@ -8312,9 +8349,10 @@ window.addEventListener('resize', () => {
   if (p && !p.classList.contains('hidden')) ajustarZoomBracket();
 });
 
-function renderCopaArtilheiros() {
+function renderCopaArtilheiros(boxId) {
   const lista = Object.entries(copa.artilheiros).sort((a,b) => b[1]-a[1]).slice(0, 30);
-  const box = document.getElementById('copaArtList');
+  const box = document.getElementById(boxId || 'copaArtList');
+  if (!box) return;
   if (lista.length === 0) {
     box.innerHTML = '<p style="font-size:13px;color:var(--cinza);margin:8px 0;">Nenhum gol marcado ainda.</p>';
     return;
@@ -8399,11 +8437,9 @@ function renderCopaArtilheiros() {
 }
 
 // Aba Regras & Formato — explica o torneio, critérios, táticas, atributos e premiações.
-// Conteúdo estático (renderiza uma vez); números espelham o motor do jogo.
-function renderCopaRegras() {
-  const box = document.getElementById('copaRegrasContent');
-  if (!box || box.dataset.pronto) return;
-  box.dataset.pronto = '1';
+// Conteúdo estático; construirRegrasCopaHTML() é reaproveitada tanto na aba quanto no overlay
+// que aparece já na tela de plantel (antes da 1ª partida).
+function construirRegrasCopaHTML() {
   const ouro = s => `<b style="color:#f0c040;font-weight:800;">${s}</b>`;
   const li = (ico, html) => `<div style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:rgba(232,245,233,.85);line-height:1.55;"><span style="flex-shrink:0;width:18px;text-align:center;">${ico}</span><span style="min-width:0;">${html}</span></div>`;
   const card = (icone, titulo, linhas) => `
@@ -8415,7 +8451,7 @@ function renderCopaRegras() {
       <div style="display:flex;flex-direction:column;gap:8px;">${linhas.join('')}</div>
     </div>`;
   const badge = (bg, label) => `<span style="background:${bg};color:#fff;font-size:8.5px;font-weight:900;border-radius:3px;padding:1px 5px;letter-spacing:.3px;">${label}</span>`;
-  box.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;padding:2px 0 12px;">
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;padding:2px 0 12px;">
     ${card('🏆','Formato do Torneio',[
       li('🌍', `${ouro('48 seleções')} sorteadas de um banco de ${ouro('133 times históricos')} (1930–2026), sem repetir país.`),
       li('🔤', `${ouro('12 grupos')} (A–L) com 4 times. Cada time faz ${ouro('3 jogos')}, um por jornada.`),
@@ -8456,6 +8492,35 @@ function renderCopaRegras() {
       li('📖', `Toque em qualquer seleção (grupos, tabelas) para ver o elenco completo dela.`),
     ])}
   </div>`;
+}
+function renderCopaRegras() {
+  const box = document.getElementById('copaRegrasContent');
+  if (!box || box.dataset.pronto) return;
+  box.dataset.pronto = '1';
+  box.innerHTML = construirRegrasCopaHTML();
+}
+
+// Overlay genérico (mesma casca visual de mostrarGruposCopaOverlay) — usado pelo menu
+// de atalhos da tela de plantel (Grupos/Artilheiros/Regras) antes da 1ª partida.
+function abrirOverlayGenericoCopa(icone, titulo, bodyHtml, maxWidth) {
+  let ov = document.getElementById('plantelOverlayCopa');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'plantelOverlayCopa'; document.body.appendChild(ov); }
+  ov.innerHTML = `<div onclick="if(event.target===this)fecharPlantelSelecao()" style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:3000;display:flex;align-items:center;justify-content:center;padding:14px;">
+    <div style="background:linear-gradient(165deg,#0f2c1c,#07150c);border:1px solid rgba(217,164,74,.35);border-radius:14px;max-width:${maxWidth||780}px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.7);">
+      <div style="padding:13px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:#0d2418;z-index:1;">
+        <div style="font-weight:900;font-size:15px;color:var(--ouro);">${icone} ${titulo}</div>
+        <button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer;">×</button></div>
+      <div style="padding:12px;">${bodyHtml}</div>
+    </div></div>`;
+  ov.style.display = 'block';
+}
+function mostrarArtilheirosCopaOverlay() {
+  if (!copa) return;
+  abrirOverlayGenericoCopa('⚽', 'Artilheiros', '<div id="ovArtList"></div>', 560);
+  renderCopaArtilheiros('ovArtList');
+}
+function mostrarRegrasCopaOverlay() {
+  abrirOverlayGenericoCopa('📖', 'Regras & Formato', construirRegrasCopaHTML(), 920);
 }
 
 function renderCopaJogo() {
