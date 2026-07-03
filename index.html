@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '26'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '27'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1173,6 +1173,9 @@
       <button class="secondary" id="btnModoOnline" type="button">🌐 Iniciar Copa Online</button>
     </div>
     <p class="copa-sorteio">Sorteando seleções históricas (1930–2026)</p>
+    <p style="text-align:center;margin:4px 0 0;">
+      <button type="button" id="btnHistoricoCopas" class="secondary" style="background:transparent;border:none;color:rgba(232,245,233,.45);font-size:11px;text-decoration:underline;padding:4px;">📜 Histórico de Copas</button>
+    </p>
   </div>
 
   <!-- TELA: COPA SETUP -->
@@ -1678,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v26</div>
+  <div class="rodapezinho">v27</div>
 </div>
 
 <script>
@@ -1688,6 +1691,7 @@
 if ('scrollRestoration' in history) { try { history.scrollRestoration = 'manual'; } catch(e) {} }
 const VERSAO_JOGO = '0.003'; // bump aqui a cada lote de mudanças futuras (0.004, 0.005...)
 const STORAGE_KEY = 'ligad-save-v2';
+const STORAGE_KEY_HISTORICO_COPAS = 'copa-lendas-historico-v1'; // resumo local (por dispositivo) de cada copa concluída
 
 // ============================================================
 // BANCO DE SELEÇÕES HISTÓRICAS — Copa das Lendas
@@ -6083,6 +6087,9 @@ function iniciarRodadaBracketLive() {
   const rodada = bkt.rodadaAtual;
   if (rodada === 'fim') return;
   const jogos = rodada === 'final_3' ? [bkt.final, bkt.terceiro].filter(Boolean) : (bkt[rodada]||[]);
+  // Snapshot da tática de cada time no INÍCIO da rodada — usado no intervalo (online) pra saber
+  // com certeza quem realmente mudou de esquema e precisa ter o 2º tempo regenerado.
+  copa.esquemaRodadaInicio = { ...(copa.minhasEsquemas || {}) };
   livePartidas = [];
   liveBracketEmProrrogacao = false;
   jogos.forEach((jogo, idx) => {
@@ -6135,6 +6142,7 @@ function finalizarRodadaBracketLive() {
       jogo.vencedorId = gA > gB ? jogo.a : jogo.b;
     }
     jogo.golsA = gA; jogo.golsB = gB;
+    ajustarDificuldadeAdaptativa(p.a, p.b, gA, gB);
     if (!jogo.pens) jogo.pens = null;
     // Credita os marcadores REAIS dos eventos processados (antes re-sorteava a distribuição
     // na finalização — o artilheiro creditado podia não ser quem o jogador viu marcar ao vivo)
@@ -6246,6 +6254,7 @@ simularRodadaBracketCopa._avancarRodada = function(copa, rodada) {
   const jogos = rodada==='final_3' ? [bkt.final,bkt.terceiro].filter(Boolean) : (bkt[rodada]||[]);
   if (rodada==='final_3') {
     copa.campeao = bkt.final?.vencedorId||null; copa.faseAtual='fim'; bkt.rodadaAtual='fim';
+    salvarHistoricoCopa();
     if (ehMinhaSel(copa.campeao)) tocarSomVitoriaCopa();
     return;
   }
@@ -6305,6 +6314,7 @@ function simularRodadaBracketCopa(copa, rng) {
     copa.campeao = bkt.final ? bkt.final.vencedorId : null;
     copa.faseAtual = 'fim';
     bkt.rodadaAtual = 'fim';
+    salvarHistoricoCopa();
     if (ehMinhaSel(copa.campeao)) tocarSomVitoriaCopa();
     return;
   }
@@ -6359,12 +6369,30 @@ const DIFICULDADE_MULT = { facil: 0.90, normal: 1, dificil: 1.12 };
 function aplicarDificuldadeCopa(mA, mB, selIdA, selIdB) {
   if (!copa || copa.onlineCopa) return { mA, mB };
   const dif = copa.dificuldade || 'normal';
-  const mult = DIFICULDADE_MULT[dif] ?? 1;
+  const mult = (DIFICULDADE_MULT[dif] ?? 1) + (copa.dificuldadeOffset || 0);
   if (mult === 1) return { mA, mB };
   const humA = ehMinhaSel(selIdA), humB = ehMinhaSel(selIdB);
   if (humA === humB) return { mA, mB }; // ambos humanos ou ambos CPU: sem ajuste
   if (!humA) return { mA: { atq: mA.atq * mult, def: mA.def * mult }, mB };
   return { mA, mB: { atq: mB.atq * mult, def: mB.def * mult } };
+}
+// Dificuldade adaptativa (rubber-banding leve): depois de cada partida do jogador (offline),
+// nudge no offset conforme o saldo de gols — sequência de goleadas endurece a CPU, sequência
+// de surras suaviza. Teto de ±15% pra não dominar o multiplicador base escolhido no setup.
+function ajustarDificuldadeAdaptativa(selIdA, selIdB, golsA, golsB) {
+  if (!copa || copa.onlineCopa) return;
+  const humA = ehMinhaSel(selIdA), humB = ehMinhaSel(selIdB);
+  if (humA === humB) return; // só ajusta em confrontos humano x CPU
+  const golsHum = humA ? golsA : golsB;
+  const golsCpu = humA ? golsB : golsA;
+  const saldo = golsHum - golsCpu;
+  let delta = 0;
+  if (saldo >= 3) delta = 0.04;
+  else if (saldo >= 1) delta = 0.015;
+  else if (saldo <= -3) delta = -0.05;
+  else if (saldo <= -1) delta = -0.02;
+  if (!delta) return;
+  copa.dificuldadeOffset = Math.max(-0.15, Math.min(0.15, (copa.dificuldadeOffset || 0) + delta));
 }
 
 function atualizarEntrosamento() {
@@ -6385,14 +6413,16 @@ function atualizarEntrosamento() {
 }
 
 function regenerarSegundaMetade(partida) {
-  // Tática no intervalo não afeta placar no modo online: essa função consome copaRng() extra
-  // (poisson + distribuirGolsCopa), mas só o cliente do jogador que troca a tática chamaria isso —
-  // os demais clientes da sala não sabem disso e não fariam os mesmos sorteios. Como TODA a
-  // simulação (gols, cartões, lesões, pênaltis) já foi pré-gerada no mesmo copaRng compartilhado
-  // pra cada partida do lote, consumir sorteios extras aqui desalinharia o stream compartilhado
-  // e faria OUTRAS partidas do mesmo lote divergirem entre os clientes. Por isso a UI de troca
-  // de tática no intervalo fica desabilitada (com aviso) no modo online — ver renderSubstituicoes.
+  // No clique da tática (UI), no modo online NÃO regenera na hora: isso consumiria copaRng()
+  // extra só no cliente de quem clicou, desalinhando o stream compartilhado com os demais
+  // clientes da sala (toda a simulação da rodada é pré-gerada do mesmo copaRng, na mesma ordem,
+  // em todos os clientes). O clique já atualizou copa.minhasEsquemas[selId] — a regeneração de
+  // fato só acontece depois, sincronizada com a sala inteira, via aplicarTaticasIntervaloEContinuar
+  // → regenerarSegundaMetadeCore, chamada igualzinha (mesma tática, mesma ordem) em todo mundo.
   if (copa?.onlineCopa) return;
+  regenerarSegundaMetadeCore(partida);
+}
+function regenerarSegundaMetadeCore(partida) {
   // Re-sorteia apenas os GOLS do 2º tempo; cartões/lesões/pênaltis pré-gerados permanecem
   // (senão trocar de tática viraria imunidade a cartão no 2º tempo)
   partida.eventos = partida.eventos.filter(e => e.minuto <= 45 || (e.tipo && e.tipo !== 'gol'));
@@ -6915,6 +6945,7 @@ let liveTimer = null, liveMinuto = 0, livePartidas = [], liveSubPendente = false
 let liveIntervaloFeito = false; // intervalo por flag (não ===45): um pênalti no 45' pausava o tick e o intervalo era pulado
 let livePenaltiPendente = false, livePenaltiPartida = null, livePenaltiEv = null;
 let liveSubQueue = [];  // [{partida, selId}] fila de substituições pendentes no intervalo
+let copaOnlineIntervaloUnsub = null; // listener temporário: espera todos confirmarem o intervalo online
 let copaConfigQueue = [];   // [selId] fila de times a configurar antes de cada jornada/rodada
 let copaConfigCallback = null; // chamado depois que todos configuraram
 let copaModoPlantel = 'setup'; // 'setup' | 'jornada' — contexto do btnConfirmarPlantel
@@ -7498,14 +7529,12 @@ function renderSubstituicoes(partida, selId, manterContagem) {
         <div class="sub-col"><div class="sub-col-h">Titulares</div><div id="subTit">${tit.map(j=>mkRow(j,false)).join('')}</div></div>
         <div class="sub-col"><div class="sub-col-h">Banco</div><div id="subBanc">${res.map(j=>mkRow(j,true)).join('')}</div></div>
       </div>
-      ${emProrrogacao ? '' : copa?.onlineCopa ? `
-      <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;">
-        <div style="font-size:10px;color:rgba(232,245,233,.4);line-height:1.5;">⚙ Troca de tática no intervalo só está disponível no modo local — no online, o placar precisa ficar sincronizado entre todos os jogadores da sala.</div>
-      </div>` : `
+      ${emProrrogacao ? '' : `
       <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;">
         <div style="font-size:10px;font-weight:700;color:rgba(232,245,233,.45);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">⚙ Tática para a 2ª Metade</div>
         <div id="subEsqList">${esqRows}</div>
         <div id="subEsqFeedback" style="font-size:10px;color:#22c55e;font-weight:700;min-height:14px;margin-top:4px;"></div>
+        ${copa?.onlineCopa ? `<div style="font-size:9.5px;color:rgba(232,245,233,.35);margin-top:5px;">Vale a partir do momento em que todos da sala confirmarem o intervalo.</div>` : ''}
       </div>`}
     </div>`;
   document.getElementById('copaLiveSub').classList.remove('hidden');
@@ -7566,6 +7595,127 @@ function continuarSegundaMetade() {
     renderSubstituicoes(next.partida, next.selId);
     return;
   }
+  if (copa?.onlineCopa) {
+    aguardarIntervaloOnlineCopa();
+    return;
+  }
+  document.getElementById('copaLiveBanner').classList.add('hidden');
+  liveSubPendente = false;
+  liveTimer = setInterval(tickLive, velocidadeLiveMs());
+}
+
+// ===== Sincronização do intervalo no modo online =====
+// Todo cliente da sala (mesmo quem não tem time nesta rodada) precisa esperar aqui: a rodada
+// inteira roda do MESMO copaRng compartilhado, então regenerar o 2º tempo de UMA partida com
+// nova tática consome sorteios extras que, se feitos sem sincronia, desalinhariam o resultado
+// de TODAS as outras partidas do lote entre os clientes. Por isso ninguém aplica tática nova
+// sozinho — todos anunciam sua escolha (ou "sem troca") e só regeneram quando a sala inteira
+// confirmou, na mesma ordem canônica (por selId), em todos os clientes.
+async function anunciarIntervaloOnlineCopa() {
+  if (!copaOnlineCodigo) return;
+  const ref = copaOnlineRef(copaOnlineCodigo);
+  try {
+    await window.__fs.runTransaction(window.__fs.db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.rodadaStatus !== 'iniciando') return; // já anunciado por outro cliente, ou a rodada já avançou
+      data.rodadaStatus = 'intervalo';
+      data.taticasIntervalo = {};
+      data.prontoIntervalo = {};
+      data.versao = (data.versao || 0) + 1;
+      tx.set(ref, data);
+    });
+  } catch (e) { console.warn('anunciarIntervaloOnlineCopa:', e); }
+}
+async function confirmarTaticaIntervaloCopa() {
+  if (!copaOnlineCodigo || !copaOnlineJogadorId) return;
+  const ref = copaOnlineRef(copaOnlineCodigo);
+  await window.__fs.runTransaction(window.__fs.db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const data = snap.data();
+    // Só aceita durante o intervalo desta rodada — se já avançou (outro cliente já fechou o
+    // intervalo, ou a rodada inteira já foi resolvida), não faz mais sentido confirmar aqui.
+    if (data.rodadaStatus !== 'intervalo') return;
+    const meuSelId = data.jogadores?.[copaOnlineJogadorId]?.selId;
+    const taticas = { ...(data.taticasIntervalo || {}) };
+    if (meuSelId && copa?.minhasEsquemas?.[meuSelId] && copa.minhasEsquemas[meuSelId] !== copa.esquemaRodadaInicio?.[meuSelId]) {
+      taticas[meuSelId] = copa.minhasEsquemas[meuSelId];
+    }
+    data.taticasIntervalo = taticas;
+    const prontos = { ...(data.prontoIntervalo || {}), [copaOnlineJogadorId]: true };
+    data.prontoIntervalo = prontos;
+    let estAtual = null;
+    if (data.estado) { try { estAtual = JSON.parse(data.estado); } catch (e) {} }
+    const jogs = data.jogadores || {};
+    const pendentes = Object.entries(jogs).filter(([, j]) => selAindaTemPendenciaNoBracket(estAtual, j.selId));
+    const todosProntos = pendentes.length > 0
+      ? pendentes.every(([id]) => prontos[id])
+      : Object.keys(jogs).every(id => prontos[id]);
+    if (todosProntos) data.rodadaStatus = 'intervalo_confirmado';
+    data.versao = (data.versao || 0) + 1;
+    tx.set(ref, data);
+  });
+}
+async function forcarIntervaloOnlineCopa() {
+  if (!copaOnlineCodigo) return;
+  const ref = copaOnlineRef(copaOnlineCodigo);
+  try {
+    await window.__fs.runTransaction(window.__fs.db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.rodadaStatus !== 'intervalo') return;
+      data.rodadaStatus = 'intervalo_confirmado';
+      data.versao = (data.versao || 0) + 1;
+      tx.set(ref, data);
+    });
+  } catch (e) { console.warn('forcarIntervaloOnlineCopa:', e); }
+}
+function mostrarBotaoForcarIntervalo() {
+  const banner = document.getElementById('copaLiveBanner');
+  if (!banner || banner.querySelector('#btnForcarIntervalo')) return;
+  banner.innerHTML = `⏳ Aguardando os outros jogadores da sala… <button id="btnForcarIntervalo" type="button" class="pequeno" style="margin-left:8px;">avançar mesmo assim</button>`;
+  const btn = document.getElementById('btnForcarIntervalo');
+  if (btn) btn.addEventListener('click', () => {
+    banner.textContent = '⏳ Avançando…';
+    forcarIntervaloOnlineCopa().catch(() => {});
+  });
+}
+function pararEsperaIntervaloOnlineCopa() {
+  if (copaOnlineIntervaloUnsub) { copaOnlineIntervaloUnsub(); copaOnlineIntervaloUnsub = null; }
+}
+async function aguardarIntervaloOnlineCopa() {
+  const banner = document.getElementById('copaLiveBanner');
+  banner.textContent = '⏳ Aguardando os outros jogadores da sala…';
+  banner.className = 'live-banner intervalo'; banner.classList.remove('hidden');
+  await anunciarIntervaloOnlineCopa().catch(() => {});
+  await confirmarTaticaIntervaloCopa().catch(() => {});
+  pararEsperaIntervaloOnlineCopa();
+  const inicioEspera = Date.now();
+  const ref = copaOnlineRef(copaOnlineCodigo);
+  copaOnlineIntervaloUnsub = window.__fs.onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data();
+    if (data.rodadaStatus === 'intervalo_confirmado') {
+      pararEsperaIntervaloOnlineCopa();
+      aplicarTaticasIntervaloEContinuar(data.taticasIntervalo || {});
+    } else if (data.rodadaStatus === 'intervalo' && Date.now() - inicioEspera > 25000) {
+      mostrarBotaoForcarIntervalo();
+    }
+  });
+}
+function aplicarTaticasIntervaloEContinuar(taticas) {
+  // Ordem canônica por selId (não pela ordem local de livePartidas, que já é diferente por
+  // cliente — cada um põe seu próprio time primeiro) — assim todos os clientes consomem o
+  // mesmo copaRng compartilhado na mesma sequência.
+  Object.keys(taticas).sort().forEach(selId => {
+    copa.minhasEsquemas = copa.minhasEsquemas || {};
+    copa.minhasEsquemas[selId] = taticas[selId];
+    const partida = livePartidas.find(p => p.a === selId || p.b === selId);
+    if (partida) regenerarSegundaMetadeCore(partida);
+  });
   document.getElementById('copaLiveBanner').classList.add('hidden');
   liveSubPendente = false;
   liveTimer = setInterval(tickLive, velocidadeLiveMs());
@@ -7718,7 +7868,7 @@ function iniciarShootoutInterativo(dadosTie, callback) {
       });
     });
     const btnConf = document.getElementById('btnConfirmarOrdemPen');
-    if (btnConf) btnConf.addEventListener('click', () => { if (completo) processarChute(); });
+    if (btnConf) btnConf.addEventListener('click', () => { if (completo) mostrarEscolhaCanto(); });
   };
 
   const mostrarPlacarRodada = () => {
@@ -7737,35 +7887,75 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     subDiv.classList.remove('hidden');
   };
 
-  const processarChute = () => {
+  // Escolha de canto: o goleiro "lê" o padrão do batedor humano — repetir o mesmo canto da
+  // cobrança anterior tem 45% de chance de ser adivinhado (contra ~33% se variar), dando
+  // incentivo real a não ser previsível, sem exigir timing perfeito (ruim em touch/mobile).
+  const CANTOS_PEN = ['esquerda', 'centro', 'direita'];
+  const CANTO_LBL = { esquerda: '⬅ Esquerda', centro: '⬆ Centro', direita: '➡ Direita' };
+  let ultimoCantoHum = null;
+  const escolherCantoGoleiro = () => {
+    const r = copaRng();
+    if (ultimoCantoHum) {
+      const outros = CANTOS_PEN.filter(c => c !== ultimoCantoHum);
+      if (r < 0.45) return ultimoCantoHum;
+      if (r < 0.725) return outros[0];
+      return outros[1];
+    }
+    if (r < 1 / 3) return CANTOS_PEN[0];
+    if (r < 2 / 3) return CANTOS_PEN[1];
+    return CANTOS_PEN[2];
+  };
+
+  const mostrarEscolhaCanto = () => {
     const jogador = ordemBatedores[rodada % ordemBatedores.length];
-    const t = jogador?.traits||[];
-    const taxa = t.includes('oRei') ? 0.94 : t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
+    const roundLabel = rodada < 5 ? `Rodada ${rodada + 1} de 5` : `Morte Súbita — Volta ${Math.floor((rodada - 5) / ordemBatedores.length) + 1}`;
+    subDiv.innerHTML = `<div class="sub-wrap" style="border:1px solid #eab308;">
+      <div style="font-size:11px;font-weight:900;color:#eab308;margin-bottom:2px;text-align:center;">${roundLabel}</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:11px;font-weight:700;color:var(--areia);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nomeHum}</span>
+        <span style="font-size:16px;font-weight:900;color:var(--areia);white-space:nowrap;">${humGols} × ${oppGols}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--areia);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nomeOpp}</span>
+      </div>
+      <div style="font-size:12px;color:var(--areia);text-align:center;margin-bottom:10px;">⚽ <b>${jogador?.nome||'?'}</b> vai bater — escolha o canto</div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="pequeno canto-pen-btn" data-canto="esquerda" style="flex:1;padding:16px 4px;font-size:12px;">⬅<br>Esquerda</button>
+        <button type="button" class="pequeno canto-pen-btn" data-canto="centro" style="flex:1;padding:16px 4px;font-size:12px;">⬆<br>Centro</button>
+        <button type="button" class="pequeno canto-pen-btn" data-canto="direita" style="flex:1;padding:16px 4px;font-size:12px;">➡<br>Direita</button>
+      </div>
+    </div>`;
+    subDiv.classList.remove('hidden');
+    subDiv.querySelectorAll('.canto-pen-btn').forEach(btn => {
+      btn.addEventListener('click', () => resolverChute(btn.dataset.canto, jogador));
+    });
+  };
+
+  const resolverChute = (cantoHum, jogador) => {
+    subDiv.querySelectorAll('.canto-pen-btn').forEach(b => b.style.pointerEvents = 'none'); // evita clique duplo
+    const t = jogador?.traits || [];
+    const taxaBase = t.includes('oRei') ? 0.94 : t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
                : t.includes('finalizador') ? 0.83 : t.includes('batedor') ? 0.81 : 0.76;
+    const cantoGoleiro = escolherCantoGoleiro();
+    const acertouGoleiro = cantoGoleiro === cantoHum;
+    const taxa = acertouGoleiro ? Math.max(0.25, taxaBase - 0.35) : Math.min(0.97, taxaBase + 0.12);
     const humConv = copaRng() < taxa;
+    ultimoCantoHum = cantoHum;
     const oppConv = oppKicks[rodada] === 1;
     if (humConv) { humGols++; tocarSomGolCopa(); }
     if (oppConv) oppGols++;
     const jogadorOpp = titOpp.length ? titOpp[rodada % titOpp.length] : null;
     // Nome dos DOIS batedores no log — antes só o seu aparecia, o resultado do oponente ficava
     // sem autor, dando a impressão de que só um lado estava "de verdade" jogando.
-    log.push(`${humConv?'⚽':'🧤'} ${jogador?.nome||'?'}  ×  ${jogadorOpp?.nome||'?'} ${oppConv?'⚽':'🧤'}`);
+    const cantoTxt = acertouGoleiro ? `${CANTO_LBL[cantoHum]} — goleiro pegou o canto!` : CANTO_LBL[cantoHum];
+    log.push(`${humConv?'⚽':'🧤'} ${jogador?.nome||'?'} (${cantoTxt})  ×  ${jogadorOpp?.nome||'?'} ${oppConv?'⚽':'🧤'}`);
     rodada++;
     mostrarPlacarRodada();
     const restam = Math.max(0, 5 - rodada);
     const fimAntecipado = rodada >= 5 || (rodada >= 3 && Math.abs(humGols - oppGols) > restam);
-    if (fimAntecipado && humGols !== oppGols) { setTimeout(finalizarShootout, 900); }
-    else if (rodada >= 5 && humGols !== oppGols) { setTimeout(finalizarShootout, 900); }
-    else { setTimeout(processarChute, 900); }
+    if (fimAntecipado && humGols !== oppGols) { setTimeout(finalizarShootout, 1100); }
+    else { setTimeout(mostrarEscolhaCanto, 1100); }
   };
 
   const finalizarShootout = () => {
-    while (humGols === oppGols) {
-      const hC = copaRng() < 0.76, oC = oppKicks[rodada] !== undefined ? oppKicks[rodada]===1 : copaRng()<0.76;
-      if (hC) humGols++; if (oC) oppGols++;
-      log.push(`DS: ${hC?'⚽':'🧤'} ${oC?'⚽':'🧤'}`);
-      rodada++;
-    }
     const pens = { golsA: isMeuA ? humGols : oppGols, golsB: isMeuA ? oppGols : humGols };
     jogo.golsA = gA; jogo.golsB = gB; jogo.pens = pens;
     jogo.vencedorId = pens.golsA > pens.golsB ? jogo.a : jogo.b;
@@ -7796,6 +7986,7 @@ function finalizarJornada() {
     const grupo = copa.grupos.find(g => g.id === p.grupoId);
     const jogo = grupo.jogos[p.jogoIdx];
     jogo.golsA = p.golsA; jogo.golsB = p.golsB;
+    ajustarDificuldadeAdaptativa(p.a, p.b, p.golsA, p.golsB);
     // Marcadores reais (dos eventos processados) — não a distribuição pré-gerada, que fica
     // obsoleta após expulsões, substituições e mudanças de tática no intervalo.
     const golsReais = golsPorJogadorDaPartida(p);
@@ -7904,6 +8095,7 @@ function finalizarJornada() {
 
 function iniciarJornada() {
   const jIdx = copa.jornadaAtual; // 0, 1, or 2 → jornadas 1, 2, 3
+  copa.esquemaRodadaInicio = { ...(copa.minhasEsquemas || {}) };
   livePartidas = [];
   copa.grupos.forEach(g => {
     JORNADA_IDX[jIdx].forEach(jogoIdx => {
@@ -8230,6 +8422,13 @@ function renderCopaPainel(selId) {
           <div class="plantel-stat"><span class="lbl" style="color:${hdrSub};">ATK</span><span class="atk" style="color:#f87171;">${atk}</span></div>
           <div class="plantel-stat"><span class="lbl" style="color:${hdrSub};">DEF</span><span class="def" style="color:#60a5fa;">${def}</span></div>
           ${(() => { const ent = copa.entrosamento?.[selId]; const j = ent?.jogos ?? 0; if (j === 0) return ''; const pct = j * 1.5; const dots = '●'.repeat(j) + '○'.repeat(4-j); return `<div class="plantel-stat" title="Entrosamento: ${j} jogo(s) com a mesma tática (+${pct}% ATK/DEF)"><span class="lbl" style="color:${hdrSub};">ENT</span><span style="color:#22c55e;font-size:11px;font-weight:700;" >+${pct}%</span></div>`; })()}
+          ${(() => {
+            if (copa.onlineCopa) return '';
+            const off = copa.dificuldadeOffset || 0;
+            if (Math.abs(off) < 0.02) return '';
+            const subindo = off > 0;
+            return `<div class="plantel-stat" title="Dificuldade adaptativa: os adversários ficam ${subindo?'mais fortes conforme você vence':'mais fracos pra equilibrar após derrotas'}"><span style="color:${subindo?'#f87171':'#60a5fa'};font-size:11px;font-weight:700;">${subindo?'🔥':'📉'} ${subindo?'+':''}${Math.round(off*100)}%</span></div>`;
+          })()}
         </div>
         <table class="plantel-tbl">
           <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th style="font-size:8px;letter-spacing:.6px;" title="Vigor físico (0–100): cai a cada partida e recupera no descanso">⚡ VIGOR</th></tr></thead>
@@ -8635,6 +8834,57 @@ function mostrarArtilheirosCopaOverlay() {
 }
 function mostrarRegrasCopaOverlay() {
   abrirOverlayGenericoCopa('📖', 'Regras & Formato', construirRegrasCopaHTML(), 920);
+}
+
+// ===== Histórico de carreira entre copas (localStorage, por dispositivo) =====
+function salvarHistoricoCopa() {
+  if (!copa) return;
+  try {
+    const campeaoSel = copa.selMap?.[copa.campeao];
+    const artilheiros = Object.entries(copa.artilheiros || {}).sort((a, b) => b[1] - a[1]);
+    const craques = Object.entries(copa.craques || {}).sort((a, b) => b[1] - a[1]);
+    const meuSelId = copa.minhasSelecoes?.[0];
+    const minhaSel = meuSelId ? copa.selMap?.[meuSelId] : null;
+    const registro = {
+      data: Date.now(),
+      campeao: campeaoSel ? nomeCurtoSel(campeaoSel) : (copa.campeao || '?'),
+      artilheiro: artilheiros[0] ? { nome: artilheiros[0][0], gols: artilheiros[0][1] } : null,
+      craque: craques[0] ? { nome: craques[0][0], vezes: craques[0][1] } : null,
+      minhaSelecao: minhaSel ? nomeCurtoSel(minhaSel) : null,
+      venci: !!(meuSelId && copa.campeao === meuSelId),
+      online: !!copa.onlineCopa,
+    };
+    const lista = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]');
+    lista.unshift(registro);
+    localStorage.setItem(STORAGE_KEY_HISTORICO_COPAS, JSON.stringify(lista.slice(0, 50)));
+  } catch (e) {}
+}
+function mostrarHistoricoCopasOverlay() {
+  let lista = [];
+  try { lista = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]'); } catch (e) {}
+  const total = lista.length;
+  const vitorias = lista.filter(r => r.venci).length;
+  const resumo = total
+    ? `<div style="text-align:center;margin-bottom:12px;font-size:12px;color:var(--cinza);">${total} copa${total===1?'':'s'} disputada${total===1?'':'s'} · <b style="color:#f0c040;">${vitorias}</b> título${vitorias===1?'':'s'}</div>`
+    : '';
+  const linhas = lista.map(r => {
+    const dataFmt = new Date(r.data).toLocaleDateString('pt-BR');
+    const resultado = r.venci
+      ? `<span style="color:#f0c040;font-weight:900;">🏆 Campeão</span>`
+      : `<span style="color:var(--cinza);">Campeão: ${r.campeao}</span>`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.06);">
+      <div style="min-width:0;">
+        <div style="font-size:12px;font-weight:700;color:var(--areia);">${r.minhaSelecao || '?'} ${r.online?'<span style="font-size:9px;color:#60a5fa;">🌐 online</span>':''}</div>
+        <div style="font-size:10.5px;margin-top:2px;">${resultado}</div>
+        ${r.artilheiro ? `<div style="font-size:10px;color:var(--cinza);margin-top:1px;">⚽ Artilheiro: ${r.artilheiro.nome} (${r.artilheiro.gols})</div>` : ''}
+      </div>
+      <div style="font-size:10px;color:rgba(232,245,233,.4);white-space:nowrap;flex-shrink:0;">${dataFmt}</div>
+    </div>`;
+  }).join('');
+  const body = total
+    ? resumo + `<div style="max-height:56vh;overflow-y:auto;">${linhas}</div>`
+    : `<p style="text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;">Nenhuma copa concluída ainda neste aparelho. Termine uma copa (local ou online) pra começar seu histórico.</p>`;
+  abrirOverlayGenericoCopa('📜', 'Histórico de Copas', body, 480);
 }
 
 function renderCopaJogo() {
@@ -11085,6 +11335,7 @@ function renderFimTemporada(){
 
 function limparEstadoLive() {
   if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+  pararEsperaIntervaloOnlineCopa();
   livePartidas = []; liveSubQueue = []; liveMinuto = 0; liveIntervaloFeito = false;
   livePenaltiPendente = false; livePenaltiPartida = null; livePenaltiEv = null;
   liveBracketEmProrrogacao = false; liveSubPendente = false; liveSubCount = 0;
@@ -11263,6 +11514,7 @@ document.getElementById('btnModoOnline').addEventListener('click', ()=>{
   popularDropdownSelecoes('copaOnlineEntrarSel');
   mostrarTela('copaOnlineMenu');
 });
+document.getElementById('btnHistoricoCopas').addEventListener('click', mostrarHistoricoCopasOverlay);
 document.getElementById('btnVoltarModoJogo').addEventListener('click', ()=>mostrarTela('modoJogo'));
 document.getElementById('btnVoltarModoJogo2').addEventListener('click', ()=>mostrarTela('modoJogo'));
 
@@ -12236,6 +12488,7 @@ async function enviarHeartbeatCopa() {
 function limparAssinaturaCopa() {
   if (copaOnlineUnsubscribe) { copaOnlineUnsubscribe(); copaOnlineUnsubscribe = null; }
   if (copaOnlineHeartbeatInt) { clearInterval(copaOnlineHeartbeatInt); copaOnlineHeartbeatInt = null; }
+  pararEsperaIntervaloOnlineCopa();
 }
 
 function renderLobbyCopaOnline(data) {
