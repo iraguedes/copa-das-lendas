@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '35'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '36'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1680,7 +1680,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v35</div>
+  <div class="rodapezinho">v36</div>
 </div>
 
 <script>
@@ -1691,6 +1691,7 @@ if ('scrollRestoration' in history) { try { history.scrollRestoration = 'manual'
 const VERSAO_JOGO = '0.003'; // bump aqui a cada lote de mudanças futuras (0.004, 0.005...)
 const STORAGE_KEY = 'ligad-save-v2';
 const STORAGE_KEY_HISTORICO_COPAS = 'copa-lendas-historico-v1'; // resumo local (por dispositivo) de cada copa concluída
+const STORAGE_KEY_FANTASMAS_COPA = 'copa-lendas-fantasmas-v1'; // times que te eliminaram no mata-mata em copas anteriores (por dispositivo)
 
 // ============================================================
 // BANCO DE SELEÇÕES HISTÓRICAS — Copa das Lendas
@@ -5802,6 +5803,47 @@ function forcaDefesaCopa(sel) {
 function lambdaGolsCopa(atq, def) {
   return 1.15 * Math.pow(atq / def, 2.0);
 }
+// Probabilidade real de vitória a partir das duas distribuições de Poisson (mesmas lambdas já
+// usadas pra sortear os gols) — soma P(A>B), P(A<B) e P(empate) sobre os placares possíveis.
+// Truncado em 10 gols por time: além disso a massa de probabilidade é desprezível.
+function probabilidadeVitoriaCopa(lambdaA, lambdaB) {
+  const MAX_GOLS = 10;
+  const pmf = (lambda) => {
+    const arr = [Math.exp(-lambda)];
+    for (let k = 1; k <= MAX_GOLS; k++) arr.push(arr[k - 1] * lambda / k);
+    return arr;
+  };
+  const pA = pmf(lambdaA), pB = pmf(lambdaB);
+  let probA = 0, probB = 0, probEmpate = 0;
+  for (let a = 0; a <= MAX_GOLS; a++) {
+    for (let b = 0; b <= MAX_GOLS; b++) {
+      const p = pA[a] * pB[b];
+      if (a > b) probA += p;
+      else if (a < b) probB += p;
+      else probEmpate += p;
+    }
+  }
+  // Normaliza (a massa truncada soma um pouco menos de 1) e reparte o resto pro lado favorito
+  const total = probA + probB + probEmpate;
+  return { probA: probA / total, probB: probB / total, probEmpate: probEmpate / total };
+}
+// Zebra em tempo real: conteúdo da linha de probabilidade pré-jogo do card ao vivo, que vira o
+// selo "ZEBRA!" quando o azarão assume a frente no placar atual. Usado tanto na montagem inicial
+// do card (iniciarLiveGrid) quanto na atualização incremental a cada gol (atualizarEventoCopa).
+function zebraProbConteudo(p) {
+  if (p.lambdaA == null || p.lambdaB == null) return null;
+  const { probA, probB } = probabilidadeVitoriaCopa(p.lambdaA, p.lambdaB);
+  const somaSemEmpate = probA + probB || 1;
+  const pctA = Math.round((probA / somaSemEmpate) * 100);
+  const pctB = 100 - pctA;
+  const favA = pctA >= pctB;
+  const zebraNoPlacar = (favA && (p.golsB ?? 0) > (p.golsA ?? 0)) || (!favA && (p.golsA ?? 0) > (p.golsB ?? 0));
+  const gapForte = Math.max(pctA, pctB) >= 60;
+  if (zebraNoPlacar && gapForte) {
+    return { html: `🦓 ZEBRA!`, style: `text-align:center;font-size:9px;font-weight:900;color:#f0c040;letter-spacing:.5px;margin-top:1px;` };
+  }
+  return { html: `${pctA}% <span style="opacity:.5;">×</span> ${pctB}%`, style: `text-align:center;font-size:8.5px;color:rgba(232,245,233,.38);margin-top:1px;` };
+}
 function simularJogoCopa(selA, selB, rng) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
@@ -5818,14 +5860,34 @@ function simularProrrogacaoCopa(selA, selB, rng) {
   const golsB = poisson(lambdaGolsCopa(mB.atq, mA.def) / 3, rng);
   return { golsA, golsB };
 }
-function simularPenaltisCopa(rng) {
+function simularPenaltisCopa(rng, selA, selB) {
   const chute = () => rng() < 0.76 ? 1 : 0;
-  let gA = 0, gB = 0;
-  for (let i = 0; i < 5; i++) { gA += chute(); gB += chute(); }
+  // Ordem de batedores (só para dar nome a quem bateu/errou — a taxa de conversão continua
+  // fixa em 76% para não alterar o resultado/probabilidade de nenhuma disputa já existente).
+  const ordemBatedores = (sel) => {
+    const tit = (sel?.jogadores || []).filter(j => j.titular);
+    const prioridade = j => { const t = j.traits || []; return t.includes('pegadorPenalti') ? 3 : t.includes('finalizador') ? 2 : t.includes('batedor') ? 1 : 0; };
+    return [...tit].sort((a, b) => prioridade(b) - prioridade(a) || b.ovr - a.ovr);
+  };
+  const ordA = ordemBatedores(selA), ordB = ordemBatedores(selB);
+  let gA = 0, gB = 0, ultimaFalhaA = null, ultimaFalhaB = null;
+  const bater = (ord, i, marcarGol, marcarFalha) => {
+    const conv = chute();
+    if (conv) marcarGol(); else marcarFalha(ord.length ? ord[i % ord.length].nome : null);
+  };
+  for (let i = 0; i < 5; i++) {
+    bater(ordA, i, () => gA++, n => ultimaFalhaA = n);
+    bater(ordB, i, () => gB++, n => ultimaFalhaB = n);
+  }
   // morte súbita
   let tentativas = 0;
-  while (gA === gB && tentativas < 20) { gA += chute(); gB += chute(); tentativas++; }
-  return { golsA: gA, golsB: gB };
+  while (gA === gB && tentativas < 20) {
+    bater(ordA, 5 + tentativas, () => gA++, n => ultimaFalhaA = n);
+    bater(ordB, 5 + tentativas, () => gB++, n => ultimaFalhaB = n);
+    tentativas++;
+  }
+  const maoDeAlface = gA < gB ? ultimaFalhaA : gA > gB ? ultimaFalhaB : null;
+  return { golsA: gA, golsB: gB, maoDeAlface };
 }
 function simularEliminatorioCopa(selA, selB, rng) {
   const norm = simularJogoCopa(selA, selB, rng);
@@ -5833,7 +5895,7 @@ function simularEliminatorioCopa(selA, selB, rng) {
   if (golsA === golsB) {
     const et = simularProrrogacaoCopa(selA, selB, rng);
     golsA += et.golsA; golsB += et.golsB;
-    if (golsA === golsB) pens = simularPenaltisCopa(rng);
+    if (golsA === golsB) pens = simularPenaltisCopa(rng, selA, selB);
   }
   const vencedorId = pens
     ? (pens.golsA > pens.golsB ? selA.id : selB.id)
@@ -5996,6 +6058,8 @@ function novoEstadoCopa(minhaSelecaoId, semente, todasMinhasSelecoes) {
     tecnicos: {},
     artilheiros: {},
     craques: {}, // nome → vezes eleito melhor em campo
+    candidatosMaoDeAlface: [], // {nome, selId, fase} — quem perdeu a disputa de pênaltis com a última falha do seu time
+    fantasmas: detectarFantasmasNaCopa(selecoes), // times sorteados nesta copa que já te eliminaram antes
     campeao: null,
     jornadaAtual: 0,
   };
@@ -6050,8 +6114,9 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
   ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
   // Tempo normal (90 min)
-  const nA = poisson(lambdaGolsCopa(mA.atq, mB.def), copaRng);
-  const nB = poisson(lambdaGolsCopa(mB.atq, mA.def), copaRng);
+  const lambdaA = lambdaGolsCopa(mA.atq, mB.def), lambdaB = lambdaGolsCopa(mB.atq, mA.def);
+  const nA = poisson(lambdaA, copaRng);
+  const nB = poisson(lambdaB, copaRng);
   const dA = distribuirGolsCopa(nA, selA, copaRng);
   const dB = distribuirGolsCopa(nB, selB, copaRng);
   // Prorrogação (30 min — pre-gerada, só usada se empate aos 90)
@@ -6118,7 +6183,7 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
     eventos, eventoIdx:0, ultimoEv:null,
     minha: ehMinhaSel(jogo.a)||ehMinhaSel(jogo.b),
     amarelosA:[], amarelosB:[], vermelhoA:false, vermelhoB:false, vermelhosA:[], vermelhosB:[], lesaoA:[], lesaoB:[],
-    eliminatorio:true, subsUsadas:{},
+    eliminatorio:true, subsUsadas:{}, lambdaA, lambdaB,
   };
 }
 
@@ -6186,13 +6251,18 @@ function finalizarRodadaBracketLive() {
         shootoutsHumanos.push({ partida: p, jogo, gA, gB });
         return; // será resolvido depois
       }
-      const ps = simularPenaltisCopa(copaRng);
+      const ps = simularPenaltisCopa(copaRng, copa.selMap[p.a], copa.selMap[p.b]);
       jogo.pens = ps;
       jogo.vencedorId = ps.golsA > ps.golsB ? jogo.a : jogo.b;
+      if (ps.maoDeAlface) {
+        copa.candidatosMaoDeAlface = copa.candidatosMaoDeAlface || [];
+        copa.candidatosMaoDeAlface.push({ nome: ps.maoDeAlface, selId: (ps.golsA < ps.golsB ? jogo.a : jogo.b), fase: p.rodadaKey });
+      }
     } else {
       jogo.vencedorId = gA > gB ? jogo.a : jogo.b;
     }
     jogo.golsA = gA; jogo.golsB = gB;
+    jogo.lambdaA = p.lambdaA; jogo.lambdaB = p.lambdaB; // guarda a força pré-jogo p/ eleger a "Zebra Oficial" no fim da copa
     ajustarDificuldadeAdaptativa(p.a, p.b, gA, gB);
     if (!jogo.pens) jogo.pens = null;
     // Credita os marcadores REAIS dos eventos processados (antes re-sorteava a distribuição
@@ -6243,6 +6313,16 @@ function finalizarRodadaBracketLive() {
       return ehMinhaSel(p.golsA < p.golsB ? p.a : p.b);
     });
     const _fazerAvanco = () => {
+      // Fantasmas / Revanche: antes de avançar o bracket (que só mexe na PRÓXIMA rodada), verifica
+      // se algum time seu foi eliminado nesta e registra quem foi — só mata-mata, grupos ficam de
+      // fora por ora (não é "eliminação" no sentido dramático de perder uma partida decisiva).
+      const jogosDaRodada = rodadaKey === 'final_3' ? [copa.bracket.final, copa.bracket.terceiro].filter(Boolean) : (copa.bracket[rodadaKey] || []);
+      (copa.minhasSelecoes || []).forEach(meuId => {
+        const jogoMeu = jogosDaRodada.find(j => j.a === meuId || j.b === meuId);
+        if (jogoMeu && jogoMeu.vencedorId && jogoMeu.vencedorId !== meuId) {
+          registrarFantasmaCopa(meuId, jogoMeu.vencedorId);
+        }
+      });
       // A cura de lesões e o desconto de suspensão que rodava aqui foi movido pro TOPO de
       // finalizarRodadaBracketLive — rodar aqui, depois de já ter processado os eventos desta
       // rodada, desfazia expulsões/lesões novas antes mesmo delas valerem pra rodada seguinte.
@@ -6296,12 +6376,46 @@ function finalizarRodadaBracketLive() {
   };
   processarShootouts();
 }
+// Elege os "apelidos" pós-copa: Mão de Alface (pior falha decisiva nos pênaltis) e Zebra
+// Oficial (maior zebra do mata-mata, usando a mesma probabilidade pré-jogo da Zebra em Tempo Real).
+function elegerTitulosDaCopa() {
+  // candidatosMaoDeAlface guarda o rodadaKey bruto da partida — final e 3º lugar compartilham
+  // o mesmo rodadaKey ('final_3'), então recebem a prioridade máxima juntos.
+  const ORDEM_FASE = { r32: 0, r16: 1, qf: 2, sf: 3, terceiro: 4, final: 5, final_3: 5 };
+  let maoDeAlface = null;
+  (copa.candidatosMaoDeAlface || []).forEach(c => {
+    if (!maoDeAlface || (ORDEM_FASE[c.fase] ?? -1) >= (ORDEM_FASE[maoDeAlface.fase] ?? -1)) maoDeAlface = c;
+  });
+  let zebraOficial = null;
+  const bkt = copa.bracket;
+  if (bkt) {
+    const todosJogos = [
+      ...(bkt.r32 || []).map(j => ({ ...j, fase: 'r32' })),
+      ...(bkt.r16 || []).map(j => ({ ...j, fase: 'r16' })),
+      ...(bkt.qf || []).map(j => ({ ...j, fase: 'qf' })),
+      ...(bkt.sf || []).map(j => ({ ...j, fase: 'sf' })),
+      ...(bkt.terceiro ? [{ ...bkt.terceiro, fase: 'terceiro' }] : []),
+      ...(bkt.final ? [{ ...bkt.final, fase: 'final' }] : []),
+    ];
+    todosJogos.forEach(j => {
+      if (!j.vencedorId || j.lambdaA == null || j.lambdaB == null) return;
+      const { probA, probB } = probabilidadeVitoriaCopa(j.lambdaA, j.lambdaB);
+      const probVencedor = j.vencedorId === j.a ? probA : probB;
+      if (!zebraOficial || probVencedor < zebraOficial.prob) {
+        zebraOficial = { selId: j.vencedorId, selIdDerrotado: j.vencedorId === j.a ? j.b : j.a, prob: probVencedor, fase: j.fase };
+      }
+    });
+    if (zebraOficial && zebraOficial.prob >= 0.4) zebraOficial = null; // só conta como zebra de verdade se era clara azarona
+  }
+  copa.titulosDaCopa = { maoDeAlface, zebraOficial };
+}
 // Auxiliar: avança rodada no bracket sem simular
 function avancarRodadaBracketCopa(copa, rodada) {
   const bkt = copa.bracket;
   const jogos = rodada==='final_3' ? [bkt.final,bkt.terceiro].filter(Boolean) : (bkt[rodada]||[]);
   if (rodada==='final_3') {
     copa.campeao = bkt.final?.vencedorId||null; copa.faseAtual='fim'; bkt.rodadaAtual='fim';
+    elegerTitulosDaCopa();
     salvarHistoricoCopa();
     if (ehMinhaSel(copa.campeao)) tocarSomVitoriaCopa();
     return;
@@ -6999,8 +7113,9 @@ function gerarPartidaLive(grupo, jogoIdx) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
   ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
-  const nA = poisson(lambdaGolsCopa(mA.atq, mB.def), copaRng);
-  const nB = poisson(lambdaGolsCopa(mB.atq, mA.def), copaRng);
+  const lambdaA = lambdaGolsCopa(mA.atq, mB.def), lambdaB = lambdaGolsCopa(mB.atq, mA.def);
+  const nA = poisson(lambdaA, copaRng);
+  const nB = poisson(lambdaB, copaRng);
   const dA = distribuirGolsCopa(nA, selA, copaRng);
   const dB = distribuirGolsCopa(nB, selB, copaRng);
   const eventos = [];
@@ -7083,7 +7198,7 @@ function gerarPartidaLive(grupo, jogoIdx) {
     vermelhoA: false, vermelhoB: false,
     vermelhosA: [], vermelhosB: [],
     lesaoA: [], lesaoB: [],
-    subsUsadas: {},
+    subsUsadas: {}, lambdaA, lambdaB,
   };
 }
 
@@ -7115,6 +7230,37 @@ function estiloNomeVibrante(sel, fontPx, bold) {
   return `font-size:${fontPx}px;font-weight:${bold ? 900 : 700};background:linear-gradient(90deg,${c1} 20%,${c2} 90%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 7px ${c1}55);`;
 }
 
+// Reencontro Histórico: confrontos reais e icônicos da história das Copas. Quando o sorteio
+// (grupos ou mata-mata) recria um desses pares de seleções, o card ao vivo ganha uma faixa
+// especial lembrando o que aconteceu da última vez — mesmo padrão do easter-egg de narração
+// do Maradona vs Inglaterra, só que genérico e data-driven em vez de um único caso hardcoded.
+const REENCONTROS_HISTORICOS = [
+  { par: ['uru1930','arg1930'], ano: 1930, fase: 'Final', placar: 'Uruguai 4x2 Argentina', resumo: 'A primeiríssima Copa do Mundo termina com título uruguaio em casa.' },
+  { par: ['bra1958','sue1958'], ano: 1958, fase: 'Final', placar: 'Brasil 5x2 Suécia', resumo: 'Estreia de Pelé, aos 17 anos, na conquista do primeiro título brasileiro.' },
+  { par: ['ing1966','ale1966'], ano: 1966, fase: 'Final', placar: 'Inglaterra 4x2 Alemanha', resumo: 'O gol-fantasma de Geoff Hurst e o título inglês em casa.' },
+  { par: ['bra1970','ita1970'], ano: 1970, fase: 'Final', placar: 'Brasil 4x1 Itália', resumo: 'O tricampeonato brasileiro com atuação de gala de Pelé e companhia.' },
+  { par: ['ale1954','hun1954'], ano: 1954, fase: 'Final', placar: 'Alemanha 3x2 Hungria', resumo: 'O Milagre de Berna: a Alemanha vira contra a favoritíssima Hungria.' },
+  { par: ['ger1974','ned1974'], ano: 1974, fase: 'Final', placar: 'Alemanha 2x1 Holanda', resumo: 'A Laranja Mecânica de Cruyff cai diante dos donos da casa.' },
+  { par: ['arg1978','ned1978'], ano: 1978, fase: 'Final', placar: 'Argentina 3x1 Holanda', resumo: 'A Argentina conquista seu primeiro título mundial, em casa.' },
+  { par: ['ita1982','ale1982'], ano: 1982, fase: 'Final', placar: 'Itália 3x1 Alemanha', resumo: 'Paolo Rossi brilha e dá à Itália o tricampeonato.' },
+  { par: ['arg1986','ale1986'], ano: 1986, fase: 'Final', placar: 'Argentina 3x2 Alemanha', resumo: 'Maradona, no auge, conquista seu único título mundial.' },
+  { par: ['arg1990','cam1990'], ano: 1990, fase: 'Abertura', placar: 'Camarões 1x0 Argentina', resumo: 'Uma das maiores zebras da história: Camarões derruba os favoritos argentinos.' },
+  { par: ['ale1990','arg1990'], ano: 1990, fase: 'Final', placar: 'Alemanha 1x0 Argentina', resumo: 'Revanche alemã 4 anos depois, em final travada e polêmica.' },
+  { par: ['bra1994','ita1994'], ano: 1994, fase: 'Final', placar: 'Brasil 3x2 Itália (pênaltis, 0x0)', resumo: 'Baggio perde o pênalti decisivo e o Brasil é tetracampeão.' },
+  { par: ['fra1998','bra1998'], ano: 1998, fase: 'Final', placar: 'França 3x0 Brasil', resumo: 'Zidane brilha duas vezes e dá à França seu primeiro título, em casa.' },
+  { par: ['bra2002','ale2002'], ano: 2002, fase: 'Final', placar: 'Brasil 2x0 Alemanha', resumo: 'Ronaldo Fenômeno marca duas vezes e o Brasil é pentacampeão.' },
+  { par: ['ita2006','fra2006'], ano: 2006, fase: 'Final', placar: 'Itália 5x3 França (pênaltis, 1x1)', resumo: 'A cabeçada de Zidane em Materazzi e o tetracampeonato italiano.' },
+  { par: ['esp2010','ned2010'], ano: 2010, fase: 'Final', placar: 'Espanha 1x0 Holanda', resumo: 'Iniesta decide nos acréscimos e a Espanha é campeã pela 1ª vez.' },
+  { par: ['ned2014','arg2014'], ano: 2014, fase: 'Semifinal', placar: 'Argentina 4x2 Holanda (pênaltis, 0x0)', resumo: 'Romero brilha nos pênaltis e leva a Argentina à final.' },
+  { par: ['ger2014','bra2014'], ano: 2014, fase: 'Semifinal', placar: 'Alemanha 7x1 Brasil', resumo: 'O Mineiraço: a pior derrota da história das Copas para o anfitrião.' },
+  { par: ['ger2014','arg2014'], ano: 2014, fase: 'Final', placar: 'Alemanha 1x0 Argentina', resumo: 'Gol de Götze na prorrogação decide o tetracampeonato alemão.' },
+  { par: ['fra2018','cro2018'], ano: 2018, fase: 'Final', placar: 'França 4x2 Croácia', resumo: 'Mbappé desponta como fenômeno e a França é bicampeã.' },
+  { par: ['arg2022','fra2022'], ano: 2022, fase: 'Final', placar: 'Argentina 4x2 França (pênaltis, 3x3)', resumo: 'Uma das maiores finais da história: o hat-trick de Mbappé não impede o título de Messi.' },
+];
+function buscarReencontroHistorico(idA, idB) {
+  return REENCONTROS_HISTORICOS.find(r => (r.par[0] === idA && r.par[1] === idB) || (r.par[0] === idB && r.par[1] === idA)) || null;
+}
+
 function iniciarLiveGrid() {
   const ativas = livePartidas.filter(p => !p.finalizado90);
   const finalizadas = livePartidas.filter(p => p.finalizado90);
@@ -7134,17 +7280,27 @@ function iniciarLiveGrid() {
     const nomeA = `<span class="time-nome-vivo" style="${estiloNomeVibrante(sA, isMinha?13.5:12, eMinhA)}">${nA}</span>`;
     const nomeB = `<span class="time-nome-vivo" style="${estiloNomeVibrante(sB, isMinha?13.5:12, eMinhB)}">${nB}</span>`;
     const score = scoreOverride ?? `${p.golsA ?? 0} x ${p.golsB ?? 0}`;
+    const zebraInfo = zebraProbConteudo(p);
+    const probHTML = zebraInfo ? `<div class="zebra-prob-linha" title="Probabilidade de vitória calculada antes da partida" style="${zebraInfo.style}">${zebraInfo.html}</div>` : '';
+    const reencontro = buscarReencontroHistorico(p.a, p.b);
+    const reencontroHTML = reencontro ? `<div style="text-align:center;font-size:9px;font-weight:800;color:#f0c040;background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.3);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${reencontro.resumo.replace(/"/g,'&quot;')}">🏛️ REENCONTRO HISTÓRICO — ${reencontro.fase} de ${reencontro.ano}: ${reencontro.placar}</div>` : '';
+    // Fantasmas / Revanche: o adversário desta partida já eliminou algum time seu numa copa anterior?
+    const fantasma = (eMinhA || eMinhB) ? (copa.fantasmas || []).find(f => f.eliminadorId === (eMinhA ? p.b : p.a)) : null;
+    const fantasmaHTML = fantasma ? `<div style="text-align:center;font-size:9px;font-weight:800;color:#c084fc;background:rgba(147,51,234,.14);border:1px solid rgba(192,132,252,.35);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${fantasma.eliminadorNome} eliminou ${fantasma.minhaSelecaoNome} numa copa anterior neste aparelho">👻 REVANCHE! ${fantasma.eliminadorNome} já eliminou você antes</div>` : '';
     const cardStyle = `display:block;border-bottom:none;` +
       `background:linear-gradient(105deg,${vibA.c1}${isMinha?'2e':'16'} 0%,rgba(9,24,14,.6) 32%,rgba(9,24,14,.6) 68%,${vibB.c1}${isMinha?'2e':'16'} 100%);` +
       `border:1px solid rgba(255,255,255,${isMinha?'.15':'.06'});border-left:3px solid ${vibA.c1};border-right:3px solid ${vibB.c1};` +
       `border-radius:10px;margin-bottom:7px;padding:${isMinha?'9px 11px':'6px 10px'};` +
       (isMinha ? `box-shadow:0 0 16px ${corMinha}30;` : '');
     return `<div class="placar-vivo${destaque}" data-copa-a="${p.a}" data-copa-b="${p.b}" data-blc="${vibA.c1}" data-brc="${vibB.c1}" style="${cardStyle}">
+      ${reencontroHTML}
+      ${fantasmaHTML}
       <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;">
         <span class="time-grupo">${nomeA}${badgeA}</span>
         <span class="placar" style="font-size:${isMinha?18:13}px;color:${isMinha?'#fff':'var(--areia)'};${isMinha?'text-shadow:0 0 10px rgba(255,255,255,.25);':''}">${score}</span>
         <span class="time-grupo time-grupo-direita">${badgeB}${nomeB}</span>
       </div>
+      ${probHTML}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;min-height:${isMinha?'15px':'0px'};">
         <span style="display:inline-flex;gap:6px;align-items:center;min-width:0;overflow:hidden;">
           <span class="eventos-vivo" data-lado="A">${badgesStatusLive(p,'A')}</span><span class="gol-recente" data-lado="A"></span>
@@ -7295,6 +7451,12 @@ function atualizarEventoCopa(p, ev) {
     } else if (ev.resultado === 'defendido') {
       if (iconSpan) iconSpan.textContent = `🧤 Pên. defend. ${ev.minuto}'`;
     }
+  }
+  // Reavalia o selo de zebra (o placar pode ter mudado com o evento acima)
+  const zebraDiv = linha.querySelector('.zebra-prob-linha');
+  if (zebraDiv) {
+    const zi = zebraProbConteudo(p);
+    if (zi) { zebraDiv.innerHTML = zi.html; zebraDiv.style.cssText = zi.style; }
   }
 }
 function tickLive() {
@@ -7917,6 +8079,7 @@ function iniciarShootoutInterativo(dadosTie, callback) {
   // undefined, comparação com 1 sempre falsa) numa morte súbita raríssima mas possível.
   const oppKicks = [];
   const log = [];
+  let ultimaFalhaHum = null, ultimaFalhaOpp = null; // para o apelido "Mão de Alface da Copa"
   const subDiv = document.getElementById('copaLiveSub');
   const banner = document.getElementById('copaLiveBanner');
   banner.textContent = '⚽ DISPUTA DE PÊNALTIS!';
@@ -8035,9 +8198,9 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     ultimoCantoHum = cantoHum;
     if (oppKicks[rodada] === undefined) oppKicks[rodada] = copaRng() < 0.76 ? 1 : 0;
     const oppConv = oppKicks[rodada] === 1;
-    if (humConv) { humGols++; tocarSomGolCopa(); }
-    if (oppConv) oppGols++;
+    if (humConv) { humGols++; tocarSomGolCopa(); } else { ultimaFalhaHum = jogador?.nome || null; }
     const jogadorOpp = titOpp.length ? titOpp[rodada % titOpp.length] : null;
+    if (oppConv) oppGols++; else { ultimaFalhaOpp = jogadorOpp?.nome || null; }
     // Nome dos DOIS batedores no log — antes só o seu aparecia, o resultado do oponente ficava
     // sem autor, dando a impressão de que só um lado estava "de verdade" jogando.
     const cantoTxt = acertouGoleiro ? `${CANTO_LBL[cantoHum]} — goleiro pegou o canto!` : CANTO_LBL[cantoHum];
@@ -8054,6 +8217,15 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     const pens = { golsA: isMeuA ? humGols : oppGols, golsB: isMeuA ? oppGols : humGols };
     jogo.golsA = gA; jogo.golsB = gB; jogo.pens = pens;
     jogo.vencedorId = pens.golsA > pens.golsB ? jogo.a : jogo.b;
+    jogo.lambdaA = partida.lambdaA; jogo.lambdaB = partida.lambdaB; // guarda a força pré-jogo p/ eleger a "Zebra Oficial" no fim da copa
+    // "Mão de Alface da Copa": a última falha do lado que PERDEU a disputa.
+    const perdeuHum = (isMeuA && pens.golsA < pens.golsB) || (!isMeuA && pens.golsB < pens.golsA);
+    const nomeMaoDeAlface = pens.golsA === pens.golsB ? null : (perdeuHum ? ultimaFalhaHum : ultimaFalhaOpp);
+    if (nomeMaoDeAlface) {
+      copa.candidatosMaoDeAlface = copa.candidatosMaoDeAlface || [];
+      const selIdPerdedor = jogo.vencedorId === jogo.a ? jogo.b : jogo.a;
+      copa.candidatosMaoDeAlface.push({ nome: nomeMaoDeAlface, selId: selIdPerdedor, fase: partida.rodadaKey });
+    }
     // Por consistência com o caminho normal do bracket (linha ajustarDificuldadeAdaptativa em
     // finalizarRodadaBracketLive) — aqui gA/gB são sempre iguais (é por isso que foi a pênaltis),
     // então o saldo sempre dá 0 e não muda copa.dificuldadeOffset hoje; existe só pra não deixar
@@ -8750,6 +8922,20 @@ function renderCopaBracket() {
         <div class="campeao-lenda">★ ${lendaJog ? lendaJog.nome : sel.lenda}</div>
         ${parabensTxt}
         ${(() => {
+          const w = copa.wrappedDaCopa;
+          if (!w || !w.totalPartidas) return '';
+          const media = w.mediaGols.toFixed(1).replace('.', ',');
+          const gol = w.maiorGoleada;
+          const golTxt = gol ? (() => {
+            const sA = copa.selMap[gol.a], sB = copa.selMap[gol.b];
+            return ` · maior goleada: ${sA?nomeCurtoSel(sA):'?'} ${gol.golsA}x${gol.golsB} ${sB?nomeCurtoSel(sB):'?'}`;
+          })() : '';
+          const recordeTxt = w.novoRecordeGols
+            ? `<div style="font-size:10.5px;color:#f0c040;font-weight:800;margin-top:5px;">🎉 NOVO RECORDE PESSOAL! Seu time marcou ${w.meusGols} gols nesta copa, superando os ${w.melhorGolsAnterior} da sua melhor copa anterior!</div>`
+            : '';
+          return `<div style="font-size:10.5px;color:rgba(232,245,233,.55);margin-top:6px;line-height:1.5;">📊 <b style="color:var(--areia);">Wrapped da Copa:</b> ${w.totalGols} gols em ${w.totalPartidas} jogos (média de ${media} por partida)${golTxt}</div>${recordeTxt}`;
+        })()}
+        ${(() => {
           const crqOrd = Object.entries(copa.craques || {}).sort((a,b) => b[1]-a[1]);
           const [crqNome, crqVezes] = crqOrd[0] || [null, 0];
           const crqBloco = crqNome ? `<div style="text-align:center;"><div style="font-size:8px;color:var(--cinza);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px;">🏅 Melhor da Copa</div><div style="font-size:11px;font-weight:700;color:#f0c040;">${crqNome}</div><div style="font-size:9px;color:#eab308;">${crqVezes}× melhor em campo</div></div>` : '';
@@ -8758,6 +8944,21 @@ function renderCopaBracket() {
           <div style="text-align:center;"><div style="font-size:8px;color:var(--cinza);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px;">MVP do Campeão</div><div style="font-size:11px;font-weight:700;color:var(--areia);">${mvpNome}</div>${mvpGols>0?`<div style="font-size:9px;color:#eab308;">${mvpGols} gol(s) na Copa</div>`:''}</div>
           <div style="text-align:center;"><div style="font-size:8px;color:var(--cinza);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px;">Artilheiro</div><div style="font-size:11px;font-weight:700;color:var(--areia);">${artNome}</div><div style="font-size:9px;color:#eab308;">${artGols} gol(s)</div></div>
         </div>`;
+        })()}
+        ${(() => {
+          const tit = copa.titulosDaCopa || {};
+          const blocos = [];
+          if (tit.maoDeAlface) {
+            const selPerdedora = copa.selMap[tit.maoDeAlface.selId];
+            blocos.push(`<div style="text-align:center;"><div style="font-size:8px;color:var(--cinza);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px;">🥶 Mão de Alface da Copa</div><div style="font-size:11px;font-weight:700;color:var(--areia);">${tit.maoDeAlface.nome}</div><div style="font-size:9px;color:#ef4444;">perdeu o pênalti decisivo${selPerdedora?` por ${nomeCurtoSel(selPerdedora)}`:''}</div></div>`);
+          }
+          if (tit.zebraOficial) {
+            const selV = copa.selMap[tit.zebraOficial.selId], selD = copa.selMap[tit.zebraOficial.selIdDerrotado];
+            const pct = Math.round(tit.zebraOficial.prob * 100);
+            blocos.push(`<div style="text-align:center;"><div style="font-size:8px;color:var(--cinza);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px;">🦓 Zebra Oficial da Copa</div><div style="font-size:11px;font-weight:700;color:var(--areia);">${selV?nomeCurtoSel(selV):'?'}</div><div style="font-size:9px;color:#f0c040;">só ${pct}% de chance, eliminou ${selD?nomeCurtoSel(selD):'?'}</div></div>`);
+          }
+          if (!blocos.length) return '';
+          return `<div style="display:flex;gap:12px;justify-content:center;margin-top:8px;flex-wrap:wrap;border-top:1px solid rgba(217,164,74,.2);padding-top:8px;">${blocos.join('')}</div>`;
         })()}
       </div>`;
     }
@@ -8973,6 +9174,67 @@ function mostrarRegrasCopaOverlay() {
   abrirOverlayGenericoCopa('📖', 'Regras & Formato', construirRegrasCopaHTML(), 920);
 }
 
+// Fantasmas / Revanche: registra quem eliminou seu time no mata-mata desta copa, pra avisar se
+// esse "fantasma" reaparecer numa copa futura. Fica de fora, por ora, a eliminação na fase de
+// grupos (não-classificação) — só cobre derrotas no mata-mata, o cenário mais dramático.
+function registrarFantasmaCopa(selIdEliminado, selIdEliminador) {
+  try {
+    const selElim = copa.selMap?.[selIdEliminador], selMeu = copa.selMap?.[selIdEliminado];
+    if (!selElim) return;
+    const lista = JSON.parse(localStorage.getItem(STORAGE_KEY_FANTASMAS_COPA) || '[]');
+    lista.unshift({
+      data: Date.now(),
+      eliminadorId: selIdEliminador,
+      eliminadorNome: nomeCurtoSel(selElim),
+      minhaSelecaoNome: selMeu ? nomeCurtoSel(selMeu) : '?',
+    });
+    localStorage.setItem(STORAGE_KEY_FANTASMAS_COPA, JSON.stringify(lista.slice(0, 20)));
+  } catch (e) {}
+}
+// Verifica, entre as seleções sorteadas para uma nova copa, quais já eliminaram o jogador antes
+// (lidas do histórico local deste aparelho) — vira o selo "👻 Fantasma" nos cards de partida ao vivo.
+function detectarFantasmasNaCopa(selecoes) {
+  try {
+    const lista = JSON.parse(localStorage.getItem(STORAGE_KEY_FANTASMAS_COPA) || '[]');
+    if (!lista.length) return [];
+    const idsNaCopa = new Set(selecoes.map(s => s.id));
+    const porId = new Map();
+    lista.forEach(f => {
+      if (idsNaCopa.has(f.eliminadorId) && !porId.has(f.eliminadorId)) porId.set(f.eliminadorId, f);
+    });
+    return [...porId.values()];
+  } catch (e) { return []; }
+}
+// "Wrapped da Copa": recap estilo resumo-de-fim-de-ano, calculado direto dos resultados já
+// registrados em grupos + bracket — não precisa de nenhuma contagem incremental à parte.
+function construirWrappedDaCopa() {
+  if (!copa) return null;
+  const todosJogos = [
+    ...(copa.grupos || []).flatMap(g => g.jogos || []),
+    ...(copa.bracket ? [
+      ...(copa.bracket.r32 || []), ...(copa.bracket.r16 || []), ...(copa.bracket.qf || []), ...(copa.bracket.sf || []),
+      ...(copa.bracket.terceiro ? [copa.bracket.terceiro] : []),
+      ...(copa.bracket.final ? [copa.bracket.final] : []),
+    ] : []),
+  ].filter(j => j.golsA !== null && j.golsA !== undefined && j.golsB !== null && j.golsB !== undefined);
+  let totalGols = 0, maiorGoleada = null;
+  const meuSelId = copa.minhasSelecoes?.[0] || copa.minhaSelecaoId || null;
+  let meusGols = meuSelId ? 0 : null;
+  todosJogos.forEach(j => {
+    totalGols += j.golsA + j.golsB;
+    const diff = Math.abs(j.golsA - j.golsB);
+    if (!maiorGoleada || diff > maiorGoleada.diff) maiorGoleada = { diff, a: j.a, b: j.b, golsA: j.golsA, golsB: j.golsB };
+    if (meuSelId && j.a === meuSelId) meusGols += j.golsA;
+    else if (meuSelId && j.b === meuSelId) meusGols += j.golsB;
+  });
+  return {
+    totalPartidas: todosJogos.length,
+    totalGols,
+    mediaGols: todosJogos.length ? totalGols / todosJogos.length : 0,
+    maiorGoleada,
+    meusGols,
+  };
+}
 // ===== Histórico de carreira entre copas (localStorage, por dispositivo) =====
 function salvarHistoricoCopa() {
   if (!copa) return;
@@ -8982,6 +9244,13 @@ function salvarHistoricoCopa() {
     const craques = Object.entries(copa.craques || {}).sort((a, b) => b[1] - a[1]);
     const meuSelId = copa.minhasSelecoes?.[0];
     const minhaSel = meuSelId ? copa.selMap?.[meuSelId] : null;
+    const wrapped = construirWrappedDaCopa();
+    const lista = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]');
+    // Recorde pessoal de gols do seu time nesta copa, contra o melhor já registrado neste aparelho
+    // (só conta como recorde se já existe ao menos uma copa anterior com esse dado pra comparar).
+    const copasComMeusGols = lista.filter(r => r.meusGols != null);
+    const melhorGolsAnterior = copasComMeusGols.length ? Math.max(...copasComMeusGols.map(r => r.meusGols)) : null;
+    const novoRecordeGols = !!(wrapped?.meusGols != null && melhorGolsAnterior != null && wrapped.meusGols > melhorGolsAnterior);
     const registro = {
       data: Date.now(),
       campeao: campeaoSel ? nomeCurtoSel(campeaoSel) : (copa.campeao || '?'),
@@ -8990,8 +9259,11 @@ function salvarHistoricoCopa() {
       minhaSelecao: minhaSel ? nomeCurtoSel(minhaSel) : null,
       venci: !!(meuSelId && copa.campeao === meuSelId),
       online: !!copa.onlineCopa,
+      totalGolsCopa: wrapped?.totalGols ?? null,
+      maiorGoleadaDiff: wrapped?.maiorGoleada?.diff ?? null,
+      meusGols: wrapped?.meusGols ?? null,
     };
-    const lista = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]');
+    copa.wrappedDaCopa = wrapped ? { ...wrapped, novoRecordeGols, melhorGolsAnterior } : null;
     lista.unshift(registro);
     localStorage.setItem(STORAGE_KEY_HISTORICO_COPAS, JSON.stringify(lista.slice(0, 50)));
   } catch (e) {}
