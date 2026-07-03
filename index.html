@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '28'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '29'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1681,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v28</div>
+  <div class="rodapezinho">v29</div>
 </div>
 
 <script>
@@ -6179,6 +6179,16 @@ function iniciarRodadaBracketLive() {
 }
 
 function finalizarRodadaBracketLive() {
+  // Cura lesões e desconta suspensões que já estavam ativas ANTES desta rodada — o jogador
+  // acabou de CUMPRIR a pendência ficando de fora da partida que só agora terminou. Tem que
+  // rodar ANTES de processar os eventos desta rodada (abaixo), senão uma expulsão/lesão NOVA
+  // seria desfeita nesta mesma respiração — bug relatado: expulso/lesionado jogando a rodada seguinte.
+  Object.values(copa.selMap).forEach(sel => {
+    sel.jogadores.forEach(j => {
+      if (j.lesionado) { j.lesionado = false; j.cansaco = Math.min(100, Math.max(25, (j.cansaco||0) + 20)); }
+      if (j.suspenso > 0) j.suspenso--;
+    });
+  });
   const shootoutsHumanos = [];
   livePartidas.forEach(p => {
     const bkt = copa.bracket;
@@ -6252,16 +6262,9 @@ function finalizarRodadaBracketLive() {
       return ehMinhaSel(p.golsA < p.golsB ? p.a : p.b);
     });
     const _fazerAvanco = () => {
-      // Recuperação entre rodadas do bracket: cura lesões, desconta suspensões, auto-escala.
-      // NÃO dá bônus de vigor pra todo mundo aqui (igual à fase de grupos) — isso já foi um bug:
-      // o +12 flat quase empatava com a fadiga da partida (12-17), então repetir o mesmo time até
-      // a final nunca cansava de verdade a partir do mata-mata.
-      Object.values(copa.selMap).forEach(sel => {
-        sel.jogadores.forEach(j => {
-          if (j.lesionado) { j.lesionado = false; j.cansaco = Math.min(100, Math.max(25, (j.cansaco||0) + 20)); }
-          if (j.suspenso > 0) j.suspenso--;
-        });
-      });
+      // A cura de lesões e o desconto de suspensão que rodava aqui foi movido pro TOPO de
+      // finalizarRodadaBracketLive — rodar aqui, depois de já ter processado os eventos desta
+      // rodada, desfazia expulsões/lesões novas antes mesmo delas valerem pra rodada seguinte.
       copa.minhasSelecoes.forEach(selId => {
         const sel = copa.selMap[selId];
         if (sel) autoEscalar(sel, copa.minhasEsquemas?.[selId] || copa.minhaEsquema || '4-4-2');
@@ -6282,7 +6285,7 @@ function finalizarRodadaBracketLive() {
       if (liveInd) liveInd.style.display = 'none';
       document.getElementById('painelCopaLive').classList.add('hidden');
       renderCopaBracket(); renderCopaArtilheiros();
-      mostrarPainelCopa('bracket');
+      mostrarPainelCopa('painel');
       if (copa.onlineCopa) salvarCopaOnline();
     };
     if (goleadasBkt.length) {
@@ -7824,16 +7827,62 @@ function renderEscolhaBatedorPenalti(partida, ev) {
   subDiv.querySelectorAll('[data-pen-nome]').forEach(el => {
     el.addEventListener('click', () => {
       const jogador = sel.jogadores.find(j => j.nome === el.dataset.penNome);
-      confirmarBatedorPenalti(partida, ev, jogador);
+      renderEscolhaCantoPenaltiJogo(partida, ev, jogador);
     });
   });
 }
 
-function confirmarBatedorPenalti(partida, ev, jogador) {
+// Escolha de canto pro pênalti DURANTE a partida — mesma mecânica da disputa de pênaltis
+// (goleiro "lê" quem repete o canto anterior), pra ficar consistente em qualquer pênalti do
+// jogo, não só na disputa. O histórico de canto é por seleção (partida._ultimoCantoPorSel),
+// então times com mais de um pênalti na mesma partida ainda têm o incentivo de variar.
+const CANTOS_PENALTI_JOGO = ['esquerda', 'centro', 'direita'];
+const CANTO_LBL_JOGO = { esquerda: '⬅ Esquerda', centro: '⬆ Centro', direita: '➡ Direita' };
+function renderEscolhaCantoPenaltiJogo(partida, ev, jogador) {
+  const banner = document.getElementById('copaLiveBanner');
+  banner.textContent = `⚽ ${jogador?.nome || 'Batedor'} vai bater — escolha o canto`;
+  banner.className = 'live-banner intervalo'; banner.classList.remove('hidden');
+  const subDiv = document.getElementById('copaLiveSub');
+  subDiv.innerHTML = `<div class="sub-wrap" style="border:1px solid #eab308;">
+    <div style="font-size:12px;font-weight:900;color:#eab308;margin-bottom:10px;text-align:center;letter-spacing:.5px;">⚽ PÊNALTI — Escolha o canto</div>
+    <div style="display:flex;gap:8px;">
+      <button type="button" class="pequeno canto-pen-jogo-btn" data-canto="esquerda" style="flex:1;padding:16px 4px;font-size:12px;">⬅<br>Esquerda</button>
+      <button type="button" class="pequeno canto-pen-jogo-btn" data-canto="centro" style="flex:1;padding:16px 4px;font-size:12px;">⬆<br>Centro</button>
+      <button type="button" class="pequeno canto-pen-jogo-btn" data-canto="direita" style="flex:1;padding:16px 4px;font-size:12px;">➡<br>Direita</button>
+    </div>
+  </div>`;
+  subDiv.classList.remove('hidden');
+  subDiv.querySelectorAll('.canto-pen-jogo-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      subDiv.querySelectorAll('.canto-pen-jogo-btn').forEach(b => b.style.pointerEvents = 'none');
+      confirmarBatedorPenalti(partida, ev, jogador, btn.dataset.canto);
+    });
+  });
+}
+
+function confirmarBatedorPenalti(partida, ev, jogador, cantoHum) {
   document.getElementById('copaLiveSub').classList.add('hidden');
   const t = jogador?.traits||[];
-  const taxa = t.includes('oRei') ? 0.94 : t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
+  const taxaBase = t.includes('oRei') ? 0.94 : t.includes('pegadorPenalti') ? 0.90 : t.includes('jogadorCompleto') ? 0.87
              : t.includes('finalizador') ? 0.83 : t.includes('batedor') ? 0.81 : 0.76;
+  let taxa = taxaBase, canDesc = '';
+  if (cantoHum) {
+    const selIdBat = ev.time === 'A' ? partida.a : partida.b;
+    partida._ultimoCantoPorSel = partida._ultimoCantoPorSel || {};
+    const ultimoCanto = partida._ultimoCantoPorSel[selIdBat];
+    const r = copaRng();
+    let cantoGoleiro;
+    if (ultimoCanto) {
+      const outros = CANTOS_PENALTI_JOGO.filter(c => c !== ultimoCanto);
+      cantoGoleiro = r < 0.45 ? ultimoCanto : (r < 0.725 ? outros[0] : outros[1]);
+    } else {
+      cantoGoleiro = r < 1 / 3 ? CANTOS_PENALTI_JOGO[0] : (r < 2 / 3 ? CANTOS_PENALTI_JOGO[1] : CANTOS_PENALTI_JOGO[2]);
+    }
+    partida._ultimoCantoPorSel[selIdBat] = cantoHum;
+    const acertou = cantoGoleiro === cantoHum;
+    taxa = acertou ? Math.max(0.25, taxaBase - 0.35) : Math.min(0.97, taxaBase + 0.12);
+    canDesc = acertou ? ` (${CANTO_LBL_JOGO[cantoHum]} — goleiro pegou o canto!)` : ` (${CANTO_LBL_JOGO[cantoHum]})`;
+  }
   const conv = copaRng() < taxa;
   if (conv) {
     if (ev.time==='A') partida.golsA++; else partida.golsB++;
@@ -7848,7 +7897,7 @@ function confirmarBatedorPenalti(partida, ev, jogador) {
   ev.jogador = jogador?.nome || '?';
   atualizarEventoCopa(partida, ev);
   const banner = document.getElementById('copaLiveBanner');
-  let bannerTxt = conv ? `⚽ GOL DE PÊNALTI! ${ev.jogador} converte!` : `🧤 Pênalti DEFENDIDO! Que defesa épica!`;
+  let bannerTxt = conv ? `⚽ GOL DE PÊNALTI! ${ev.jogador} converte!${canDesc}` : `🧤 Pênalti DEFENDIDO! Que defesa épica!${canDesc}`;
   if (!conv) {
     const defId = ev.time === 'A' ? partida.b : partida.a;
     const gk = copa.selMap[defId]?.jogadores.find(j => j.pos === 'GOL' && j.titular);
@@ -8029,6 +8078,34 @@ function iniciarShootoutInterativo(dadosTie, callback) {
       Object.entries(m).forEach(([n, c]) => { copa.artilheiros[n] = (copa.artilheiros[n]||0) + c; });
     });
     elegerCraquePartida(partida, jogo);
+    // Cansaço, moral, cartões e lesões desta partida — o caminho de shootout pulava isso porque
+    // sai do loop principal de finalizarRodadaBracketLive antes de chegar nesse trecho (bug:
+    // jogador expulso/lesionado numa partida decidida nos pênaltis jogava a seguinte sem nenhuma
+    // suspensão/lesão registrada, e vigor/moral também nunca eram atualizados pra essa partida).
+    [{ selId: partida.a, lado: 'A' }, { selId: partida.b, lado: 'B' }].forEach(({ selId, lado }) => {
+      const sel = copa.selMap[selId]; if (!sel) return;
+      const venceu = jogo.vencedorId === selId;
+      sel.jogadores.forEach(j => {
+        if (j.cansaco === undefined) j.cansaco = 100;
+        if (j.titular) {
+          let fadiga = 12 + Math.floor(copaRng() * 6);
+          if (partida.emProrrogacao) fadiga += 8;
+          if (HIGH_STAMINA_LENDAS.has(j.nome)) fadiga = Math.max(4, fadiga - 6);
+          else if ((j.traits||[]).includes('lenda')) fadiga = Math.max(5, fadiga - 4);
+          j.cansaco = Math.max(0, j.cansaco - fadiga);
+        } else {
+          j.cansaco = Math.min(100, j.cansaco + 10);
+        }
+        ajustarMoralJogador(sel, j, venceu, false, jogo.craque === j.nome);
+      });
+      partida.eventos.forEach(ev => {
+        if (ev.time !== lado) return;
+        const j = sel.jogadores.find(x => x.nome === ev.jogador); if (!j) return;
+        if (ev.tipo === 'lesao')   { j.lesionado = true; }
+        if (ev.tipo === 'amarelo') { j.amarelos = (j.amarelos||0) + 1; if (j.amarelos >= 2) { j.suspenso = 1; j.amarelos = 0; } }
+        if (ev.tipo === 'vermelho'){ j.suspenso = 1; j.amarelos = 0; }
+      });
+    });
     subDiv.classList.add('hidden');
     const ganhou = jogo.vencedorId === selHum?.id;
     banner.textContent = ganhou
@@ -8043,6 +8120,17 @@ function iniciarShootoutInterativo(dadosTie, callback) {
 }
 
 function finalizarJornada() {
+  // Cura lesões e desconta suspensões que já estavam ativas ANTES desta partida — ou seja, o
+  // jogador acabou de CUMPRIR a pendência ficando de fora da partida que só agora terminou.
+  // Isso tem que rodar ANTES de processar os eventos desta partida (abaixo): senão uma
+  // expulsão/lesão NOVA setada logo ali seria desfeita nesta mesma respiração, antes mesmo de
+  // valer pra próxima partida — bug relatado: expulso/lesionado jogando a partida seguinte.
+  Object.values(copa.selMap).forEach(sel => {
+    sel.jogadores.forEach(j => {
+      if (j.lesionado) { j.lesionado = false; j.cansaco = Math.min(100, Math.max(25, (j.cansaco||0) + 20)); }
+      if (j.suspenso > 0) j.suspenso--;
+    });
+  });
   // Salva resultados e atualiza status dos jogadores
   livePartidas.forEach(p => {
     const grupo = copa.grupos.find(g => g.id === p.grupoId);
@@ -8109,18 +8197,10 @@ function finalizarJornada() {
   });
   const _prosseguirJornada = () => {
     document.getElementById('painelCopaLive').classList.add('hidden');
-    document.getElementById('painelCopaGrupos').classList.remove('hidden');
+    document.getElementById('painelCopaPainel').classList.remove('hidden');
     const liveInd = document.getElementById('btnAbaCopaVivo');
     if (liveInd) liveInd.style.display = 'none';
     renderCopaArtilheiros();
-    Object.values(copa.selMap).forEach(sel => {
-      sel.jogadores.forEach(j => {
-        // Lesão cura entre jornadas (mínimo de cansaço ao voltar)
-        if (j.lesionado) { j.lesionado = false; j.cansaco = Math.min(100, Math.max(25, (j.cansaco||0) + 20)); }
-        // Suspensão desconta 1 partida; se chegou a 0, player volta
-        if (j.suspenso > 0) j.suspenso--;
-      });
-    });
     copa.minhasSelecoes.forEach(selId => {
       const sel = copa.selMap[selId];
       if (sel) autoEscalar(sel, copa.minhasEsquemas?.[selId] || copa.minhaEsquema || '4-4-2');
@@ -8130,9 +8210,9 @@ function finalizarJornada() {
       montarBracket(copa, copaRng);
       copa.faseAtual = 'bracket';
       renderCopaBracket();
-      mostrarPainelCopa('bracket');
+      mostrarPainelCopa('painel');
     } else {
-      mostrarPainelCopa('grupos');
+      mostrarPainelCopa('painel');
       renderCopaGrupos();
     }
     if (copa.onlineCopa) salvarCopaOnline();
@@ -9302,7 +9382,36 @@ function tocarTomCopa(ctx, freq, inicioT, duracao, tipoOnda, volume) {
 function tocarSomGolCopa() {
   const ctx = getAudioCtxCopa(); if (!ctx) return;
   const t0 = ctx.currentTime;
-  [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => tocarTomCopa(ctx, freq, t0 + i * 0.09, 0.22, 'triangle', 0.22));
+  // Camada 1: "rugido" da torcida — ruído filtrado com envelope de subida e queda, pra não
+  // soar só como um tom de sintetizador genérico.
+  try {
+    const dur = 1.3;
+    const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass'; bandpass.frequency.value = 1100; bandpass.Q.value = 0.55;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0, t0);
+    noiseGain.gain.linearRampToValueAtTime(0.32, t0 + 0.12);
+    noiseGain.gain.linearRampToValueAtTime(0.2, t0 + 0.55);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    noise.connect(bandpass); bandpass.connect(noiseGain); noiseGain.connect(ctx.destination);
+    noise.start(t0); noise.stop(t0 + dur);
+  } catch (e) {}
+  // Camada 2: arpejo comemorativo (o som original, mantido como reforço melódico)
+  [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => tocarTomCopa(ctx, freq, t0 + i * 0.09, 0.22, 'triangle', 0.18));
+  // Camada 3: narração "Goool!" via Web Speech API — sem precisar de nenhum arquivo de áudio.
+  try {
+    if (window.speechSynthesis) {
+      speechSynthesis.cancel(); // corta narração de gol anterior se ainda estiver falando
+      const u = new SpeechSynthesisUtterance('Goooolaço!');
+      u.lang = 'pt-BR'; u.rate = 0.8; u.pitch = 1.25; u.volume = 0.85;
+      speechSynthesis.speak(u);
+    }
+  } catch (e) {}
 }
 function tocarSomCartaoVermelhoCopa() {
   const ctx = getAudioCtxCopa(); if (!ctx) return;
@@ -9321,6 +9430,7 @@ function alternarSomCopa() {
   const btn = document.getElementById('btnMuteSomCopa');
   if (btn) btn.textContent = somCopaAtivado ? '🔊' : '🔇';
   if (somCopaAtivado) getAudioCtxCopa(); // inicia/retoma o contexto já dentro do próprio gesto de clique
+  else { try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
 }
 
 function luminanciaCor(hex) {
