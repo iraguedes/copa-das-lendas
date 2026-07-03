@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '40'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '41'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1681,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v40</div>
+  <div class="rodapezinho">v41</div>
 </div>
 
 <script>
@@ -6564,6 +6564,15 @@ function ehMinhaSel(id) {
   return copa.minhasSelecoes?.includes(id) || copa.minhaSelecaoId === id;
 }
 
+// Personalidade do treinador: como o entrosamento (bônus por manter a mesma tática) se comporta
+// pra seleções específicas — só faz diferença quando VOCÊ as controla (CPU nunca troca de tática
+// sozinha hoje, então "adaptação" só existe pro lado humano). Curadoria pontual.
+const TREINADOR_MODERNO = new Set(['ale1990', 'ger2014', 'ale2026']); // adapta rápido: trocar de esquema não zera tudo
+const TREINADOR_CONSERVADOR = new Set(['ita1982', 'ita1994', 'ita2006']); // recompensa mais quem mantém a mesma tática
+const ESQUEMA_CARACTERISTICO = { ned1974: '4-3-3' }; // ganha bônus fixo jogando nesse esquema específico
+function tetoEntrosamentoCopa(selId) {
+  return TREINADOR_CONSERVADOR.has(selId) ? 6 : 4; // conservador: teto mais alto (até +9% em vez de +6%)
+}
 function forcaComEsquema(atq, def, selId) {
   if (!copa) return { atq, def };
   // No online, o bônus de tática vale para TODOS os times humanos (lista global, idêntica em
@@ -6576,8 +6585,10 @@ function forcaComEsquema(atq, def, selId) {
   const e = ESQUEMAS_COPA.find(e => e.f === esqF);
   if (!e) return { atq, def };
   const jogos = copa.entrosamento?.[selId]?.jogos ?? 0;
-  const entr = jogos * 0.015; // +1.5% por jogo consecutivo com mesma tática, max +6%
-  return { atq: atq * (1 + e.a / 100) * (1 + entr), def: def * (1 + e.d / 100) * (1 + entr) };
+  const entr = jogos * 0.015; // +1.5% por jogo consecutivo com mesma tática, teto varia por treinador
+  const bonusCaracteristico = ESQUEMA_CARACTERISTICO[selId] === esqF ? 0.03 : 0; // +3% fixo no esquema-marca
+  const mult = 1 + entr + bonusCaracteristico;
+  return { atq: atq * (1 + e.a / 100) * mult, def: def * (1 + e.d / 100) * mult };
 }
 
 const DIFICULDADE_MULT = { normal: 1, dificil: 1.12 };
@@ -6635,12 +6646,16 @@ function atualizarEntrosamento() {
   copa.entrosamento = copa.entrosamento || {};
   times.forEach(selId => {
     const esqAtual = copa.minhasEsquemas?.[selId] || '4-4-2';
+    const teto = tetoEntrosamentoCopa(selId);
     if (!copa.entrosamento[selId]) {
       copa.entrosamento[selId] = { esquema: esqAtual, jogos: 0 };
     } else if (copa.entrosamento[selId].esquema === esqAtual) {
-      copa.entrosamento[selId].jogos = Math.min(copa.entrosamento[selId].jogos + 1, 4);
+      copa.entrosamento[selId].jogos = Math.min(copa.entrosamento[selId].jogos + 1, teto);
     } else {
-      copa.entrosamento[selId] = { esquema: esqAtual, jogos: 0 };
+      // Trocou de esquema: treinador moderno adapta rápido — mantém metade do progresso em vez
+      // de zerar tudo (os demais reiniciam do zero, como sempre foi).
+      const jogosDepois = TREINADOR_MODERNO.has(selId) ? Math.floor(copa.entrosamento[selId].jogos / 2) : 0;
+      copa.entrosamento[selId] = { esquema: esqAtual, jogos: jogosDepois };
     }
   });
 }
