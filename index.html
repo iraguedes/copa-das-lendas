@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '42'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '43'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1681,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v42</div>
+  <div class="rodapezinho">v43</div>
 </div>
 
 <script>
@@ -6176,6 +6176,18 @@ function qualificadosDosGrupos(copa) {
 
 let liveBracketEmProrrogacao = false;
 
+// Variabilidade do dia: pequeno fator aleatório sorteado uma vez por partida (via copaRng —
+// determinístico, seguro no online) pra duas partidas entre os MESMOS times não parecerem
+// sempre idênticas. "Forma do dia" só mexe no ataque (um time inspirado ataca mais, não vira
+// muralha na defesa) e é independente por lado; "arbitragem" é UMA só pra partida (afeta os
+// dois lados igual, como um árbitro de verdade). Deliberadamente pequeno — dá textura, não decide o jogo.
+function sortearVariabilidadeDoDia(rng) {
+  const formaA = 1 + (rng() * 0.08 - 0.04); // ±4% de ataque
+  const formaB = 1 + (rng() * 0.08 - 0.04);
+  const r = rng();
+  const arbitragem = r < 0.15 ? 1.4 : r < 0.30 ? 0.75 : 1; // 15% rigoroso (+40% cartão), 15% permissivo (-25%), resto normal
+  return { formaA, formaB, arbitragem };
+}
 function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
   const selA = copa.selMap[jogo.a], selB = copa.selMap[jogo.b];
   if (!selA || !selB) return null;
@@ -6183,6 +6195,9 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
   ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
   ({ mA, mB } = aplicarBoostFinal(mA, mB, selA.id, selB.id, rodadaKey, jogoIdx));
+  const variabilidade = sortearVariabilidadeDoDia(copaRng);
+  mA = { atq: mA.atq * variabilidade.formaA, def: mA.def };
+  mB = { atq: mB.atq * variabilidade.formaB, def: mB.def };
   // Tempo normal (90 min)
   const lambdaA = lambdaGolsCopa(mA.atq, mB.def), lambdaB = lambdaGolsCopa(mB.atq, mA.def);
   const nA = poisson(lambdaA, copaRng);
@@ -6224,7 +6239,7 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
     const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
     if (!tit.length) return;
     const rndP = () => tit[Math.floor(copaRng() * tit.length)];
-    const discMult = disciplinaMultCopa(sel.id); // >1 = time indisciplinado, mais cartão/falta
+    const discMult = disciplinaMultCopa(sel.id) * variabilidade.arbitragem; // >1 = mais cartão/falta (time indisciplinado e/ou árbitro rigoroso do dia)
     const numAma = poisson(0.28 * discMult, copaRng);
     const jaAmarelo = new Set();
     for (let i = 0; i < Math.min(numAma, 3); i++) {
@@ -7288,6 +7303,9 @@ function gerarPartidaLive(grupo, jogoIdx) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
   ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
+  const variabilidade = sortearVariabilidadeDoDia(copaRng);
+  mA = { atq: mA.atq * variabilidade.formaA, def: mA.def };
+  mB = { atq: mB.atq * variabilidade.formaB, def: mB.def };
   const lambdaA = lambdaGolsCopa(mA.atq, mB.def), lambdaB = lambdaGolsCopa(mB.atq, mA.def);
   const nA = poisson(lambdaA, copaRng);
   const nB = poisson(lambdaB, copaRng);
@@ -7320,7 +7338,7 @@ function gerarPartidaLive(grupo, jogoIdx) {
     const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
     if (!tit.length) return;
     const rndPlayer = () => tit[Math.floor(copaRng() * tit.length)];
-    const discMult = disciplinaMultCopa(sel.id); // >1 = time indisciplinado, mais cartão/falta
+    const discMult = disciplinaMultCopa(sel.id) * variabilidade.arbitragem; // >1 = mais cartão/falta (time indisciplinado e/ou árbitro rigoroso do dia)
     // Amarelos: ~1.5 por jogo por time
     const numAma = poisson(0.28 * discMult, copaRng);
     const jaAmarelo = new Set();
