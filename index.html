@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '30'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '31'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -757,12 +757,12 @@
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyApsgvuwOCOdbYk3fEeoOcqWMag8EQke9E",
-    authDomain: "lhamafoot.firebaseapp.com",
-    projectId: "lhamafoot",
-    storageBucket: "lhamafoot.firebasestorage.app",
-    messagingSenderId: "345593031220",
-    appId: "1:345593031220:web:71c250d564dea2e300b861"
+    apiKey: "AIzaSyD8Pnd7fUNT-MuDqybh8vpCD6I5VkIYHfk",
+    authDomain: "copa-das-lendas.firebaseapp.com",
+    projectId: "copa-das-lendas",
+    storageBucket: "copa-das-lendas.firebasestorage.app",
+    messagingSenderId: "677318271479",
+    appId: "1:677318271479:web:5b520de0365e6e3c908ef2"
   };
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
@@ -1680,7 +1680,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v30</div>
+  <div class="rodapezinho">v31</div>
 </div>
 
 <script>
