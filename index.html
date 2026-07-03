@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '34'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '35'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1680,7 +1680,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v34</div>
+  <div class="rodapezinho">v35</div>
 </div>
 
 <script>
@@ -7473,8 +7473,13 @@ function renderSubstituicoes(partida, selId, manterContagem) {
   const posOrd = { GOL:0, DEF:1, MEI:2, ATA:3 };
   const posL = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
   const sorted = (arr) => [...arr].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4));
+  // Jogador que JÁ saiu do jogo nesta partida (via substituição) não pode voltar — regra real
+  // do futebol. Rastreado por partida (não pelo elenco todo), senão ele ficaria de fora das
+  // PRÓXIMAS partidas também, o que seria errado — a restrição vale só pra este jogo.
+  if (partida) partida.saiuDoJogoPorSel = partida.saiuDoJogoPorSel || {};
+  const jaSaiuDoJogo = new Set((partida?.saiuDoJogoPorSel?.[selId]) || []);
   const tit = sorted(sel.jogadores.filter(j=>j.titular));
-  const res = sorted(sel.jogadores.filter(j=>!j.titular));
+  const res = sorted(sel.jogadores.filter(j=>!j.titular && !jaSaiuDoJogo.has(j.nome)));
   // Ocorrências do 1º tempo desta partida (lado do meu time)
   const _lado = partida && partida.a === selId ? 'A' : 'B';
   const expulsos = (partida && (_lado==='A' ? partida.vermelhosA : partida.vermelhosB)) || [];
@@ -7557,7 +7562,12 @@ function renderSubstituicoes(partida, selId, manterContagem) {
         const jIn  = sel.jogadores.find(j=>j.nome===nomeIn);
         if (jOut && jIn) {
           jOut.titular = false; jIn.titular = true; liveSubCount++;
-          if (partida) { partida.subsUsadas = partida.subsUsadas || {}; partida.subsUsadas[selId] = liveSubCount; }
+          if (partida) {
+            partida.subsUsadas = partida.subsUsadas || {}; partida.subsUsadas[selId] = liveSubCount;
+            // Quem sai não pode voltar pro jogo (regra real) — marca só nesta partida.
+            partida.saiuDoJogoPorSel = partida.saiuDoJogoPorSel || {};
+            partida.saiuDoJogoPorSel[selId] = [...(partida.saiuDoJogoPorSel[selId] || []), nomeOut];
+          }
           jIn.posCampo = posCampoCopa(jOut); jOut.posCampo = jOut.pos; // quem entra herda o setor do campo
           // Quem saiu não marca mais nesta partida (offline; no online os eventos são compartilhados)
           if (!copa.onlineCopa && partida) {
