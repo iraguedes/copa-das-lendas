@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '36'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '37'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1680,7 +1680,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v36</div>
+  <div class="rodapezinho">v37</div>
 </div>
 
 <script>
@@ -5827,22 +5827,39 @@ function probabilidadeVitoriaCopa(lambdaA, lambdaB) {
   const total = probA + probB + probEmpate;
   return { probA: probA / total, probB: probB / total, probEmpate: probEmpate / total };
 }
-// Zebra em tempo real: conteúdo da linha de probabilidade pré-jogo do card ao vivo, que vira o
-// selo "ZEBRA!" quando o azarão assume a frente no placar atual. Usado tanto na montagem inicial
-// do card (iniciarLiveGrid) quanto na atualização incremental a cada gol (atualizarEventoCopa).
-function zebraProbConteudo(p) {
+// Zebra em tempo real: NÃO mostra percentual nenhum. Só é avaliado quando o resultado da partida
+// já está confirmado — recebe o LADO que realmente venceu ('A'|'B'), não o placar corrente, porque
+// num jogo decidido nos pênaltis o placar do tempo normal (p.golsA/p.golsB) fica empatado mesmo
+// depois do resultado estar fechado (quem venceu vem de outro lugar: jogo.vencedorId/pens).
+// Enquanto o jogo ainda pode virar, não existe selo nenhum: evita o "grito de lobo" de anunciar
+// zebra no meio do jogo e o favorito virar depois.
+function zebraProbConteudo(p, ladoVencedor) {
+  if (ladoVencedor !== 'A' && ladoVencedor !== 'B') return null;
   if (p.lambdaA == null || p.lambdaB == null) return null;
   const { probA, probB } = probabilidadeVitoriaCopa(p.lambdaA, p.lambdaB);
   const somaSemEmpate = probA + probB || 1;
   const pctA = Math.round((probA / somaSemEmpate) * 100);
   const pctB = 100 - pctA;
   const favA = pctA >= pctB;
-  const zebraNoPlacar = (favA && (p.golsB ?? 0) > (p.golsA ?? 0)) || (!favA && (p.golsA ?? 0) > (p.golsB ?? 0));
+  const zebraConfirmada = (favA && ladoVencedor === 'B') || (!favA && ladoVencedor === 'A');
   const gapForte = Math.max(pctA, pctB) >= 60;
-  if (zebraNoPlacar && gapForte) {
-    return { html: `🦓 ZEBRA!`, style: `text-align:center;font-size:9px;font-weight:900;color:#f0c040;letter-spacing:.5px;margin-top:1px;` };
-  }
-  return { html: `${pctA}% <span style="opacity:.5;">×</span> ${pctB}%`, style: `text-align:center;font-size:8.5px;color:rgba(232,245,233,.38);margin-top:1px;` };
+  if (!(zebraConfirmada && gapForte)) return null; // sem zebra confirmada: não mostra nada
+  return { html: `🦓 ZEBRA CONFIRMADA!`, style: `text-align:center;font-size:9px;font-weight:900;color:#f0c040;letter-spacing:.5px;margin-top:1px;` };
+}
+// Marca a partida como tendo resultado confirmado e, se o card dela ainda estiver no DOM
+// (card cheio .placar-vivo OU a linha compacta de "Encerrados" do bracket — ambos carregam
+// data-copa-a/b), atualiza o selo de zebra ali mesmo. Chamado nos pontos exatos em que
+// vencedorId/placar final passam a existir: finalizarRodadaBracketLive, finalizarShootout,
+// e no fechamento da jornada de grupos em tickLive. `ladoVencedor` é 'A'/'B'/null — quem
+// realmente venceu (não o placar corrente, por causa do caso dos pênaltis citado acima).
+function atualizarSeloZebraConfirmado(p, ladoVencedor) {
+  p._resultadoConfirmado = true;
+  const zi = zebraProbConteudo(p, ladoVencedor);
+  p._zebraConfirmada = !!zi;
+  const linha = document.querySelector(`#copaLiveGrid [data-copa-a="${p.a}"][data-copa-b="${p.b}"] .zebra-prob-linha`);
+  if (!linha) return;
+  if (zi) { linha.innerHTML = zi.html; linha.style.cssText = zi.style; }
+  else { linha.innerHTML = ''; linha.style.cssText = 'display:none;'; }
 }
 function simularJogoCopa(selA, selB, rng) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
@@ -6263,6 +6280,10 @@ function finalizarRodadaBracketLive() {
     }
     jogo.golsA = gA; jogo.golsB = gB;
     jogo.lambdaA = p.lambdaA; jogo.lambdaB = p.lambdaB; // guarda a força pré-jogo p/ eleger a "Zebra Oficial" no fim da copa
+    // vencedorId acabou de ser definido (normal ou pênaltis-CPU): resultado confirmado. Usa
+    // vencedorId (não gA/gB) pro lado vencedor — nos pênaltis gA===gB sempre, então só o
+    // vencedorId sabe quem realmente ganhou.
+    atualizarSeloZebraConfirmado(p, jogo.vencedorId === jogo.a ? 'A' : jogo.vencedorId === jogo.b ? 'B' : null);
     ajustarDificuldadeAdaptativa(p.a, p.b, gA, gB);
     if (!jogo.pens) jogo.pens = null;
     // Credita os marcadores REAIS dos eventos processados (antes re-sorteava a distribuição
@@ -6312,6 +6333,10 @@ function finalizarRodadaBracketLive() {
       if (Math.abs(p.golsA - p.golsB) < 3) return false;
       return ehMinhaSel(p.golsA < p.golsB ? p.a : p.b);
     });
+    // Zebra confirmada nesta rodada: se não houve goleada (que já garante 3500ms de banner),
+    // segura um instante antes de avançar — senão o selo confirmado no card nunca chega a ser
+    // visto (o caminho normal/pênaltis-CPU some pro painel na MESMA execução síncrona).
+    const temZebraBkt = livePartidas.some(p => p._zebraConfirmada);
     const _fazerAvanco = () => {
       // Fantasmas / Revanche: antes de avançar o bracket (que só mexe na PRÓXIMA rodada), verifica
       // se algum time seu foi eliminado nesta e registra quem foi — só mata-mata, grupos ficam de
@@ -6362,6 +6387,8 @@ function finalizarRodadaBracketLive() {
       banner.style.cssText = 'background:#7f1d1d;color:#fca5a5;';
       banner.className = 'live-banner'; banner.classList.remove('hidden');
       setTimeout(() => { banner.style.cssText = ''; _fazerAvanco(); }, 3500);
+    } else if (temZebraBkt) {
+      setTimeout(_fazerAvanco, 2000);
     } else {
       _fazerAvanco();
     }
@@ -7280,8 +7307,10 @@ function iniciarLiveGrid() {
     const nomeA = `<span class="time-nome-vivo" style="${estiloNomeVibrante(sA, isMinha?13.5:12, eMinhA)}">${nA}</span>`;
     const nomeB = `<span class="time-nome-vivo" style="${estiloNomeVibrante(sB, isMinha?13.5:12, eMinhB)}">${nB}</span>`;
     const score = scoreOverride ?? `${p.golsA ?? 0} x ${p.golsB ?? 0}`;
-    const zebraInfo = zebraProbConteudo(p);
-    const probHTML = zebraInfo ? `<div class="zebra-prob-linha" title="Probabilidade de vitória calculada antes da partida" style="${zebraInfo.style}">${zebraInfo.html}</div>` : '';
+    // Nunca confirmado na montagem do card (iniciarLiveGrid só roda ANTES de qualquer resultado
+    // fechar) — o selo real chega depois via atualizarSeloZebraConfirmado, direto no DOM.
+    const zebraInfo = zebraProbConteudo(p, null);
+    const probHTML = `<div class="zebra-prob-linha" style="${zebraInfo ? zebraInfo.style : 'display:none;'}">${zebraInfo ? zebraInfo.html : ''}</div>`;
     const reencontro = buscarReencontroHistorico(p.a, p.b);
     const reencontroHTML = reencontro ? `<div style="text-align:center;font-size:9px;font-weight:800;color:#f0c040;background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.3);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${reencontro.resumo.replace(/"/g,'&quot;')}">🏛️ REENCONTRO HISTÓRICO — ${reencontro.fase} de ${reencontro.ano}: ${reencontro.placar}</div>` : '';
     // Fantasmas / Revanche: o adversário desta partida já eliminou algum time seu numa copa anterior?
@@ -7320,11 +7349,16 @@ function iniciarLiveGrid() {
       const w = p.golsA > p.golsB ? 'A' : 'B';
       const styleA = w==='A' ? 'font-weight:800;color:var(--areia);' : 'opacity:.5;';
       const styleB = w==='B' ? 'font-weight:800;color:var(--areia);' : 'opacity:.5;';
-      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;opacity:0.65;font-size:11px;">
+      // data-copa-a/b + .zebra-prob-linha: essas partidas decidiram nos 90' mas o resultado só
+      // fica CONFIRMADO (vencedorId) quando finalizarRodadaBracketLive rodar pra rodada inteira,
+      // depois que as que foram a prorrogação também terminarem — atualizarSeloZebraConfirmado
+      // precisa achar esse elemento aqui pra colocar o selo quando esse momento chegar.
+      const zebraInfoFin = zebraProbConteudo(p, null); // idem: nunca confirmado neste ponto, ver comentário acima
+      return `<div data-copa-a="${p.a}" data-copa-b="${p.b}" style="display:flex;align-items:center;justify-content:space-between;padding:3px 6px;opacity:0.65;font-size:11px;">
         <span style="${styleA}">${nA}</span>
         <span style="font-weight:900;letter-spacing:1px;color:#aaa;">${p.golsA} × ${p.golsB}</span>
         <span style="${styleB}">${nB}</span>
-      </div>`;
+      </div><div class="zebra-prob-linha" style="${zebraInfoFin ? zebraInfoFin.style : 'display:none;'}">${zebraInfoFin ? zebraInfoFin.html : ''}</div>`;
     }).join('')}` : '';
   const isFinalRound = livePartidas.some(p => p.rodadaKey === 'final_3');
   if (isFinalRound) {
@@ -7452,12 +7486,10 @@ function atualizarEventoCopa(p, ev) {
       if (iconSpan) iconSpan.textContent = `🧤 Pên. defend. ${ev.minuto}'`;
     }
   }
-  // Reavalia o selo de zebra (o placar pode ter mudado com o evento acima)
+  // Enquanto a partida ainda está rolando (evento a evento), o selo de zebra fica sempre oculto —
+  // só aparece confirmado quando atualizarSeloZebraConfirmado rodar (fim real da partida).
   const zebraDiv = linha.querySelector('.zebra-prob-linha');
-  if (zebraDiv) {
-    const zi = zebraProbConteudo(p);
-    if (zi) { zebraDiv.innerHTML = zi.html; zebraDiv.style.cssText = zi.style; }
-  }
+  if (zebraDiv && !p._resultadoConfirmado) { zebraDiv.innerHTML = ''; zebraDiv.style.cssText = 'display:none;'; }
 }
 function tickLive() {
   if (livePenaltiPendente) return;
@@ -7592,7 +7624,19 @@ function tickLive() {
       return;
     }
     clearInterval(liveTimer); liveTimer = null;
-    finalizarJornada();
+    // Resultado da fase de grupos confirmado nos 90' — atualiza o selo de zebra em cada card
+    // ANTES de fechar a jornada. Se pelo menos uma zebra se confirmou, segura a tela por um
+    // instante pra dar tempo de ver o selo (senão a jornada muda de tela no mesmo instante —
+    // mesmo padrão do banner de goleada do mata-mata: sem pausa nova quando não há nada a mostrar).
+    const temZebraConfirmadaGrupos = livePartidas.reduce((acha, p) => {
+      // Grupos não têm vencedorId (não é eliminatório) — o lado vencedor vem direto do placar
+      // final dos 90' (empate = null = sem zebra, mesma regra de antes).
+      const ladoVenc = p.golsA > p.golsB ? 'A' : p.golsB > p.golsA ? 'B' : null;
+      atualizarSeloZebraConfirmado(p, ladoVenc);
+      return acha || p._zebraConfirmada;
+    }, false);
+    if (temZebraConfirmadaGrupos) setTimeout(finalizarJornada, 2000);
+    else finalizarJornada();
     return;
   }
   if (liveMinuto > 90 && isBracketRound) {
@@ -8218,6 +8262,10 @@ function iniciarShootoutInterativo(dadosTie, callback) {
     jogo.golsA = gA; jogo.golsB = gB; jogo.pens = pens;
     jogo.vencedorId = pens.golsA > pens.golsB ? jogo.a : jogo.b;
     jogo.lambdaA = partida.lambdaA; jogo.lambdaB = partida.lambdaB; // guarda a força pré-jogo p/ eleger a "Zebra Oficial" no fim da copa
+    // vencedorId acabou de ser definido nos pênaltis: resultado confirmado (banner de 3500ms
+    // abaixo garante tempo de tela). Usa vencedorId, não pens.golsA/golsB, pro lado vencedor —
+    // mesma razão do caminho CPU: o placar de pênaltis por si só não diz o LADO (A/B).
+    atualizarSeloZebraConfirmado(partida, jogo.vencedorId === jogo.a ? 'A' : jogo.vencedorId === jogo.b ? 'B' : null);
     // "Mão de Alface da Copa": a última falha do lado que PERDEU a disputa.
     const perdeuHum = (isMeuA && pens.golsA < pens.golsB) || (!isMeuA && pens.golsB < pens.golsA);
     const nomeMaoDeAlface = pens.golsA === pens.golsB ? null : (perdeuHum ? ultimaFalhaHum : ultimaFalhaOpp);
