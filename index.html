@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '24'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '25'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1669,7 +1669,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v24</div>
+  <div class="rodapezinho">v25</div>
 </div>
 
 <script>
@@ -3598,7 +3598,7 @@ const BANCO_SELECOES = [
       {nome:'A. Zubizarreta',    pos:'GOL', ovr:85, titular:true, traits:['capitao']},
       {nome:'S. Cañizares',      pos:'GOL', ovr:82, titular:false},
       {nome:'Albert Ferrer',     pos:'DEF', ovr:83, titular:true},
-      {nome:'Fernando Hierro',   pos:'DEF', ovr:88, titular:true,  traits:['capitao','batedor','cabecador']},
+      {nome:'Fernando Hierro',   pos:'DEF', ovr:88, titular:true,  traits:['lenda','capitao','batedor','cabecador']},
       {nome:'Abelardo Fernández',pos:'DEF', ovr:84, titular:true},
       {nome:'Rafael Alkorta',    pos:'DEF', ovr:83, titular:true},
       {nome:'Sergi Barjuán',     pos:'DEF', ovr:82, titular:false},
@@ -4747,7 +4747,7 @@ const BANCO_SELECOES = [
       {nome:'Maniche',           pos:'MEI', ovr:85, titular:true,  traits:['desarmador','finalizador']},
       {nome:'Costinha',          pos:'MEI', ovr:82, titular:true,  traits:['desarmador']},
       {nome:'Tiago',             pos:'MEI', ovr:82, titular:false},
-      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:86, titular:true,  traits:['driblador','velocista','finalizador']},
+      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:86, titular:true,  traits:['lenda','driblador','velocista','finalizador']},
       {nome:'Luís Figo',         pos:'ATA', ovr:88, titular:true,  traits:['capitao','driblador','armador']},
       {nome:'Pauleta',           pos:'ATA', ovr:85, titular:true,  traits:['finalizador','cabecador']},
       {nome:'Simão',             pos:'ATA', ovr:83, titular:false, traits:['velocista']},
@@ -4776,7 +4776,7 @@ const BANCO_SELECOES = [
       {nome:'Tiago',             pos:'MEI', ovr:83, titular:true},
       {nome:'Miguel Veloso',     pos:'MEI', ovr:82, titular:true,  traits:['desarmador','batedor']},
       {nome:'Pedro Mendes',      pos:'MEI', ovr:80, titular:false},
-      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:90, titular:true,  traits:['capitao','finalizador','velocista','driblador']},
+      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:90, titular:true,  traits:['lenda','capitao','finalizador','velocista','driblador']},
       {nome:'Simão',             pos:'ATA', ovr:83, titular:true,  traits:['velocista']},
       {nome:'Hugo Almeida',      pos:'ATA', ovr:82, titular:true,  traits:['cabecador','finalizador']},
       {nome:'Danny',             pos:'ATA', ovr:82, titular:false, traits:['driblador']},
@@ -4805,7 +4805,7 @@ const BANCO_SELECOES = [
       {nome:'William Carvalho',  pos:'MEI', ovr:83, titular:true,  traits:['desarmador']},
       {nome:'Raul Meireles',     pos:'MEI', ovr:83, titular:true,  traits:['finalizador']},
       {nome:'Miguel Veloso',     pos:'MEI', ovr:81, titular:false, traits:['batedor']},
-      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:93, titular:true,  traits:['capitao','finalizador','cabecador','pegadorPenalti','batedor']},
+      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:93, titular:true,  traits:['lenda','capitao','finalizador','cabecador','pegadorPenalti','batedor']},
       {nome:'Nani',              pos:'ATA', ovr:84, titular:true,  traits:['driblador','velocista']},
       {nome:'Hélder Postiga',    pos:'ATA', ovr:81, titular:true,  traits:['finalizador']},
       {nome:'Éder',              pos:'ATA', ovr:80, titular:false, traits:['cabecador']},
@@ -4834,7 +4834,7 @@ const BANCO_SELECOES = [
       {nome:'William Carvalho',  pos:'MEI', ovr:84, titular:true,  traits:['desarmador']},
       {nome:'Bernardo Silva',    pos:'MEI', ovr:86, titular:true,  traits:['driblador','armador']},
       {nome:'Adrien Silva',      pos:'MEI', ovr:80, titular:false},
-      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:93, titular:true,  traits:['capitao','finalizador','cabecador','pegadorPenalti','batedor']},
+      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:93, titular:true,  traits:['lenda','capitao','finalizador','cabecador','pegadorPenalti','batedor']},
       {nome:'Gonçalo Guedes',    pos:'ATA', ovr:83, titular:true,  traits:['velocista']},
       {nome:'André Silva',       pos:'ATA', ovr:82, titular:true,  traits:['finalizador']},
       {nome:'Ricardo Quaresma',  pos:'ATA', ovr:83, titular:false, traits:['driblador','batedor']},
@@ -4863,7 +4863,7 @@ const BANCO_SELECOES = [
       {nome:'Bernardo Silva',    pos:'MEI', ovr:88, titular:true,  traits:['driblador','armador']},
       {nome:'João Palhinha',     pos:'MEI', ovr:83, titular:true,  traits:['desarmador']},
       {nome:'Vitinha',           pos:'MEI', ovr:82, titular:false},
-      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:90, titular:true,  traits:['capitao','finalizador','cabecador','pegadorPenalti']},
+      {nome:'Cristiano Ronaldo', pos:'ATA', ovr:90, titular:true,  traits:['lenda','capitao','finalizador','cabecador','pegadorPenalti']},
       {nome:'Rafael Leão',       pos:'ATA', ovr:86, titular:true,  traits:['velocista','driblador']},
       {nome:'João Félix',        pos:'ATA', ovr:84, titular:true,  traits:['driblador']},
       {nome:'Gonçalo Ramos',     pos:'ATA', ovr:84, titular:false, traits:['finalizador']},
@@ -5688,7 +5688,6 @@ function forcaAtaqueCopa(sel) {
     if (t.includes('jogadorCompleto')) { base *= 1.12; return; }
     if (t.includes('finalizador')) base *= 1.04;
     if (t.includes('cabecador'))   base *= 1.025;
-    if (t.includes('chuteFort'))   base *= 1.03;
     if (t.includes('velocista'))   base *= 1.025;
     if (t.includes('driblador'))   base *= 1.02;
     if (t.includes('armador'))     base *= 1.025;
@@ -5809,7 +5808,9 @@ function elegerCraquePartida(p, jogoRef) {
   const expulsosPartida = new Set([...(p.vermelhosA || []), ...(p.vermelhosB || [])]);
   let melhor = null, melhorScore = -1;
   [selA, selB].forEach(sel => {
-    sel.jogadores.filter(j => j.titular && !expulsosPartida.has(j.nome)).forEach(j => {
+    // Inclui quem marcou gol mesmo se foi substituído depois (titular=false no fim da partida) —
+    // sem isso um artilheiro trocado no intervalo nunca podia ser eleito craque.
+    sel.jogadores.filter(j => !expulsosPartida.has(j.nome) && (j.titular || (gols[j.nome] || 0) > 0)).forEach(j => {
       const s = (gols[j.nome] || 0) * 3 + (vencId === sel.id ? 0.9 : 0) + j.ovr / 100;
       if (s > melhorScore) { melhorScore = s; melhor = { nome: j.nome, selId: sel.id }; }
     });
@@ -5823,12 +5824,12 @@ function elegerCraquePartida(p, jogoRef) {
 }
 
 const JORNADA_IDX = [[0,5],[1,4],[2,3]]; // índices dos jogos em cada jornada (grupos 4 times)
-const COD2 = {ger:'DE',ned:'NL',por:'PT',bel:'BE',sui:'CH',nor:'NO',sue:'SE',den:'DK',aut:'AT',aus:'AU',jpn:'JP',kor:'KR',prk:'KP',uru:'UY',par:'PY',chi:'CL',ecu:'EC',col:'CO',usa:'US',mex:'MX',crc:'CR',mar:'MA',alg:'DZ',civ:'CI',gha:'GH',egy:'EG',zaf:'ZA',rdc:'CD',cpv:'CV',rom:'RO',cro:'HR',sco:'SC',ire:'IE',yug:'YU',urs:'SU',pol:'PL',ukr:'UA',rum:'RO',bul:'BG',gre:'GR',swe:'SE',ngr:'NG',cam:'CM',sen:'SN',hun:'HU',tun:'TN'};
-function codSel(sel) {
-  const base = sel.id.slice(0,3).toLowerCase();
-  return (COD2[base] || sel.id.slice(0,2)).toUpperCase();
-}
-
+// Jogadores com stamina natural alta (lendas e atléticos) — recuperam menos fadiga pós-jogo.
+// Lista única compartilhada entre fase de grupos e mata-mata (antes eram 2 listas divergentes).
+const HIGH_STAMINA_LENDAS = new Set(['Pelé','Roberto Carlos','Lionel Messi',
+  'Ronaldo R9','Ronaldinho','Ronaldinho Gaúcho','Garrincha','Eusébio',
+  'Diego Maradona','Johan Cruyff','Gerd Müller','Thomas Müller','Thierry Henry',
+  'Miroslav Klose','Kylian Mbappé','Neymar','Lamine Yamal','Rafael Leão']);
 function parseEsquemaPos(f) {
   const p = f.split('-').map(Number);
   return { GOL:1, DEF:p[0], MEI:p.slice(1,-1).reduce((s,n)=>s+n,0)||p[1]||0, ATA:p[p.length-1] };
@@ -5945,6 +5946,11 @@ function classificacaoGrupo(grupo, selMap) {
   });
 }
 
+// Simulação instantânea (sem timeline/eventos) — motor estatístico separado do caminho ao vivo
+// de propósito: aqui os artilheiros vêm de distribuirGolsCopa (sorteio por peso), não de
+// golsPorJogadorDaPartida (eventos reais). Sem timeline pra reconstruir, não há substituição/
+// expulsão "ao vivo" pra respeitar; se um dia isso mudar, considere gerar um golsDist mínimo
+// com os mesmos critérios de elegibilidade do caminho ao vivo pra manter paridade estatística.
 function simularFaseGrupos(copa, rng) {
   copa.grupos.forEach(g => {
     g.jogos.forEach(jogo => {
@@ -6003,8 +6009,6 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
     Object.entries(dist).forEach(([jog, qtd]) => {
       for (let i = 0; i < qtd; i++) {
         const min = Math.floor(copaRng() * (minMax - minMin)) + minMin;
-        const jogador = sel.jogadores.find(j => j.nome === jog);
-        const isLenda = jogador?.traits?.includes('lenda') || jogador?.traits?.includes('jogadorCompleto');
         let narrativa = null;
         if (jog === 'Diego Maradona' && (jogo.b === 'ing1966' || jogo.b === 'ing1990')) {
           narrativa = copaRng() < 0.5 ? '🖐️ A MÃO DE DEUS!' : '⚽ O GOL DO SÉCULO!';
@@ -6058,7 +6062,7 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
     eventos, eventoIdx:0, ultimoEv:null,
     minha: ehMinhaSel(jogo.a)||ehMinhaSel(jogo.b),
     amarelosA:[], amarelosB:[], vermelhoA:false, vermelhoB:false, vermelhosA:[], vermelhosB:[], lesaoA:[], lesaoB:[],
-    eliminatorio:true,
+    eliminatorio:true, subsUsadas:{},
   };
 }
 
@@ -6130,7 +6134,6 @@ function finalizarRodadaBracketLive() {
     });
     elegerCraquePartida(p, jogo);
     // Cansaço pós-partida do bracket
-    const HIGH_STAMINA_BKT = new Set(['Pelé','Roberto Carlos','Lionel Messi','Ronaldo R9','Ronaldinho','Garrincha','Eusébio','Diego Maradona','Johan Cruyff','Kylian Mbappé','Neymar']);
     [jogo.a, jogo.b].forEach(selId => {
       const sel = copa.selMap[selId]; if (!sel) return;
       sel.jogadores.forEach(j => {
@@ -6138,7 +6141,7 @@ function finalizarRodadaBracketLive() {
         if (j.titular) {
           let fadiga = 12 + Math.floor(copaRng() * 6);
           if (p.emProrrogacao) fadiga += 8; // prorrogação cansa mais
-          if (HIGH_STAMINA_BKT.has(j.nome)) fadiga = Math.max(4, fadiga - 6);
+          if (HIGH_STAMINA_LENDAS.has(j.nome)) fadiga = Math.max(4, fadiga - 6);
           else if ((j.traits||[]).includes('lenda')) fadiga = Math.max(5, fadiga - 4);
           j.cansaco = Math.max(0, j.cansaco - fadiga);
         } else {
@@ -6258,6 +6261,8 @@ function montarBracket(copa, rng) {
   copa.bracket = { r32, r16:[], qf:[], sf:[], terceiro:null, final:null, rodadaAtual:'r32' };
 }
 
+// Mesma ressalva de simularFaseGrupos: simulação instantânea, artilheiros vêm de
+// distribuirGolsCopa (estatístico), não de golsPorJogadorDaPartida (eventos ao vivo).
 function simularRodadaBracketCopa(copa, rng) {
   const bkt = copa.bracket;
   const rodada = bkt.rodadaAtual;
@@ -6367,8 +6372,6 @@ function regenerarSegundaMetade(partida) {
     Object.entries(dist).forEach(([jog, qtd]) => {
       for (let i = 0; i < qtd; i++) {
         const min = Math.floor(copaRng() * 44) + 46;
-        const jogador = sel.jogadores.find(j => j.nome === jog);
-        const isLenda = jogador?.traits?.includes('lenda') || jogador?.traits?.includes('jogadorCompleto');
         let narrativa = null;
         { const ns = NARRATIVAS_LENDA[jog]; if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)]; }
         partida.eventos.push({ tipo:'gol', time, minuto:min, jogador:jog, narrativa });
@@ -6488,7 +6491,9 @@ function abrirCopaPlantel(selId) {
         t.includes('armador')       ? '<span class="trait-fin" style="background:#0369a1;padding:0 3px;">ARM</span>'   : '',
         t.includes('desarmador')    ? '<span class="trait-pen" style="background:#166534;padding:0 3px;">DES</span>'   : '',
       ].filter(Boolean).join('');
-    const tglBg = isTit ? '#22c55e' : 'transparent';
+    const can = Math.min(100, j.cansaco ?? 100);
+    const canColor = can >= 70 ? '#22c55e' : can >= 40 ? '#eab308' : '#ef4444';
+    const tglBg = isTit ? canColor : 'transparent';
     const disOpa = j.lesionado ? 'opacity:.4;' : '';
     return `<tr data-jnome="${j.nome.replace(/"/g,'&quot;')}" style="cursor:pointer;${disOpa}">
       <td style="width:24px;text-align:center;">
@@ -6610,7 +6615,6 @@ function abrirCopaPlantel(selId) {
 function npSel(sel, minha) {
   const bg = sel.cor1 || '#1a4428';
   const txtClr = corContraste(bg);
-  const codeBg = corCodeBox(sel);
   const tecNomeSel = copa?.tecnicos?.[sel.id];
   const idxJogSel = copa?.minhasSelecoes ? copa.minhasSelecoes.indexOf(sel.id) : -1;
   const vcLabel = tecNomeSel || (copa?.minhasSelecoes?.length > 1 && idxJogSel >= 0 ? `J${idxJogSel+1}` : 'VOCÊ');
@@ -6619,13 +6623,6 @@ function npSel(sel, minha) {
     <span class="sel-name-txt" style="color:${txtClr};font-size:11px;">${sel.pais} ${sel.ano}</span>
     ${vcBadge}
   </span>`;
-}
-
-function npCodeMini(sel) {
-  if (!sel) return '';
-  const bg = sel.cor1 || '#1a4428';
-  const codeBg = corCodeBox(sel);
-  return `<span style="background:${codeBg};color:#fff;font-size:8px;font-family:monospace;font-weight:900;border-radius:2px;padding:0 3px;flex-shrink:0;letter-spacing:.3px;">${codSel(sel)}</span>`;
 }
 
 // ===== Visualização de plantel (modal) + próximo adversário + troca de jogador por posição =====
@@ -6888,7 +6885,9 @@ const MS_MIN = 222; // ~20s por jornada (90 ticks)
 // Com pelo menos um time humano em jogo (mesmo que outro jogador tenha sido eliminado), mantém
 // o ritmo normal — só CPU x CPU justifica pular etapas.
 function velocidadeLiveMs() {
-  const temHumano = livePartidas.some(p => ehMinhaSel(p.a) || ehMinhaSel(p.b));
+  // Ignora partidas já congeladas nos 90' (finalizado90) — senão um humano decidido nos 90'
+  // (que não vai pra prorrogação) mantinha o relógio da ET lenta mesmo com só CPU x CPU nela.
+  const temHumano = livePartidas.some(p => !p.finalizado90 && (ehMinhaSel(p.a) || ehMinhaSel(p.b)));
   return temHumano ? MS_MIN : Math.max(20, Math.round(MS_MIN / 6));
 }
 
@@ -6941,8 +6940,6 @@ function gerarPartidaLive(grupo, jogoIdx) {
     Object.entries(dist).forEach(([jog, qtd]) => {
       for (let i = 0; i < qtd; i++) {
         const min = Math.floor(copaRng() * 88) + 1;
-        const jogador = sel.jogadores.find(j => j.nome === jog);
-        const isLenda = jogador?.traits?.includes('lenda');
         // Evento histórico Maradona vs Inglaterra
         let narrativa = null;
         if (jog === 'Diego Maradona' && (jogo.b === 'ing1966' || jogo.b === 'ing1990' || jogo.b === 'ing2026')) {
@@ -7016,6 +7013,7 @@ function gerarPartidaLive(grupo, jogoIdx) {
     vermelhoA: false, vermelhoB: false,
     vermelhosA: [], vermelhosB: [],
     lesaoA: [], lesaoB: [],
+    subsUsadas: {},
   };
 }
 
@@ -7294,9 +7292,6 @@ function tickLive() {
   if (liveMinuto >= 45 && liveMinuto < 90 && !liveIntervaloFeito) {
     liveIntervaloFeito = true;
     clearInterval(liveTimer); liveTimer = null;
-    const banner = document.getElementById('copaLiveBanner');
-    banner.textContent = '⏸ INTERVALO — Metade do Tempo';
-    banner.className = 'live-banner intervalo'; banner.classList.remove('hidden');
     liveSubQueue = [];
     livePartidas.forEach(p => {
       [p.a, p.b].forEach(selId => {
@@ -7304,10 +7299,15 @@ function tickLive() {
       });
     });
     if (liveSubQueue.length) {
+      const banner = document.getElementById('copaLiveBanner');
+      banner.textContent = '⏸ INTERVALO — Metade do Tempo';
+      banner.className = 'live-banner intervalo'; banner.classList.remove('hidden');
       const next = liveSubQueue.shift();
       renderSubstituicoes(next.partida, next.selId);
     } else {
-      setTimeout(continuarSegundaMetade, 2500);
+      // Nenhum time humano nesta rodada (já eliminado da copa inteira): sem ninguém pra
+      // trocar/ajustar, não há motivo pra pausar — segue direto pro 2º tempo.
+      continuarSegundaMetade();
     }
     return;
   }
@@ -7763,18 +7763,13 @@ function finalizarJornada() {
     [p.a, p.b].forEach(selId => {
       const sel = copa.selMap[selId];
       if (!sel) return;
-      // Jogadores com stamina natural alta (lendas e atléticos)
-      const HIGH_STAMINA = new Set(['Pelé','Roberto Carlos','Lionel Messi',
-        'Ronaldo R9','Ronaldinho','Ronaldinho Gaúcho','Garrincha','Eusébio',
-        'Diego Maradona','Johan Cruyff','Gerd Müller','Thomas Müller','Thierry Henry',
-        'Miroslav Klose','Kylian Mbappé','Neymar','Lamine Yamal','Rafael Leão']);
       sel.jogadores.forEach(j => {
         if (j.cansaco === undefined) j.cansaco = 100;
         const t = j.traits || [];
         if (j.titular) {
           // Base fatigue: -10 a -16 (reduzido para sobreviver o mata-mata)
           let fadiga = 10 + Math.floor(copaRng() * 7); // copaRng (não Math.random): determinístico p/ modo online
-          if (HIGH_STAMINA.has(j.nome)) fadiga = Math.max(4, fadiga - 6);
+          if (HIGH_STAMINA_LENDAS.has(j.nome)) fadiga = Math.max(4, fadiga - 6);
           else if (t.includes('lenda'))      fadiga = Math.max(5, fadiga - 4);
           else if (t.includes('velocista'))  fadiga = Math.max(5, fadiga - 3);
           j.cansaco = Math.max(0, j.cansaco - fadiga);
@@ -8922,11 +8917,6 @@ function luminanciaCor(hex) {
   return 0.299*r + 0.587*g + 0.114*b;
 }
 function corContraste(hex) { return luminanciaCor(hex) > 0.52 ? '#000000' : '#ffffff'; }
-function corCodeBox(sel) {
-  // Se cor1 é clara, usa cor2 (geralmente contraste) como fundo do code-box
-  const c1 = sel?.cor1 || '#1a4428';
-  return luminanciaCor(c1) > 0.52 ? (sel?.cor2 || '#333') : 'rgba(0,0,0,.35)';
-}
 
 const ESQUEMAS_COPA = [
   { f:'3-4-3',   n:'Ultra-ofensivo',   a:+10, d:-8 },
@@ -12078,7 +12068,13 @@ async function confirmarProntoRodadaCopa() {
     // Só quem AINDA TEM jogo pendente (não foi eliminado) precisa confirmar — o eliminado
     // apenas assiste e não trava quem segue vivo na competição.
     const pendentes = Object.entries(jogs).filter(([, j]) => selAindaTemPendenciaNoBracket(estAtual, j.selId));
-    if (pendentes.length > 0 && pendentes.every(([id]) => prontos[id])) {
+    // Se ninguém mais tem jogo pendente (todos eliminados na mesma rodada), pendentes fica vazio —
+    // nesse caso exige todos os jogadores da sala prontos (via botão "avançar mesmo assim"),
+    // senão a sala travaria pra sempre sem ninguém elegível pra confirmar.
+    const todosProntos = pendentes.length > 0
+      ? pendentes.every(([id]) => prontos[id])
+      : Object.keys(jogs).every(id => prontos[id]);
+    if (todosProntos) {
       data.rodadaStatus = 'iniciando';
       data.seedRodada = Math.floor(Math.random() * 2147483647);
     }
@@ -12087,6 +12083,10 @@ async function confirmarProntoRodadaCopa() {
   });
 }
 
+// Limitação conhecida: partida.subsUsadas (contador de substituições) vive só em memória
+// (livePartidas), nunca é persistido aqui. Se o jogador recarregar a página em pleno jogo
+// online, a rodada é recriada do zero e as substituições já usadas "voltam" a 0/4. Aceitável
+// por ora (o placar em si é determinístico via seedRodada), mas documentado pra não surpreender.
 async function salvarCopaOnline() {
   if (!copa?.onlineCopa || !copaOnlineCodigo) return;
   try {
