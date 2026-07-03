@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '44'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '45'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1681,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v44</div>
+  <div class="rodapezinho">v45</div>
 </div>
 
 <script>
@@ -5785,6 +5785,28 @@ function aplicarEfeitoSequenciaCopa(sel, seq) {
   if (!delta) return;
   sel.jogadores.forEach(j => { j.moral = Math.max(0, Math.min(100, (j.moral ?? 70) + delta)); });
 }
+// Retorno decrescente no empilhamento de traits: dentro de um mesmo jogador (nível 1) e entre
+// os 11 titulares do elenco (nível 2), o maior excesso de cada nível mantém 100% do valor e os
+// seguintes contribuem cada vez menos (excesso_i * decay^(i-1), ordenados do maior pro menor).
+// oRei/jogadorCompleto continuam exclusivos (um jogador com um desses não soma outros traits).
+const DECAY_TRAITS_COPA = 0.40;
+function calcularMultiplicadorTraitsCopa(tit, ladoConfig, decay) {
+  const excessosJogadores = tit.map(j => {
+    const t = j.traits || [];
+    for (const g of ladoConfig.goat) {
+      if (t.includes(g.trait)) return g.mult - 1;
+    }
+    const excessos = ladoConfig.comuns.filter(c => t.includes(c.trait)).map(c => c.mult - 1);
+    excessos.sort((a, b) => b - a);
+    let somaJogador = 0;
+    excessos.forEach((e, i) => { somaJogador += e * Math.pow(decay, i); });
+    return somaJogador;
+  });
+  excessosJogadores.sort((a, b) => b - a);
+  let somaElenco = 0;
+  excessosJogadores.forEach((e, i) => { somaElenco += e * Math.pow(decay, i); });
+  return 1 + somaElenco;
+}
 function forcaAtaqueCopa(sel) {
   const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
   // Penalidade por plantel incompleto (referência: 11 titulares = 100%)
@@ -5808,19 +5830,15 @@ function forcaAtaqueCopa(sel) {
     base = avgA * 0.60 + avgM * 0.40;
   }
   base *= penLineup;
-  tit.forEach(j => {
-    const t = j.traits || [];
-    if (t.includes('oRei'))            { base *= 1.16; return; }
-    if (t.includes('jogadorCompleto')) { base *= 1.12; return; }
-    if (t.includes('finalizador')) base *= 1.04;
-    if (t.includes('cabecador'))   base *= 1.025;
-    if (t.includes('velocista'))   base *= 1.025;
-    if (t.includes('driblador'))   base *= 1.02;
-    if (t.includes('armador'))     base *= 1.025;
-    if (t.includes('batedor'))     base *= 1.015;
-    if (t.includes('lenda'))       base *= 1.01;
-    if (t.includes('capitao'))     base *= 1.005;
-  });
+  base *= calcularMultiplicadorTraitsCopa(tit, {
+    goat: [{ trait: 'oRei', mult: 1.16 }, { trait: 'jogadorCompleto', mult: 1.12 }],
+    comuns: [
+      { trait: 'finalizador', mult: 1.04 }, { trait: 'cabecador', mult: 1.025 },
+      { trait: 'velocista', mult: 1.025 }, { trait: 'driblador', mult: 1.02 },
+      { trait: 'armador', mult: 1.025 }, { trait: 'batedor', mult: 1.015 },
+      { trait: 'lenda', mult: 1.01 }, { trait: 'capitao', mult: 1.005 },
+    ],
+  }, DECAY_TRAITS_COPA);
   base *= MENTALIDADE_MULT[mentalidadeDaSelecao(sel.id)].atq;
   return base;
 }
@@ -5844,15 +5862,14 @@ function forcaDefesaCopa(sel) {
     base = avgD * 0.70 + avgG * 0.30;
   }
   base *= penLineup;
-  tit.forEach(j => {
-    const t = j.traits || [];
-    if (t.includes('jogadorCompleto')) { base *= 1.06; return; }
-    if (t.includes('desarmador'))     base *= 1.04;
-    if (t.includes('pegadorPenalti')) base *= 1.025;
-    if (t.includes('lenda'))          base *= 1.008;
-    if (t.includes('capitao'))        base *= 1.005;
-    if (t.includes('armador'))        base *= 1.01;
-  });
+  base *= calcularMultiplicadorTraitsCopa(tit, {
+    goat: [{ trait: 'jogadorCompleto', mult: 1.06 }],
+    comuns: [
+      { trait: 'desarmador', mult: 1.04 }, { trait: 'pegadorPenalti', mult: 1.025 },
+      { trait: 'lenda', mult: 1.008 }, { trait: 'capitao', mult: 1.005 },
+      { trait: 'armador', mult: 1.01 },
+    ],
+  }, DECAY_TRAITS_COPA);
   base *= MENTALIDADE_MULT[mentalidadeDaSelecao(sel.id)].def;
   return base;
 }
