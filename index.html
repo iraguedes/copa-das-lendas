@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '39'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '40'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1681,7 +1681,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v39</div>
+  <div class="rodapezinho">v40</div>
 </div>
 
 <script>
@@ -6171,6 +6171,7 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
   ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
+  ({ mA, mB } = aplicarBoostFinal(mA, mB, selA.id, selB.id, rodadaKey, jogoIdx));
   // Tempo normal (90 min)
   const lambdaA = lambdaGolsCopa(mA.atq, mB.def), lambdaB = lambdaGolsCopa(mB.atq, mA.def);
   const nA = poisson(lambdaA, copaRng);
@@ -6612,6 +6613,21 @@ function ajustarDificuldadeAdaptativa(selIdA, selIdB, golsA, golsB) {
   copa.dificuldadeOffset = Math.max(-0.15, Math.min(0.15, (copa.dificuldadeOffset || 0) + delta));
 }
 
+// Cresce em finais: pequeno multiplicador extra de ataque/defesa pra seleções historicamente
+// decisivas na hora da final — curadoria pontual, mesmo espírito da mentalidade tática, mas só
+// vale na FINAL de verdade (rodadaKey 'final_3' E jogoIdx 0 — jogoIdx 1 é a disputa de 3º lugar,
+// que fica de fora: não é bem "a hora da final").
+const SELECOES_CRESCEM_EM_FINAIS = new Set(['ale1990', 'fra1998', 'ita2006', 'esp2010', 'ger2014']);
+const MULT_CRESCE_EM_FINAL = 1.06;
+function aplicarBoostFinal(mA, mB, selIdA, selIdB, rodadaKey, jogoIdx) {
+  if (rodadaKey !== 'final_3' || jogoIdx !== 0) return { mA, mB };
+  const boost = m => ({ atq: m.atq * MULT_CRESCE_EM_FINAL, def: m.def * MULT_CRESCE_EM_FINAL });
+  return {
+    mA: SELECOES_CRESCEM_EM_FINAIS.has(selIdA) ? boost(mA) : mA,
+    mB: SELECOES_CRESCEM_EM_FINAIS.has(selIdB) ? boost(mB) : mB,
+  };
+}
+
 function atualizarEntrosamento() {
   // No online usa a lista global (todos os times humanos) p/ o entrosamento ser idêntico em todos os clientes
   const times = copa?.selecoesHumanas || copa?.minhasSelecoes;
@@ -6648,6 +6664,7 @@ function regenerarSegundaMetadeCore(partida) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
   ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
+  ({ mA, mB } = aplicarBoostFinal(mA, mB, selA.id, selB.id, partida.rodadaKey, partida.jogoIdx));
   const nA2 = poisson(lambdaGolsCopa(mA.atq, mB.def) * 0.55, copaRng);
   const nB2 = poisson(lambdaGolsCopa(mB.atq, mA.def) * 0.55, copaRng);
   partida.finalA = partida.golsA + nA2;
