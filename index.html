@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '20'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '21'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1669,10 +1669,14 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v20</div>
+  <div class="rodapezinho">v21</div>
 </div>
 
 <script>
+// Sem isso, o celular (Safari/Chrome mobile) restaura sozinho a última posição de rolagem ao
+// recarregar/reconectar — DEPOIS do nosso JS já ter rolado a tela pro topo — fazendo o jogador
+// abrir a partida rolado pra baixo, precisando "procurar" a própria equipe rolando pra cima.
+if ('scrollRestoration' in history) { try { history.scrollRestoration = 'manual'; } catch(e) {} }
 const VERSAO_JOGO = '0.003'; // bump aqui a cada lote de mudanças futuras (0.004, 0.005...)
 const STORAGE_KEY = 'ligad-save-v2';
 
@@ -6542,6 +6546,8 @@ function abrirCopaPlantel(selId) {
       autoEscalar(sel, copaEsquema);
       atualizarPlantelStats(sel);
       abrirCopaPlantel(selId);
+      // Leva o botão JOGAR até a tela — sem isso, no celular era preciso rolar pra baixo pra achá-lo.
+      requestAnimationFrame(() => document.getElementById('btnConfirmarPlantel')?.scrollIntoView({behavior:'smooth', block:'end'}));
     });
   });
 
@@ -7116,7 +7122,10 @@ function iniciarLiveGrid() {
   }
   // Sobe a página: sem isso, quem estava rolado pra baixo (grupos, plantel) precisava
   // rolar pra cima pra achar a própria partida, mesmo ela vindo sempre primeiro na lista.
+  // A 2ª chamada (com atraso) cobre reconexão/reload no celular: o navegador às vezes só
+  // restaura a posição de rolagem antiga DEPOIS desta função já ter rodado.
   window.scrollTo(0, 0);
+  setTimeout(() => window.scrollTo(0, 0), 80);
 }
 
 function atualizarClockLive() {
@@ -7892,6 +7901,10 @@ function plantelHTML(sel, esqF) {
 }
 
 function renderCampoTatico(sel, esqF, corTime, editavel) {
+  // Blindagem: se por qualquer motivo (sync online em trânsito, corrida de eventos) a escalação
+  // não bater com o esquema pedido, corrige na hora em vez de desenhar um campo com jogador em
+  // branco. Sem isso, um estado momentaneamente inconsistente virava um campo quebrado pro usuário.
+  if (sel && esqF && !escalacaoValidaCopa(sel, esqF)) autoEscalar(sel, esqF);
   const W = 220, H = 320;
   const cor = corTime || '#1a6b35';
   const lum = luminanciaCor(cor);
@@ -7924,14 +7937,16 @@ function renderCampoTatico(sel, esqF, corTime, editavel) {
     for (let i = 0; i < count && pIdx < tit.length; i++, pIdx++) {
       const p = tit[pIdx];
       const x = W * (i + 1) / (count + 1);
-      const lastName = p.nome.split(' ').slice(-1)[0];
+      const nomeSeguro = (p.nome && String(p.nome).trim()) || '?'; // nunca deixa o círculo sem texto
+      const lastName = nomeSeguro.split(' ').slice(-1)[0];
       const dispName = lastName.length > 9 ? lastName.slice(0,8)+'.' : lastName;
       const isLenda = p.traits?.includes('lenda');
       const indispo = _indispCampo(p);
       const temAmarelo = !indispo && (p.amarelos||0) >= 1;
       const fora = posCampoCopa(p) !== p.pos;
-      const ovrShow = fora ? Math.round(p.ovr * fatorForaPosicaoCopa(p)) : p.ovr;
-      circles.push({ x, y, nome: dispName, ovr: ovrShow, isLenda, pos: roles[li], fora, full: p.nome, indispo, temAmarelo, cansacoVal: p.cansaco??100 });
+      const ovrBase = Number.isFinite(p.ovr) ? p.ovr : 0;
+      const ovrShow = fora ? Math.round(ovrBase * fatorForaPosicaoCopa(p)) : ovrBase;
+      circles.push({ x, y, nome: dispName, ovr: ovrShow, isLenda, pos: roles[li], fora, full: nomeSeguro, indispo, temAmarelo, cansacoVal: p.cansaco??100 });
     }
   });
 
@@ -8196,6 +8211,8 @@ function renderCopaPainel(selId) {
       copa.minhaEsquema = novoEsq;
       autoEscalar(sel, novoEsq);
       renderCopaPainel(selId);
+      // Leva o botão JOGAR até a tela — sem isso, no celular era preciso rolar pra baixo pra achá-lo.
+      requestAnimationFrame(() => document.getElementById('btnJogarPainel')?.scrollIntoView({behavior:'smooth', block:'end'}));
     });
   });
   // Toggle titular/reserva clicando na linha
