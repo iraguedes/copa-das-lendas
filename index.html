@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '63'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '64'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -587,6 +587,11 @@
   .campeao-flag{font-size:40px;line-height:1;}
   .campeao-nome{font-size:23px;font-weight:900;margin:6px 0 3px;letter-spacing:1px;color:#f6d43a;text-shadow:0 1px 0 #a9781a,0 0 18px rgba(245,216,0,.3);}
   .campeao-lenda{font-size:13px;color:var(--ouro);}
+  .campeao-eyebrow{font-family:'Georgia',serif;font-style:italic;font-size:11.5px;color:rgba(232,245,233,.55);letter-spacing:.3px;margin-bottom:8px;}
+  .campeao-detalhes{opacity:0;transition:opacity .6s ease;}
+  .campeao-detalhes.revelado{opacity:1;}
+  .campeao-livro-link{margin-top:10px;cursor:pointer;text-align:center;font-size:11.5px;font-weight:800;color:#f0c040;border-top:1px solid rgba(217,164,74,.2);padding-top:8px;}
+  .campeao-livro-link:hover{color:#fff4c2;}
   .tier-badge-S{color:#f0c040;font-weight:900;}
   .tier-badge-A{color:#c0c0c0;font-weight:900;}
   .tier-badge-B{color:#a07040;font-weight:900;}
@@ -1743,7 +1748,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v63</div>
+  <div class="rodapezinho">v64 – A Cerimônia</div>
 </div>
 
 <script>
@@ -5830,12 +5835,18 @@ function elegerTitulosDaCopa() {
     todosJogos.forEach(j => {
       if (!j.vencedorId || j.lambdaA == null || j.lambdaB == null) return;
       const { probA, probB } = probabilidadeVitoriaCopa(j.lambdaA, j.lambdaB);
-      const probVencedor = j.vencedorId === j.a ? probA : probB;
+      // Sem empate — mesma base de cálculo da Zebra em Tempo Real (probA/probB brutos incluíam a
+      // fatia do empate, o que tornava o teto de 40% mais frouxo do que parecia: um jogo "45%x55%"
+      // sem empate podia ter só ~38% bruto e passar como zebra mesmo sendo relativamente equilibrado).
+      const somaSemEmpate = probA + probB || 1;
+      const probVencedor = (j.vencedorId === j.a ? probA : probB) / somaSemEmpate;
+      // Pré-filtro de elegibilidade (não pós-filtro no argmin): só entra candidato quem já era
+      // claramente azarão — só ENTRE os elegíveis é que se pega o de menor probabilidade.
+      if (probVencedor >= 0.4) return;
       if (!zebraOficial || probVencedor < zebraOficial.prob) {
         zebraOficial = { selId: j.vencedorId, selIdDerrotado: j.vencedorId === j.a ? j.b : j.a, prob: probVencedor, fase: j.fase };
       }
     });
-    if (zebraOficial && zebraOficial.prob >= 0.4) zebraOficial = null; // só conta como zebra de verdade se era clara azarona
   }
   copa.titulosDaCopa = { maoDeAlface, zebraOficial };
 }
@@ -8424,6 +8435,8 @@ function renderCopaBracket() {
 
   // Centro: Final + 3o (o Campeão vira banner acima do bracket)
   let centroHTML = '';
+  let campeaoDetalhesHTML = '';
+  let campeaoJaRevelado = false;
   let campeaoHTML = '';
   if (bkt.final) {
     const j = bkt.final;
@@ -8467,11 +8480,8 @@ function renderCopaBracket() {
       const parabensTxt = isMinhaSel
         ? `<div style="font-size:11px;color:#eab308;font-weight:700;margin-top:7px;letter-spacing:.3px;text-shadow:0 0 10px rgba(234,179,8,.4);">🎉 Parabéns! Seu nome ficou na história da Copa das Lendas!</div>`
         : `<div style="font-size:11px;color:rgba(240,192,64,.7);margin-top:7px;">Campeões eternos da Copa das Lendas</div>`;
-      campeaoHTML = `<div class="campeao-box campeao-banner">
-        <div class="campeao-trofeu">🏆</div>
-        <div class="campeao-nome">${sel.nome}</div>
-        <div class="campeao-lenda">★ ${lendaJog ? lendaJog.nome : sel.lenda}</div>
-        ${parabensTxt}
+      campeaoJaRevelado = !!copa._campeaoDetalhesRevelados;
+      campeaoDetalhesHTML = `
         ${(() => {
           const w = copa.wrappedDaCopa;
           if (!w || !w.totalPartidas) return '';
@@ -8511,7 +8521,15 @@ function renderCopaBracket() {
           if (!blocos.length) return '';
           return `<div style="display:flex;gap:12px;justify-content:center;margin-top:8px;flex-wrap:wrap;border-top:1px solid rgba(217,164,74,.2);padding-top:8px;">${blocos.join('')}</div>`;
         })()}
-        ${copa.selecaoDaCopa ? `<div onclick="mostrarSelecaoDaCopaOverlay()" style="margin-top:10px;cursor:pointer;text-align:center;font-size:11px;font-weight:800;color:#f0c040;border-top:1px solid rgba(217,164,74,.2);padding-top:8px;">🌟 Ver Melhor Onze da Copa ›</div>` : ''}
+        ${copa.selecaoDaCopa ? `<div onclick="mostrarSelecaoDaCopaOverlay()" class="campeao-livro-link">🌟 Ver Melhor Onze da Copa ›</div>` : ''}
+        <div onclick="mostrarLivroDasCopasOverlay()" class="campeao-livro-link">📖 Ler este capítulo no Livro das Copas ›</div>`;
+      campeaoHTML = `<div class="campeao-box campeao-banner">
+        <div class="campeao-eyebrow">A Copa das Lendas chegou ao fim</div>
+        <div class="campeao-trofeu">🏆</div>
+        <div class="campeao-nome">${sel.nome}</div>
+        <div class="campeao-lenda">★ ${lendaJog ? lendaJog.nome : sel.lenda}</div>
+        ${parabensTxt}
+        <div id="campeaoDetalhesArea" class="campeao-detalhes${campeaoJaRevelado ? ' revelado' : ''}">${campeaoJaRevelado ? campeaoDetalhesHTML : ''}</div>
       </div>`;
     }
   }
@@ -8524,6 +8542,18 @@ function renderCopaBracket() {
       <div class="bracket-half dir">${colDirHTML}</div>
     </div></div></div>`;
   ajustarZoomBracket();
+  // Cerimônia em camadas: o núcleo (troféu/nome/craque) já aparece de imediato; os detalhes
+  // (Wrapped, selos, apelidos, convite ao Livro) só chegam depois de uma pequena pausa — dá tempo
+  // do jogador registrar "eu sou campeão" antes da enxurrada de estatísticas. Só na primeira vez
+  // que este campeão é revelado (copa._campeaoDetalhesRevelados); reabrir a aba depois mostra tudo
+  // de uma vez, sem repetir a espera.
+  if (concluido && copa.campeao && !campeaoJaRevelado) {
+    setTimeout(() => {
+      const area = document.getElementById('campeaoDetalhesArea');
+      if (area) { area.innerHTML = campeaoDetalhesHTML; area.classList.add('revelado'); }
+      if (copa) copa._campeaoDetalhesRevelados = true;
+    }, 1200);
+  }
   // Clicar num card decidido (com gols registrados) abre o replay textual da partida
   document.querySelectorAll('#copaBracketRounds [data-replay-a]').forEach(el => el.addEventListener('click', () => {
     const jogo = acharJogoBracketPorIds(el.dataset.replayA, el.dataset.replayB);
@@ -8975,6 +9005,11 @@ function mostrarNotificacoesEspeciaisCopa() {
   const fila = copa?.notificacoesEspeciais || [];
   if (!fila.length) return;
   const n = fila.shift();
+  // Quando a copa acabou de terminar, o banner de campeão já tem sua própria cerimônia em camadas
+  // (núcleo + detalhes com ~1.2s de intervalo) — espera ela toda terminar antes de competir por
+  // atenção. Fora desse caso (ex.: Nêmesis Superada no meio do mata-mata, sem banner de fim de copa
+  // por perto), mantém o atraso curto de sempre.
+  const delay = (copa?.faseAtual === 'fim') ? 2600 : 1100;
   setTimeout(() => {
     if (n.tipo === 'superacao_nemesis') {
       abrirOverlayGenericoCopa('🎉', 'Nêmesis Superada!', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);">Você finalmente venceu <b style="color:var(--ouro);">${n.nome}</b>, o time que já te eliminou <b>${n.vezes}</b> vezes. A revanche foi consumada!</div>`, 420);
@@ -8984,7 +9019,7 @@ function mostrarNotificacoesEspeciaisCopa() {
     // Se sobrou mais alguma notificação na fila (raro, mas possível), espera um pouco mais antes da
     // próxima em vez de empilhar as duas ao mesmo tempo.
     if (fila.length) setTimeout(mostrarNotificacoesEspeciaisCopa, 4500);
-  }, 1100);
+  }, delay);
 }
 // ===== Prova de conceito: narrativa dinâmica no menu principal =====
 // Não cria nenhum dado novo nem toca em persistência — só lê STORAGE_KEY_HISTORICO_COPAS e
@@ -12549,6 +12584,7 @@ function mostrarTelaNomes(jogadores, onConfirm, hideTeam) {
   document.getElementById('btnConfirmarNomes').textContent = hideTeam
     ? (plural ? '▶ Ver minha seleção' : '▶ Ver minha seleção')
     : (plural ? '▶ Ver Plantéis' : '▶ Ver Plantel');
+  document.getElementById('btnConfirmarNomes').disabled = false;
   document.getElementById('btnConfirmarNomes')._cb = onConfirm;
   mostrarTela('copaNomesTecnicos');
   setTimeout(() => document.querySelector('#nomesRows input')?.focus(), 120);
@@ -12620,7 +12656,12 @@ document.getElementById('btnIniciarCopa').addEventListener('click', ()=>{
       copa.minhasSelecoes = [...copaRandomQueue];
       copa.minhaSelecaoId = copaRandomQueue[0];
       iniciarStatusJogadores(copa.selMap);
-      abrirCopaPlantel(copaRandomQueue[0]);
+      // Pequena pausa cerimonial: o resultado do sorteio já está decidido (copa/copaRandomQueue
+      // acima), só a REVELAÇÃO visual atrasa — sem isso, o sorteio inteiro é instantâneo demais
+      // pro momento de maior variância aleatória da jornada (ver auditoria de game design).
+      const btnNomesSort = document.getElementById('btnConfirmarNomes');
+      if (btnNomesSort) { btnNomesSort.disabled = true; btnNomesSort.textContent = '🎲 Sorteando sua seleção…'; }
+      setTimeout(() => abrirCopaPlantel(copaRandomQueue[0]), 900);
     }, true);
   }
 });
