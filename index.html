@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '58'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '59'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -465,6 +465,15 @@
   .menu-narrativa .mn-linha+.mn-linha{margin-top:7px;}
   .menu-narrativa .mn-icone{flex-shrink:0;font-size:15px;line-height:1.4;}
   .menu-narrativa .mn-texto b{color:var(--ouro);}
+  .livro-capitulo{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+  .livro-capitulo-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06);}
+  .livro-capitulo-time{font-size:12.5px;font-weight:700;color:var(--areia);}
+  .livro-capitulo-data{font-size:10px;color:rgba(232,245,233,.4);white-space:nowrap;}
+  .livro-online{font-size:9px;color:#60a5fa;}
+  .livro-fatos{display:flex;flex-direction:column;gap:3px;}
+  .livro-fato{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:rgba(232,245,233,.75);}
+  .livro-fato-lbl{color:rgba(232,245,233,.45);flex-shrink:0;}
+  .livro-fato b{color:#f0c040;}
   @media(max-width:580px){
     .copa-titulo{letter-spacing:2px;}
     .legend-card{width:82px;}
@@ -1183,8 +1192,8 @@
       <button class="secondary" id="btnModoOnline" type="button">🌐 Iniciar Copa Online</button>
     </div>
     <p class="copa-sorteio">Sorteando seleções históricas (1930–2026)</p>
-    <p style="text-align:center;margin:4px 0 0;">
-      <button type="button" id="btnHistoricoCopas" class="secondary" style="background:transparent;border:none;color:rgba(232,245,233,.45);font-size:11px;text-decoration:underline;padding:4px;">📜 Histórico de Copas</button>
+    <p style="text-align:center;margin:10px 0 0;">
+      <button type="button" id="btnHistoricoCopas" class="secondary pequeno">📖 Livro das Copas</button>
     </p>
   </div>
 
@@ -1684,7 +1693,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v58</div>
+  <div class="rodapezinho">v59</div>
 </div>
 
 <script>
@@ -9064,10 +9073,27 @@ function salvarHistoricoCopa() {
     const copasComMeusGols = lista.filter(r => r.meusGols != null);
     const melhorGolsAnterior = copasComMeusGols.length ? Math.max(...copasComMeusGols.map(r => r.meusGols)) : null;
     const novoRecordeGols = !!(wrapped?.meusGols != null && melhorGolsAnterior != null && wrapped.meusGols > melhorGolsAnterior);
+    // Livro das Copas: nomes de time precisam ser resolvidos AGORA (copa.selMap deixa de existir
+    // assim que a copa é descartada) — sem isso, capítulos passados não conseguiriam mostrar quem
+    // era o vice, quem levou a goleada ou quem foi a zebra, só ids soltos.
+    const resolverNome = selId => { const s = copa.selMap?.[selId]; return s ? nomeCurtoSel(s) : null; };
+    const wrappedEnriquecido = wrapped?.maiorGoleada
+      ? { ...wrapped, maiorGoleada: { ...wrapped.maiorGoleada, aNome: resolverNome(wrapped.maiorGoleada.a), bNome: resolverNome(wrapped.maiorGoleada.b) } }
+      : wrapped;
+    const titulosEnriquecidos = copa.titulosDaCopa ? {
+      maoDeAlface: copa.titulosDaCopa.maoDeAlface ? { ...copa.titulosDaCopa.maoDeAlface, selNome: resolverNome(copa.titulosDaCopa.maoDeAlface.selId) } : null,
+      zebraOficial: copa.titulosDaCopa.zebraOficial ? { ...copa.titulosDaCopa.zebraOficial, selNome: resolverNome(copa.titulosDaCopa.zebraOficial.selId), selDerrotadoNome: resolverNome(copa.titulosDaCopa.zebraOficial.selIdDerrotado) } : null,
+    } : null;
+    // Vice-campeã: o outro lado da final — dado que já existia dentro de copa.bracket.final, só
+    // nunca tinha sido extraído/salvo antes de agora.
+    const finalJogo = copa.bracket?.final;
+    const viceSelId = (finalJogo?.vencedorId) ? (finalJogo.a === finalJogo.vencedorId ? finalJogo.b : finalJogo.a) : null;
     const registro = {
       data: Date.now(),
       campeao: campeaoSel ? nomeCurtoSel(campeaoSel) : (copa.campeao || '?'),
       campeaoSelId: copa.campeao || null,
+      vice: viceSelId ? resolverNome(viceSelId) : null,
+      viceSelId,
       artilheiro: artilheiros[0] ? { nome: artilheiros[0][0], gols: artilheiros[0][1] } : null,
       craque: craques[0] ? { nome: craques[0][0], vezes: craques[0][1] } : null,
       minhaSelecao: minhaSel ? nomeCurtoSel(minhaSel) : null,
@@ -9077,10 +9103,10 @@ function salvarHistoricoCopa() {
       totalGolsCopa: wrapped?.totalGols ?? null,
       maiorGoleadaDiff: wrapped?.maiorGoleada?.diff ?? null,
       meusGols: wrapped?.meusGols ?? null,
-      // Fase 0: antes só esses 3 campos extraídos sobreviviam; agora os objetos completos também
-      // ficam salvos, sem exigir tela própria — servem de matéria-prima pro pilar "O Arauto".
-      titulosDaCopa: copa.titulosDaCopa || null,
-      wrapped: wrapped || null,
+      // Fase 0: antes só esses 3 campos extraídos sobreviviam; agora os objetos completos (com
+      // nomes resolvidos) também ficam salvos — é a matéria-prima do Livro das Copas (v59).
+      titulosDaCopa: titulosEnriquecidos,
+      wrapped: wrappedEnriquecido || null,
     };
     copa.wrappedDaCopa = wrapped ? { ...wrapped, novoRecordeGols, melhorGolsAnterior } : null;
     // Dinastia: se a campeã da copa anterior tinha 2+ títulos seguidos, foi sorteada de novo nesta
@@ -9096,32 +9122,42 @@ function salvarHistoricoCopa() {
     atualizarRecordesPerpetuos(wrapped);
   } catch (e) {}
 }
-function mostrarHistoricoCopasOverlay() {
+// Livro das Copas (Alpha 2, v59): eleva o antigo "Histórico de Copas" — que só mostrava time/
+// resultado/artilheiro numa linha — pra um capítulo por copa, usando dado que JÁ estava salvo
+// (titulosDaCopa e wrapped completos desde a Fase 0) mas nunca tinha sido exibido. Sem nenhum
+// recorde perpétuo novo ainda — isso vem depois, enriquecendo esta mesma tela aos poucos.
+function mostrarLivroDasCopasOverlay() {
   let lista = [];
   try { lista = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]'); } catch (e) {}
   const total = lista.length;
   const vitorias = lista.filter(r => r.venci).length;
   const resumo = total
-    ? `<div style="text-align:center;margin-bottom:12px;font-size:12px;color:var(--cinza);">${total} copa${total===1?'':'s'} disputada${total===1?'':'s'} · <b style="color:#f0c040;">${vitorias}</b> título${vitorias===1?'':'s'}</div>`
+    ? `<div style="text-align:center;margin-bottom:14px;font-size:12px;color:var(--cinza);">${total} capítulo${total===1?'':'s'} escrito${total===1?'':'s'} · <b style="color:#f0c040;">${vitorias}</b> título${vitorias===1?'':'s'}</div>`
     : '';
-  const linhas = lista.map(r => {
+  const capitulos = lista.map(r => {
     const dataFmt = new Date(r.data).toLocaleDateString('pt-BR');
-    const resultado = r.venci
-      ? `<span style="color:#f0c040;font-weight:900;">🏆 Campeão</span>`
-      : `<span style="color:var(--cinza);">Campeão: ${r.campeao}</span>`;
-    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.06);">
-      <div style="min-width:0;">
-        <div style="font-size:12px;font-weight:700;color:var(--areia);">${r.minhaSelecao || '?'} ${r.online?'<span style="font-size:9px;color:#60a5fa;">🌐 online</span>':''}</div>
-        <div style="font-size:10.5px;margin-top:2px;">${resultado}</div>
-        ${r.artilheiro ? `<div style="font-size:10px;color:var(--cinza);margin-top:1px;">⚽ Artilheiro: ${r.artilheiro.nome} (${r.artilheiro.gols})</div>` : ''}
+    const tit = r.titulosDaCopa;
+    const goleada = r.wrapped?.maiorGoleada;
+    const fatos = [];
+    fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🏆 Campeã</span><span>${r.venci ? `<b>${r.campeao} — foi você!</b>` : r.campeao}</span></div>`);
+    if (r.vice) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🥈 Vice</span><span>${r.vice}</span></div>`);
+    if (r.artilheiro) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">⚽ Artilheiro</span><span>${r.artilheiro.nome} · ${r.artilheiro.gols} gols</span></div>`);
+    if (r.craque) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🌟 Craque</span><span>${r.craque.nome} · ${r.craque.vezes}x</span></div>`);
+    if (goleada?.aNome && goleada?.bNome) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">💥 Goleada</span><span>${goleada.aNome} ${goleada.golsA}×${goleada.golsB} ${goleada.bNome}</span></div>`);
+    if (tit?.zebraOficial?.selNome) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🦓 Zebra Oficial</span><span>${tit.zebraOficial.selNome}</span></div>`);
+    if (tit?.maoDeAlface?.selNome) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🥶 Mão de Alface</span><span>${tit.maoDeAlface.selNome} (${tit.maoDeAlface.nome})</span></div>`);
+    return `<div class="livro-capitulo">
+      <div class="livro-capitulo-topo">
+        <div class="livro-capitulo-time">${r.minhaSelecao || '?'}${r.online ? ' <span class="livro-online">🌐 online</span>' : ''}</div>
+        <div class="livro-capitulo-data">${dataFmt}</div>
       </div>
-      <div style="font-size:10px;color:rgba(232,245,233,.4);white-space:nowrap;flex-shrink:0;">${dataFmt}</div>
+      <div class="livro-fatos">${fatos.join('')}</div>
     </div>`;
   }).join('');
   const body = total
-    ? resumo + `<div style="max-height:56vh;overflow-y:auto;">${linhas}</div>`
-    : `<p style="text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;">Nenhuma copa concluída ainda neste aparelho. Termine uma copa (local ou online) pra começar seu histórico.</p>`;
-  abrirOverlayGenericoCopa('📜', 'Histórico de Copas', body, 480);
+    ? resumo + `<div style="max-height:56vh;overflow-y:auto;">${capitulos}</div>`
+    : `<p style="text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;">Seu Livro das Copas está em branco. Termine sua primeira Copa (local ou online) pra escrever o primeiro capítulo.</p>`;
+  abrirOverlayGenericoCopa('📖', 'Livro das Copas', body, 480);
 }
 
 function renderCopaJogo() {
@@ -11793,7 +11829,7 @@ document.getElementById('btnModoOnline').addEventListener('click', ()=>{
   popularDropdownSelecoes('copaOnlineEntrarSel');
   mostrarTela('copaOnlineMenu');
 });
-document.getElementById('btnHistoricoCopas').addEventListener('click', mostrarHistoricoCopasOverlay);
+document.getElementById('btnHistoricoCopas').addEventListener('click', mostrarLivroDasCopasOverlay);
 document.getElementById('btnVoltarModoJogo').addEventListener('click', ()=>mostrarTela('modoJogo'));
 document.getElementById('btnVoltarModoJogo2').addEventListener('click', ()=>mostrarTela('modoJogo'));
 
