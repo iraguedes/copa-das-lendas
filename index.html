@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '59'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '60'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -465,15 +465,32 @@
   .menu-narrativa .mn-linha+.mn-linha{margin-top:7px;}
   .menu-narrativa .mn-icone{flex-shrink:0;font-size:15px;line-height:1.4;}
   .menu-narrativa .mn-texto b{color:var(--ouro);}
-  .livro-capitulo{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
-  .livro-capitulo-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06);}
-  .livro-capitulo-time{font-size:12.5px;font-weight:700;color:var(--areia);}
-  .livro-capitulo-data{font-size:10px;color:rgba(232,245,233,.4);white-space:nowrap;}
   .livro-online{font-size:9px;color:#60a5fa;}
-  .livro-fatos{display:flex;flex-direction:column;gap:3px;}
-  .livro-fato{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:rgba(232,245,233,.75);}
-  .livro-fato-lbl{color:rgba(232,245,233,.45);flex-shrink:0;}
-  .livro-fato b{color:#f0c040;}
+  .livro-capa{text-align:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(217,164,74,.25);}
+  .livro-capa-titulo{font-family:'Georgia',serif;font-size:20px;color:var(--ouro);letter-spacing:.4px;margin-bottom:4px;}
+  .livro-capa-sub{font-size:11.5px;color:var(--cinza);}
+  .livro-capa-sub b{color:#f0c040;}
+  .livro-pagina{
+    background:radial-gradient(120% 90% at 50% 0%, rgba(217,164,74,.09), rgba(0,0,0,.14) 75%);
+    border:1px solid rgba(217,164,74,.22);border-radius:12px;padding:20px 22px 16px;
+  }
+  .livro-pagina-cabecalho{text-align:center;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:rgba(232,245,233,.4);margin-bottom:2px;}
+  .livro-ornamento{text-align:center;color:rgba(217,164,74,.55);font-size:13px;margin:6px 0 12px;}
+  .livro-campea{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .livro-escudo{width:30px;height:30px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,.25);box-shadow:0 2px 8px rgba(0,0,0,.4);}
+  .livro-campea-nome{font-family:'Georgia',serif;font-size:19px;font-weight:700;color:var(--ouro);text-align:center;}
+  .livro-selo-voce{display:inline-block;margin-left:8px;font-family:'Trebuchet MS',sans-serif;font-size:9.5px;font-weight:900;letter-spacing:.4px;color:#04150a;background:var(--ouro);border-radius:20px;padding:2px 8px;vertical-align:middle;}
+  .livro-narrativa{font-family:'Georgia',serif;font-size:13.5px;line-height:1.7;color:rgba(232,245,233,.85);text-align:center;margin:0;}
+  .livro-narrativa b{color:#f0c040;}
+  .livro-rodape{margin-top:12px;padding-top:10px;border-top:1px dashed rgba(217,164,74,.2);}
+  .livro-rodape p{font-family:'Georgia',serif;font-style:italic;font-size:11.5px;color:rgba(232,245,233,.55);text-align:center;margin:0 0 6px;}
+  .livro-rodape p:last-child{margin-bottom:0;}
+  .livro-rodape b{color:rgba(232,245,233,.75);font-style:normal;}
+  .livro-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(217,164,74,.15);}
+  .livro-nav-btn{background:transparent;border:none;box-shadow:none;color:var(--terracota);font-size:11px;font-weight:700;padding:4px 2px;cursor:pointer;}
+  .livro-nav-btn:hover:not(:disabled){filter:none;color:var(--ouro);transform:none;}
+  .livro-nav-btn:disabled{color:rgba(232,245,233,.2);cursor:not-allowed;}
+  .livro-nav-pos{font-size:10px;color:rgba(232,245,233,.4);white-space:nowrap;}
   @media(max-width:580px){
     .copa-titulo{letter-spacing:2px;}
     .legend-card{width:82px;}
@@ -1693,7 +1710,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v59</div>
+  <div class="rodapezinho">v60</div>
 </div>
 
 <script>
@@ -9122,42 +9139,85 @@ function salvarHistoricoCopa() {
     atualizarRecordesPerpetuos(wrapped);
   } catch (e) {}
 }
-// Livro das Copas (Alpha 2, v59): eleva o antigo "Histórico de Copas" — que só mostrava time/
-// resultado/artilheiro numa linha — pra um capítulo por copa, usando dado que JÁ estava salvo
-// (titulosDaCopa e wrapped completos desde a Fase 0) mas nunca tinha sido exibido. Sem nenhum
-// recorde perpétuo novo ainda — isso vem depois, enriquecendo esta mesma tela aos poucos.
+// Livro das Copas (Alpha 2). v59 elevou o antigo "Histórico de Copas" (uma linha por copa) pra um
+// capítulo por copa com todos os fatos já salvos. v60 é uma pausa DELIBERADA só de apresentação —
+// zero dado novo — pra fazer o Livro parecer um livro de verdade: uma copa por página (não uma
+// lista rolável), campeã em destaque com escudo, fatos costurados em prosa em vez de rótulo:valor,
+// e navegação de "virar página" em vez de scroll.
+function montarNarrativaCapituloLivro(r) {
+  const tit = r.titulosDaCopa;
+  const goleada = r.wrapped?.maiorGoleada;
+  const frases = [];
+  frases.push(r.vice
+    ? `<b>${r.campeao}</b> conquistou o título desta Copa das Lendas, superando <b>${r.vice}</b> na decisão.`
+    : `<b>${r.campeao}</b> conquistou o título desta Copa das Lendas.`);
+  if (r.artilheiro && r.craque) {
+    frases.push(`${r.artilheiro.nome} foi o artilheiro da competição, com ${r.artilheiro.gols} gols, enquanto ${r.craque.nome} se destacou como o melhor em campo, eleito craque da partida ${r.craque.vezes} ${r.craque.vezes===1?'vez':'vezes'}.`);
+  } else if (r.artilheiro) {
+    frases.push(`${r.artilheiro.nome} foi o artilheiro da competição, com ${r.artilheiro.gols} gols.`);
+  } else if (r.craque) {
+    frases.push(`${r.craque.nome} foi o nome mais lembrado da campanha, eleito craque da partida ${r.craque.vezes} ${r.craque.vezes===1?'vez':'vezes'}.`);
+  }
+  if (goleada?.aNome && goleada?.bNome) {
+    frases.push(`O confronto mais lopsided do torneio foi <b>${goleada.aNome} ${goleada.golsA}×${goleada.golsB} ${goleada.bNome}</b>.`);
+  }
+  if (r.minhaSelecao) {
+    frases.push(r.venci
+      ? `Você disputou esta Copa com <b>${r.minhaSelecao}</b> — e ergueu a taça!`
+      : `Você disputou esta Copa com <b>${r.minhaSelecao}</b>.`);
+  }
+  const narrativa = frases.join(' ');
+  const rodape = [];
+  if (tit?.zebraOficial?.selNome) rodape.push(`🦓 <b>${tit.zebraOficial.selNome}</b> entrou pra história como a Zebra Oficial desta Copa.`);
+  if (tit?.maoDeAlface?.selNome) rodape.push(`🥶 <b>${tit.maoDeAlface.selNome}</b> levará pra sempre a fama de Mão de Alface desta Copa (pênalti decisivo perdido por ${tit.maoDeAlface.nome}).`);
+  return { narrativa, rodape };
+}
+function renderizarPaginaLivro(lista, indice) {
+  const area = document.getElementById('livroPaginaArea');
+  if (!area) return;
+  const total = lista.length;
+  const r = lista[indice];
+  const numeroCapitulo = total - indice; // o mais recente (índice 0) é sempre o capítulo mais alto — a leitura "avança" pro passado
+  const dataFmt = new Date(r.data).toLocaleDateString('pt-BR');
+  const selCampea = BANCO_SELECOES.find(s => s.id === r.campeaoSelId);
+  const escudo = selCampea
+    ? `<span class="livro-escudo" style="background:linear-gradient(135deg,${selCampea.cor1||'#888'} 48%,${selCampea.cor2||selCampea.cor1||'#888'} 52%);"></span>`
+    : '';
+  const { narrativa, rodape } = montarNarrativaCapituloLivro(r);
+  area.innerHTML = `
+    <div class="livro-pagina">
+      <div class="livro-pagina-cabecalho">Capítulo ${numeroCapitulo} de ${total} · ${dataFmt}${r.online ? ' · <span class="livro-online">🌐 online</span>' : ''}</div>
+      <div class="livro-ornamento">✦</div>
+      <div class="livro-campea">
+        ${escudo}
+        <div class="livro-campea-nome">${r.campeao}${r.venci ? '<span class="livro-selo-voce">★ foi você</span>' : ''}</div>
+      </div>
+      <p class="livro-narrativa">${narrativa}</p>
+      ${rodape.length ? `<div class="livro-rodape">${rodape.map(f => `<p>${f}</p>`).join('')}</div>` : ''}
+      <div class="livro-nav">
+        <button type="button" class="livro-nav-btn" id="livroBtnAnterior" ${indice >= total - 1 ? 'disabled' : ''}>◄ Capítulo anterior</button>
+        <span class="livro-nav-pos">${numeroCapitulo} / ${total}</span>
+        <button type="button" class="livro-nav-btn" id="livroBtnProximo" ${indice <= 0 ? 'disabled' : ''}>Capítulo seguinte ►</button>
+      </div>
+    </div>`;
+  document.getElementById('livroBtnAnterior')?.addEventListener('click', () => renderizarPaginaLivro(lista, Math.min(indice + 1, total - 1)));
+  document.getElementById('livroBtnProximo')?.addEventListener('click', () => renderizarPaginaLivro(lista, Math.max(indice - 1, 0)));
+}
 function mostrarLivroDasCopasOverlay() {
   let lista = [];
   try { lista = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]'); } catch (e) {}
-  const total = lista.length;
+  if (!lista.length) {
+    const vazio = `<p style="text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;">Seu Livro das Copas está em branco. Termine sua primeira Copa (local ou online) pra escrever o primeiro capítulo.</p>`;
+    abrirOverlayGenericoCopa('📖', 'Livro das Copas', vazio, 540);
+    return;
+  }
   const vitorias = lista.filter(r => r.venci).length;
-  const resumo = total
-    ? `<div style="text-align:center;margin-bottom:14px;font-size:12px;color:var(--cinza);">${total} capítulo${total===1?'':'s'} escrito${total===1?'':'s'} · <b style="color:#f0c040;">${vitorias}</b> título${vitorias===1?'':'s'}</div>`
-    : '';
-  const capitulos = lista.map(r => {
-    const dataFmt = new Date(r.data).toLocaleDateString('pt-BR');
-    const tit = r.titulosDaCopa;
-    const goleada = r.wrapped?.maiorGoleada;
-    const fatos = [];
-    fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🏆 Campeã</span><span>${r.venci ? `<b>${r.campeao} — foi você!</b>` : r.campeao}</span></div>`);
-    if (r.vice) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🥈 Vice</span><span>${r.vice}</span></div>`);
-    if (r.artilheiro) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">⚽ Artilheiro</span><span>${r.artilheiro.nome} · ${r.artilheiro.gols} gols</span></div>`);
-    if (r.craque) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🌟 Craque</span><span>${r.craque.nome} · ${r.craque.vezes}x</span></div>`);
-    if (goleada?.aNome && goleada?.bNome) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">💥 Goleada</span><span>${goleada.aNome} ${goleada.golsA}×${goleada.golsB} ${goleada.bNome}</span></div>`);
-    if (tit?.zebraOficial?.selNome) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🦓 Zebra Oficial</span><span>${tit.zebraOficial.selNome}</span></div>`);
-    if (tit?.maoDeAlface?.selNome) fatos.push(`<div class="livro-fato"><span class="livro-fato-lbl">🥶 Mão de Alface</span><span>${tit.maoDeAlface.selNome} (${tit.maoDeAlface.nome})</span></div>`);
-    return `<div class="livro-capitulo">
-      <div class="livro-capitulo-topo">
-        <div class="livro-capitulo-time">${r.minhaSelecao || '?'}${r.online ? ' <span class="livro-online">🌐 online</span>' : ''}</div>
-        <div class="livro-capitulo-data">${dataFmt}</div>
-      </div>
-      <div class="livro-fatos">${fatos.join('')}</div>
-    </div>`;
-  }).join('');
-  const body = total
-    ? resumo + `<div style="max-height:56vh;overflow-y:auto;">${capitulos}</div>`
-    : `<p style="text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;">Seu Livro das Copas está em branco. Termine sua primeira Copa (local ou online) pra escrever o primeiro capítulo.</p>`;
-  abrirOverlayGenericoCopa('📖', 'Livro das Copas', body, 480);
+  const capa = `<div class="livro-capa">
+    <div class="livro-capa-titulo">Livro das Copas</div>
+    <div class="livro-capa-sub">${lista.length} capítulo${lista.length===1?'':'s'} registrado${lista.length===1?'':'s'} · <b>${vitorias}</b> título${vitorias===1?'':'s'} conquistado${vitorias===1?'':'s'}</div>
+  </div>`;
+  abrirOverlayGenericoCopa('📖', 'Livro das Copas', `${capa}<div id="livroPaginaArea"></div>`, 540);
+  renderizarPaginaLivro(lista, 0);
 }
 
 function renderCopaJogo() {
