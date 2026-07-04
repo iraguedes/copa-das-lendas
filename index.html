@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '64'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '65'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1282,6 +1282,8 @@
       <button type="button" onclick="mostrarGruposCopaOverlay()">📋 Grupos</button>
       <button type="button" onclick="mostrarArtilheirosCopaOverlay()">⚽ Artilheiros</button>
       <button type="button" onclick="mostrarRegrasCopaOverlay()">📖 Regras</button>
+      <button type="button" onclick="mostrarLivroDasCopasOverlay()">📖 Livro das Copas</button>
+      <button type="button" onclick="mostrarHallDaFamaOverlay()">🏛 Hall da Fama</button>
     </div>
     <div class="plantel-wrap">
       <div class="plantel-esq">
@@ -1377,6 +1379,9 @@
         <button id="btnSimularRodadaCopa" type="button" class="pequeno">▶ Simular rodada</button>
         <span id="bktEliminadoMsg" class="hidden" style="font-size:12px;color:var(--cinza);">🏁 Eliminado — acompanhe o andamento da copa</span>
       </div>
+      <p style="text-align:center;margin:0 0 10px;">
+        <button type="button" id="btnVerClassificacaoGrupos" class="secondary pequeno">📋 Ver classificação dos grupos</button>
+      </p>
       <div class="bracket-wrap" style="overflow-x:auto;padding-bottom:8px;"><div id="copaBracketRounds"></div></div>
     </div>
     <div id="painelCopaArt" class="hidden">
@@ -1748,7 +1753,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v64 – A Cerimônia</div>
+  <div class="rodapezinho">v65 – Qualidade de Vida</div>
 </div>
 
 <script>
@@ -6214,8 +6219,15 @@ function abrirCopaPlantel(selId) {
   if (advEl) {
     const adv = (typeof proximoAdversario === 'function') ? proximoAdversario(selId) : null;
     const a = adv && copa && copa.selMap[adv];
+    // Fase do torneio dessa partida — mesmo mapa de nomes já usado na tela ao vivo
+    // (iniciarRodadaBracketLive), pra não surpreender o jogador com um rótulo diferente lá.
+    const NOMES_FASE_TORNEIO = { r32:'16 Avos de Final', r16:'Oitavas de Final', qf:'Quartas de Final', sf:'Semifinais', final_3:'Final + 3° Lugar' };
+    const faseLabel = copa?.faseAtual === 'grupos' ? 'Fase de Grupos' : (NOMES_FASE_TORNEIO[copa?.bracket?.rodadaAtual] || '');
     advEl.innerHTML = a ? `<div onclick="mostrarPlantelSelecao('${adv}')" style="margin-top:10px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 11px;display:flex;align-items:center;gap:9px;">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--cinza);flex-shrink:0;">Adversário</div>
+        <div style="flex-shrink:0;">
+          <div style="font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--cinza);">${faseLabel}</div>
+          <div style="font-size:8px;color:rgba(232,245,233,.35);">Adversário</div>
+        </div>
         <span style="width:9px;height:9px;border-radius:50%;background:${a.cor1||'#888'};flex-shrink:0;"></span>
         <div style="flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--areia);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.pais} ${a.ano}</div>
         <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span></div>` : '';
@@ -6423,74 +6435,89 @@ function renderCopaGrupos() {
   }
   document.getElementById('copaFaseTitulo').textContent = todasSimuladas ? 'Fase de Grupos — Concluída' : `Fase de Grupos — Partida ${Math.min(j + 1, 3)} de 3`;
 
+  grid.innerHTML = copa.grupos.map(montarGrupoBoxHTML).join('');
+  ativarLinksGrupoBoxHTML(grid);
+}
+// Monta o card de UM grupo (tabela de classificação + resultados da rodada) — extraído de
+// renderCopaGrupos pra ser reaproveitado também no overlay de consulta durante o mata-mata (U7),
+// sem duplicar a lógica de montagem da tabela em dois lugares.
+function montarGrupoBoxHTML(g) {
   const POS_BG  = ['#22c55e','#eab308','#6b7a74','#ef4444'];
   const POS_CLR = ['#000',   '#000',   '#fff',   '#fff'];
+  const cls = classificacaoGrupo(g, copa.selMap);
+  // Destaque do MEU grupo: borda/glow na cor vibrante do meu time
+  const minhaIdGrupo = g.selIds.find(id => ehMinhaSel(id));
+  const vibMeu = minhaIdGrupo ? coresVibrantes(copa.selMap[minhaIdGrupo]) : null;
+  const tabela = cls.map((st, i) => {
+    const sel = copa.selMap[st.id];
+    const saldo = st.gp - st.gc;
+    const minhaSel = ehMinhaSel(st.id);
+    const nameplate = sel ? npSel(sel, minhaSel) : st.id;
+    let rowExtra = '';
+    if (minhaSel && sel) {
+      const vib = coresVibrantes(sel);
+      rowExtra = ` style="border-left:3px solid ${vib.c1};background:linear-gradient(90deg,${vib.c1}26 0%,${vib.c2}18 100%);box-shadow:inset 0 0 12px ${vib.c1}14;"`;
+    }
+    const glowClass = minhaSel ? ' class="minha-sel-row"' : '';
+    return `<tr${glowClass}${rowExtra}>
+      <td style="padding:2px 4px;">
+        <span class="ver-sel-link" data-ver-sel="${st.id}" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          <span class="pos-badge" style="background:${POS_BG[i]};color:${POS_CLR[i]};flex-shrink:0;">${i+1}</span>
+          ${nameplate}
+        </span>
+      </td>
+      <td>${st.j}</td><td>${st.v}</td><td>${st.e}</td><td>${st.d}</td>
+      <td>${st.gp}</td><td>${st.gc}</td>
+      <td style="color:${saldo>0?'#22c55e':saldo<0?'#f87171':'var(--areia)'};">${saldo>0?'+':''}${saldo}</td>
+      <td style="font-weight:900;color:${st.pts>=7?'#22c55e':st.pts>=4?'#eab308':'var(--areia)'};">${st.pts}</td>
+    </tr>`;
+  }).join('');
 
-  grid.innerHTML = copa.grupos.map(g => {
-    const cls = classificacaoGrupo(g, copa.selMap);
-    // Destaque do MEU grupo: borda/glow na cor vibrante do meu time
-    const minhaIdGrupo = g.selIds.find(id => ehMinhaSel(id));
-    const vibMeu = minhaIdGrupo ? coresVibrantes(copa.selMap[minhaIdGrupo]) : null;
-    const tabela = cls.map((st, i) => {
-      const sel = copa.selMap[st.id];
-      const saldo = st.gp - st.gc;
-      const minhaSel = ehMinhaSel(st.id);
-      const nameplate = sel ? npSel(sel, minhaSel) : st.id;
-      let rowExtra = '';
-      if (minhaSel && sel) {
-        const vib = coresVibrantes(sel);
-        rowExtra = ` style="border-left:3px solid ${vib.c1};background:linear-gradient(90deg,${vib.c1}26 0%,${vib.c2}18 100%);box-shadow:inset 0 0 12px ${vib.c1}14;"`;
-      }
-      const glowClass = minhaSel ? ' class="minha-sel-row"' : '';
-      return `<tr${glowClass}${rowExtra}>
-        <td style="padding:2px 4px;">
-          <span class="ver-sel-link" data-ver-sel="${st.id}" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
-            <span class="pos-badge" style="background:${POS_BG[i]};color:${POS_CLR[i]};flex-shrink:0;">${i+1}</span>
-            ${nameplate}
-          </span>
-        </td>
-        <td>${st.j}</td><td>${st.v}</td><td>${st.e}</td><td>${st.d}</td>
-        <td>${st.gp}</td><td>${st.gc}</td>
-        <td style="color:${saldo>0?'#22c55e':saldo<0?'#f87171':'var(--areia)'};">${saldo>0?'+':''}${saldo}</td>
-        <td style="font-weight:900;color:${st.pts>=7?'#22c55e':st.pts>=4?'#eab308':'var(--areia)'};">${st.pts}</td>
-      </tr>`;
-    }).join('');
-
-    const resultados = g.jogos.filter(j => j.golsA !== null).map(j => {
-      const sA = copa.selMap[j.a], sB = copa.selMap[j.b];
-      const dotA = sA ? `<span style="width:7px;height:7px;border-radius:50%;background:${sA.cor1||'#888'};flex-shrink:0;display:inline-block;margin-right:3px;"></span>` : '';
-      const dotB = sB ? `<span style="width:7px;height:7px;border-radius:50%;background:${sB.cor1||'#888'};flex-shrink:0;display:inline-block;margin-left:3px;"></span>` : '';
-      const nA = sA ? sA.pais : j.a, nB = sB ? sB.pais : j.b;
-      const temReplay = j.golsEventos && j.golsEventos.length > 0;
-      const replayAttrs = temReplay ? ` data-grupo-id="${g.id}" data-jogo-idx="${g.jogos.indexOf(j)}" style="cursor:pointer;"` : '';
-      return `<div class="grupo-jogo-l"${replayAttrs}>
-        <span class="rj-eq">${dotA}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nA}</span></span>
-        <span class="rj-sc">${j.golsA}–${j.golsB}</span>
-        <span class="rj-eq rj-eq-dir"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nB}</span>${dotB}</span>
-      </div>`;
-    }).join('');
-
-    const boxStyle = vibMeu ? ` style="border:1px solid ${vibMeu.c1}66;box-shadow:0 0 16px ${vibMeu.c1}1e;"` : '';
-    const tagMeu = vibMeu ? ` <span style="background:linear-gradient(90deg,${vibMeu.c1},${vibMeu.c2});color:${corContraste(vibMeu.c1)};font-size:8px;font-weight:900;border-radius:3px;padding:1px 6px;letter-spacing:.5px;vertical-align:middle;">★ SEU GRUPO</span>` : '';
-    return `<div class="grupo-box"${boxStyle}>
-      <div class="grupo-letra">GRUPO ${g.id}${tagMeu}</div>
-      <table class="grupo-tbl">
-        <thead><tr><th style="text-align:left;">Seleção</th><th>P</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>S</th><th>Pts</th></tr></thead>
-        <tbody>${tabela}</tbody>
-      </table>
-      ${resultados ? `<div class="grupo-jogos">${resultados}</div>` : ''}
+  const resultados = g.jogos.filter(j => j.golsA !== null).map(j => {
+    const sA = copa.selMap[j.a], sB = copa.selMap[j.b];
+    const dotA = sA ? `<span style="width:7px;height:7px;border-radius:50%;background:${sA.cor1||'#888'};flex-shrink:0;display:inline-block;margin-right:3px;"></span>` : '';
+    const dotB = sB ? `<span style="width:7px;height:7px;border-radius:50%;background:${sB.cor1||'#888'};flex-shrink:0;display:inline-block;margin-left:3px;"></span>` : '';
+    const nA = sA ? sA.pais : j.a, nB = sB ? sB.pais : j.b;
+    const temReplay = j.golsEventos && j.golsEventos.length > 0;
+    const replayAttrs = temReplay ? ` data-grupo-id="${g.id}" data-jogo-idx="${g.jogos.indexOf(j)}" style="cursor:pointer;"` : '';
+    return `<div class="grupo-jogo-l"${replayAttrs}>
+      <span class="rj-eq">${dotA}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nA}</span></span>
+      <span class="rj-sc">${j.golsA}–${j.golsB}</span>
+      <span class="rj-eq rj-eq-dir"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nB}</span>${dotB}</span>
     </div>`;
   }).join('');
-  // Clicar numa seleção da tabela de grupos abre o elenco dela
-  grid.querySelectorAll('[data-ver-sel]').forEach(el => el.addEventListener('click', () => mostrarPlantelSelecao(el.dataset.verSel)));
-  // Clicar num resultado (com gols) abre o replay textual da partida
-  grid.querySelectorAll('[data-jogo-idx]').forEach(el => el.addEventListener('click', () => {
+
+  const boxStyle = vibMeu ? ` style="border:1px solid ${vibMeu.c1}66;box-shadow:0 0 16px ${vibMeu.c1}1e;"` : '';
+  const tagMeu = vibMeu ? ` <span style="background:linear-gradient(90deg,${vibMeu.c1},${vibMeu.c2});color:${corContraste(vibMeu.c1)};font-size:8px;font-weight:900;border-radius:3px;padding:1px 6px;letter-spacing:.5px;vertical-align:middle;">★ SEU GRUPO</span>` : '';
+  return `<div class="grupo-box"${boxStyle}>
+    <div class="grupo-letra">GRUPO ${g.id}${tagMeu}</div>
+    <table class="grupo-tbl">
+      <thead><tr><th style="text-align:left;">Seleção</th><th>P</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>S</th><th>Pts</th></tr></thead>
+      <tbody>${tabela}</tbody>
+    </table>
+    ${resultados ? `<div class="grupo-jogos">${resultados}</div>` : ''}
+  </div>`;
+}
+// Liga os cliques de plantel/replay dentro de um container que acabou de receber HTML de
+// montarGrupoBoxHTML (reaproveitado por renderCopaGrupos e pelo overlay de classificação do U7).
+function ativarLinksGrupoBoxHTML(container) {
+  container.querySelectorAll('[data-ver-sel]').forEach(el => el.addEventListener('click', () => mostrarPlantelSelecao(el.dataset.verSel)));
+  container.querySelectorAll('[data-jogo-idx]').forEach(el => el.addEventListener('click', () => {
     const g = copa.grupos.find(gr => gr.id === el.dataset.grupoId);
     const jogo = g && g.jogos[Number(el.dataset.jogoIdx)];
     if (!jogo) return;
     const sA = copa.selMap[jogo.a], sB = copa.selMap[jogo.b];
     mostrarReplayGolsCopa(jogo, sA ? nomeCurtoSel(sA) : jogo.a, sB ? nomeCurtoSel(sB) : jogo.b);
   }));
+}
+// U7: consultar a classificação final dos grupos durante todo o mata-mata. copa.grupos nunca é
+// apagado depois que o bracket é montado — só reaproveita o mesmo cálculo/HTML de sempre, num
+// overlay à parte (não mexe na aba/botão do Chaveamento).
+function mostrarClassificacaoGruposOverlay() {
+  if (!copa?.grupos?.length) return;
+  const corpo = `<div style="display:flex;flex-direction:column;gap:12px;">${copa.grupos.map(montarGrupoBoxHTML).join('')}</div>`;
+  abrirOverlayGenericoCopa('📋', 'Classificação dos Grupos', corpo, 640);
+  ativarLinksGrupoBoxHTML(document.getElementById('plantelOverlayCopa'));
 }
 
 function bktSelRow(sel, selId, gols, isWin, penStr) {
@@ -6796,9 +6823,9 @@ function iniciarLiveGrid() {
       ${fantasmaHTML}
       ${campeaAntHTML}
       <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;">
-        <span class="time-grupo">${nomeA}${badgeA}</span>
+        <span class="time-grupo" data-ver-sel="${p.a}" style="cursor:pointer;">${nomeA}${badgeA}</span>
         <span class="placar" style="font-size:${isMinha?18:13}px;color:${isMinha?'#fff':'var(--areia)'};${isMinha?'text-shadow:0 0 10px rgba(255,255,255,.25);':''}">${score}</span>
-        <span class="time-grupo time-grupo-direita">${badgeB}${nomeB}</span>
+        <span class="time-grupo time-grupo-direita" data-ver-sel="${p.b}" style="cursor:pointer;">${badgeB}${nomeB}</span>
       </div>
       ${probHTML}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;min-height:${isMinha?'15px':'0px'};">
@@ -8153,11 +8180,13 @@ function renderCopaPainel(selId) {
   const cor2 = sel.cor2 || cor;
   const posOrd = { GOL:0, DEF:1, MEI:2, ATA:3 };
   const posL   = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
-  // Dentro de cada posição, com o toggle ativo os mais descansados (maior vigor) vêm primeiro —
-  // facilita achar quem colocar quando o objetivo é dar descanso ao time.
+  // Dentro de cada posição, com o toggle de Vigor ativo os mais descansados vêm primeiro; com o
+  // toggle de Força ativo, os de maior OVR vêm primeiro — facilita achar quem colocar.
   const cmpVigor = (a, b) => (b.cansaco ?? 100) - (a.cansaco ?? 100);
-  const tit = [...sel.jogadores.filter(j=>j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4) || (painelOrdenarPorVigor ? cmpVigor(a,b) : 0));
-  const res = [...sel.jogadores.filter(j=>!j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4) || (painelOrdenarPorVigor ? cmpVigor(a,b) : 0));
+  const cmpForca = (a, b) => b.ovr - a.ovr;
+  const cmpOrdenacao = painelOrdenarPorVigor ? cmpVigor : (painelOrdenarPorForca ? cmpForca : null);
+  const tit = [...sel.jogadores.filter(j=>j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4) || (cmpOrdenacao ? cmpOrdenacao(a,b) : 0));
+  const res = [...sel.jogadores.filter(j=>!j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4) || (cmpOrdenacao ? cmpOrdenacao(a,b) : 0));
   const mkRow = j => {
     const t = j.traits||[];
     const star = t.includes('lenda') ? '<span style="color:#f0c040;">★</span> ' : '';
@@ -8280,7 +8309,7 @@ function renderCopaPainel(selId) {
           })()}
         </div>
         <table class="plantel-tbl">
-          <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th id="thVigorPainel" style="font-size:8px;letter-spacing:.6px;cursor:pointer;${painelOrdenarPorVigor?'color:#22c55e;':''}" title="Clique pra escalar automaticamente os titulares mais descansados de cada posição — jeito rápido de dar descanso ao time">VIGOR ${painelOrdenarPorVigor?'⚡':''}</th></tr></thead>
+          <thead><tr><th></th><th></th><th></th><th id="thForcaPainel" style="text-align:right;cursor:pointer;${painelOrdenarPorForca?'color:#22c55e;':''}" title="Clique pra escalar automaticamente os titulares de maior OVR em cada posição">For</th><th id="thVigorPainel" style="font-size:8px;letter-spacing:.6px;cursor:pointer;${painelOrdenarPorVigor?'color:#22c55e;':''}" title="Clique pra escalar automaticamente os titulares mais descansados de cada posição — jeito rápido de dar descanso ao time">VIGOR</th></tr></thead>
           <tbody>
             <tr class="plantel-sep"><td colspan="5" style="color:${hdrTxt};opacity:.7;">● TITULARES (${tit.length}) — ${esq}</td></tr>
             ${tit.map(j=>mkRowToggle(j,true)).join('')}
@@ -8342,6 +8371,15 @@ function renderCopaPainel(selId) {
   conteudo.querySelector('#thVigorPainel')?.addEventListener('click', () => {
     autoEscalar(sel, esq, CMP_VIGOR_ESCALACAO);
     painelOrdenarPorVigor = true;
+    painelOrdenarPorForca = false;
+    renderCopaPainel(selId);
+  });
+  // Cabeçalho FOR (Força/OVR): mesma ideia do Vigor, só que escala pelos melhores OVR de cada
+  // posição — autoEscalar(sel, esq) sem comparador já faz exatamente isso por padrão.
+  conteudo.querySelector('#thForcaPainel')?.addEventListener('click', () => {
+    autoEscalar(sel, esq);
+    painelOrdenarPorForca = true;
+    painelOrdenarPorVigor = false;
     renderCopaPainel(selId);
   });
   conteudo.querySelectorAll('.esq-row[data-f]').forEach(el => {
@@ -9701,6 +9739,7 @@ let copaRandomQueue = [];  // seleções pré-sorteadas no modo aleatório
 let copaRandomSeed = null; // seed do tmpCopa no modo aleatório (para recriar com mesmos times)
 let copaJogadorNomes = []; // nomes coletados na tela de nomes [{selId, nome}]
 let painelOrdenarPorVigor = false; // toggle do cabeçalho VIGOR no Painel — deixa os mais descansados no topo de cada posição
+let painelOrdenarPorForca = false; // toggle do cabeçalho FOR (OVR) no Painel — mesma ideia do Vigor, só que pelo melhor OVR
 
 // ===== Som (Web Audio API sintetizada — sem arquivos externos, sem custo de carregamento) =====
 let audioCtxCopa = null;
@@ -12771,11 +12810,27 @@ function dispararRodadaOnline(btn){
 document.getElementById('btnMuteSomCopa').textContent = somCopaAtivado ? '🔊' : '🔇';
 document.getElementById('btnMuteSomCopa').addEventListener('click', alternarSomCopa);
 document.getElementById('btnLivroCopaDurante').addEventListener('click', mostrarLivroDasCopasOverlay);
+// Clicar no nome de uma seleção no grid ao vivo abre o plantel dela (mesmo padrão já usado nos
+// Grupos e no Chaveamento). Delegação de evento no container (registrada uma única vez aqui, não
+// dentro de iniciarLiveGrid) porque o grid é reconstruído várias vezes numa mesma partida (início,
+// entrada na prorrogação, rodada seguinte) — listener por elemento teria que ser reanexado toda vez.
+document.getElementById('copaLiveGrid').addEventListener('click', (e) => {
+  const alvo = e.target.closest('[data-ver-sel]');
+  if (alvo) mostrarPlantelSelecao(alvo.dataset.verSel);
+});
+document.getElementById('btnVerClassificacaoGrupos').addEventListener('click', mostrarClassificacaoGruposOverlay);
 
 document.getElementById('btnSairCopa').addEventListener('click', ()=>{
   const online = !!copa?.onlineCopa;
-  const msg = online ? 'Sair da sala online? Você poderá voltar pelo mesmo código enquanto a sala existir.'
-                     : 'Abandonar a Copa das Lendas? O progresso será perdido.';
+  const acabou = copa?.faseAtual === 'fim';
+  // Copa já concluída: não há nada pra "abandonar" nem "perder" (o resultado já foi salvo no Livro
+  // das Copas) — usar o mesmo aviso de desistência aqui soaria como se a conquista estivesse em risco.
+  const msg = acabou
+    ? (ehMinhaSel(copa.campeao)
+        ? 'Voltar ao menu? Sua conquista já foi registrada no Livro das Copas.'
+        : 'Voltar ao menu? O resultado desta Copa já foi registrado no Livro das Copas.')
+    : online ? 'Sair da sala online? Você poderá voltar pelo mesmo código enquanto a sala existir.'
+              : 'Abandonar a Copa das Lendas? O progresso será perdido.';
   if(confirm(msg)){
     limparEstadoLive();
     if (online){ limparAssinaturaCopa(); limparIdentidadeCopa(); copaOnlineCodigo=null; copaOnlineJogadorId=null; copaOnlineEmJogo=false; }
