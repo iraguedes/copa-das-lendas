@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '48'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '49'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1674,7 +1674,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v48</div>
+  <div class="rodapezinho">v49</div>
 </div>
 
 <script>
@@ -1690,7 +1690,7 @@ const STORAGE_KEY_FANTASMAS_COPA = 'copa-lendas-fantasmas-v1'; // times que te e
 // ============================================================
 // BANCO DE SELEÇÕES HISTÓRICAS — Copa das Lendas
 // 133 entradas · 60 países únicos
-// Sorteio garante 48 países únicos por torneio (um por país)
+// Sorteio de 48 times por torneio; gerações do mesmo país podem coexistir (teto de 4/país)
 // ============================================================
 const BANCO_SELECOES = [
 
@@ -5624,17 +5624,23 @@ const BANCO_SELECOES = [
 // COPA DAS LENDAS — engine do torneio
 // ============================================================
 
+// "O maior torneio que nunca existiu": gerações diferentes do mesmo país podem coexistir na
+// mesma Copa (ex. Brasil 70 x Brasil 2002), mas um teto suave de 4 por país preserva a
+// diversidade — sem isso, um país com banco grande (Brasil, Alemanha) poderia dominar o sorteio.
+const TETO_SELECOES_POR_PAIS = 4;
 function sortearSelecoes(n, rng) {
   const pool = [...BANCO_SELECOES];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  const paisesUsados = new Set();
+  const contagemPais = {};
   const resultado = [];
   for (const sel of pool) {
-    if (!paisesUsados.has(sel.pais) && resultado.length < n) {
-      paisesUsados.add(sel.pais);
+    if (resultado.length >= n) break;
+    const atual = contagemPais[sel.pais] || 0;
+    if (atual < TETO_SELECOES_POR_PAIS) {
+      contagemPais[sel.pais] = atual + 1;
       resultado.push(sel);
     }
   }
@@ -9369,7 +9375,7 @@ function construirRegrasCopaHTML() {
   const badge = (bg, label) => `<span style="background:${bg};color:#fff;font-size:8.5px;font-weight:900;border-radius:3px;padding:1px 5px;letter-spacing:.3px;">${label}</span>`;
   return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;padding:2px 0 12px;">
     ${card('🏆','Formato do Torneio',[
-      li('🌍', `${ouro('48 seleções')} sorteadas de um banco de ${ouro('133 times históricos')} (1930–2026), sem repetir país.`),
+      li('🌍', `${ouro('48 seleções')} sorteadas de um banco de ${ouro('133 times históricos')} (1930–2026). Gerações diferentes do mesmo país podem coexistir (ex. Brasil 70 x Brasil 2002), com um teto de até ${ouro('4 por país')}.`),
       li('🔤', `${ouro('12 grupos')} (A–L) com 4 times. Cada time faz ${ouro('3 jogos')}, um por jornada.`),
       li('✅', `Avançam o ${ouro('1º e o 2º')} de cada grupo + os ${ouro('8 melhores 3ºs')} = 32 classificados.`),
       li('⚔️', `Mata-mata: ${ouro('16 avos → oitavas → quartas → semis → final')} (+ disputa de 3º lugar).`),
