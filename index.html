@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '57'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '58'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1684,7 +1684,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v57</div>
+  <div class="rodapezinho">v58</div>
 </div>
 
 <script>
@@ -8899,16 +8899,27 @@ function calcularDinastiaAtual(historico) {
   return { selId: id, nome: historico[0].campeao, streak };
 }
 // Notificações especiais acumuladas durante o avanço do bracket (superação de Nêmesis, fim de
-// dinastia) — mostra e consome UMA por vez, reaproveitando o overlay genérico já existente (sem UI nova).
+// dinastia) — mostra e consome UMA por vez, reaproveitando o overlay genérico já existente (sem UI
+// nova). Revisão de UX (2026-07-04): esses overlays disparam no MESMO instante em que o bracket
+// acaba de ser renderizado (e, no caso de "fim de dinastia", no mesmíssimo momento em que o banner
+// de fim de copa/Wrapped também aparece) — sem nenhuma pausa, os dois brigavam pela tela bem no
+// momento de maior peso emocional da sessão. Um pequeno atraso antes de abrir (deixa o jogador
+// registrar o que acabou de mudar no bracket/banner primeiro) e um espaçamento entre múltiplas
+// notificações na mesma fila resolve isso sem precisar de nenhuma fila/estado global novo.
 function mostrarNotificacoesEspeciaisCopa() {
   const fila = copa?.notificacoesEspeciais || [];
   if (!fila.length) return;
   const n = fila.shift();
-  if (n.tipo === 'superacao_nemesis') {
-    abrirOverlayGenericoCopa('🎉', 'Nêmesis Superada!', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);">Você finalmente venceu <b style="color:var(--ouro);">${n.nome}</b>, o time que já te eliminou <b>${n.vezes}</b> vezes. A revanche foi consumada!</div>`, 420);
-  } else if (n.tipo === 'fim_dinastia') {
-    abrirOverlayGenericoCopa('💥', 'Fim de uma Dinastia', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);"><b style="color:var(--ouro);">${n.nome}</b> não repetiu o título depois de <b>${n.streak}</b> conquistas seguidas — a dinastia chegou ao fim nesta Copa.</div>`, 420);
-  }
+  setTimeout(() => {
+    if (n.tipo === 'superacao_nemesis') {
+      abrirOverlayGenericoCopa('🎉', 'Nêmesis Superada!', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);">Você finalmente venceu <b style="color:var(--ouro);">${n.nome}</b>, o time que já te eliminou <b>${n.vezes}</b> vezes. A revanche foi consumada!</div>`, 420);
+    } else if (n.tipo === 'fim_dinastia') {
+      abrirOverlayGenericoCopa('💥', 'Fim de uma Dinastia', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);"><b style="color:var(--ouro);">${n.nome}</b> não repetiu o título depois de <b>${n.streak}</b> conquistas seguidas — a dinastia chegou ao fim nesta Copa.</div>`, 420);
+    }
+    // Se sobrou mais alguma notificação na fila (raro, mas possível), espera um pouco mais antes da
+    // próxima em vez de empilhar as duas ao mesmo tempo.
+    if (fila.length) setTimeout(mostrarNotificacoesEspeciaisCopa, 4500);
+  }, 1100);
 }
 // ===== Prova de conceito: narrativa dinâmica no menu principal =====
 // Não cria nenhum dado novo nem toca em persistência — só lê STORAGE_KEY_HISTORICO_COPAS e
