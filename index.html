@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '61'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '62'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -491,6 +491,36 @@
   .livro-nav-btn:hover:not(:disabled){filter:none;color:var(--ouro);transform:none;}
   .livro-nav-btn:disabled{color:rgba(232,245,233,.2);cursor:not-allowed;}
   .livro-nav-pos{font-size:10px;color:rgba(232,245,233,.4);white-space:nowrap;}
+  /* Hall da Fama (Alpha 2): museu/galeria de homenagens — eixo MÉRITO, não TEMPO (diferente do Livro).
+     Estrutura de "alas" pensada pra crescer: só a Galeria de Campeões existe hoje, as demais ficam
+     visíveis porém bloqueadas, como um mapa de museu com salas ainda por abrir. */
+  .hall-intro{text-align:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid rgba(217,164,74,.2);}
+  .hall-intro-titulo{font-family:'Georgia',serif;font-size:20px;color:var(--ouro);letter-spacing:.4px;margin-bottom:4px;}
+  .hall-intro-texto{font-size:12px;color:rgba(232,245,233,.6);margin:0;}
+  .hall-alas{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;}
+  .hall-ala-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:rgba(255,255,255,.03);border:1px solid rgba(217,164,74,.18);border-radius:10px;padding:10px 12px 8px;font-family:'Trebuchet MS',sans-serif;font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:rgba(232,245,233,.75);cursor:pointer;min-width:90px;}
+  .hall-ala-icone{font-size:18px;line-height:1;}
+  .hall-ala-btn:not(.bloqueada):hover{border-color:var(--ouro);color:var(--ouro);background:rgba(217,164,74,.06);}
+  .hall-ala-btn.ativa{background:linear-gradient(160deg,rgba(217,164,74,.16),rgba(217,164,74,.04));border-color:var(--ouro);color:var(--ouro);}
+  .hall-ala-btn.ativa .hall-ala-icone{filter:drop-shadow(0 0 4px rgba(217,164,74,.5));}
+  .hall-ala-btn.bloqueada{opacity:.32;cursor:not-allowed;}
+  .hall-ala-legenda{font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;opacity:.8;margin-top:1px;}
+  .hall-centro{display:flex;flex-direction:column;align-items:center;margin-bottom:24px;padding:18px 16px 14px;position:relative;}
+  .hall-centro::before{content:'';position:absolute;top:2px;left:50%;transform:translateX(-50%);width:200px;height:130px;background:radial-gradient(ellipse at center, rgba(217,164,74,.18), transparent 72%);pointer-events:none;}
+  .hall-centro-escudo{width:54px;height:54px;border-radius:50%;border:3px solid var(--ouro);box-shadow:0 0 22px rgba(217,164,74,.4),0 4px 14px rgba(0,0,0,.5);position:relative;z-index:1;}
+  .hall-centro-nome{font-family:'Georgia',serif;font-size:18px;font-weight:700;color:var(--ouro);margin-top:10px;position:relative;z-index:1;text-align:center;}
+  .hall-centro-estrelas{color:#f0c040;font-size:14px;letter-spacing:2px;margin-top:5px;position:relative;z-index:1;}
+  .hall-centro-legenda{font-size:9.5px;color:rgba(232,245,233,.4);text-transform:uppercase;letter-spacing:1px;margin-top:6px;position:relative;z-index:1;}
+  .hall-galeria-titulo{font-size:9.5px;color:rgba(232,245,233,.35);text-transform:uppercase;letter-spacing:1.2px;text-align:center;margin-bottom:10px;}
+  .hall-galeria{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:12px;}
+  .hall-placa{background:linear-gradient(165deg,#132a1c,#0a1b11);border:1px solid rgba(217,164,74,.25);border-radius:10px;padding:14px 10px 12px;text-align:center;}
+  .hall-placa.tier-2{border-color:rgba(217,164,74,.5);box-shadow:0 0 14px rgba(217,164,74,.14);}
+  .hall-placa.tier-3{border:1px solid var(--ouro);box-shadow:0 0 18px rgba(217,164,74,.24),inset 0 0 0 1px rgba(217,164,74,.15);}
+  .hall-placa-escudo{width:32px;height:32px;border-radius:50%;margin:0 auto 8px;border:2px solid rgba(255,255,255,.2);}
+  .hall-placa-nome{font-family:'Georgia',serif;font-size:12px;color:var(--areia);font-weight:700;line-height:1.25;min-height:30px;display:flex;align-items:center;justify-content:center;}
+  .hall-placa-estrelas{color:#f0c040;font-size:11px;margin-top:6px;letter-spacing:1.5px;}
+  .hall-placa-legenda{font-size:9px;color:rgba(232,245,233,.4);margin-top:3px;}
+  .hall-vazio{text-align:center;color:var(--cinza);font-size:13px;margin:16px 0;}
   @media(max-width:580px){
     .copa-titulo{letter-spacing:2px;}
     .legend-card{width:82px;}
@@ -1209,8 +1239,9 @@
       <button class="secondary" id="btnModoOnline" type="button">🌐 Iniciar Copa Online</button>
     </div>
     <p class="copa-sorteio">Sorteando seleções históricas (1930–2026)</p>
-    <p style="text-align:center;margin:10px 0 0;">
+    <p style="text-align:center;margin:10px 0 0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
       <button type="button" id="btnHistoricoCopas" class="secondary pequeno">📖 Livro das Copas</button>
+      <button type="button" id="btnHallDaFama" class="secondary pequeno">🏛 Hall da Fama</button>
     </p>
   </div>
 
@@ -1711,7 +1742,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v61</div>
+  <div class="rodapezinho">v62</div>
 </div>
 
 <script>
@@ -9221,6 +9252,93 @@ function mostrarLivroDasCopasOverlay() {
   renderizarPaginaLivro(lista, 0);
 }
 
+// Hall da Fama (Alpha 2). Eixo MÉRITO (o que foi construído), não TEMPO — isso já é o Livro das
+// Copas. Estrutura em "alas" pensada pra crescer aos poucos: só a Galeria de Campeões existe nesta
+// versão; as outras 3 ficam visíveis e bloqueadas, como salas de um museu ainda por inaugurar, sem
+// precisar redesenhar nada quando forem implementadas de verdade.
+const HALL_ALAS = [
+  { id: 'campeoes', icone: '🏆', nome: 'Galeria de Campeões', pronta: true },
+  { id: 'craques', icone: '⭐', nome: 'Galeria dos Craques', pronta: false },
+  { id: 'recordes', icone: '📜', nome: 'Recordes Históricos', pronta: false },
+  { id: 'dinastias', icone: '👑', nome: 'Dinastias', pronta: false },
+];
+function calcularGaleriaCampeoes(historico) {
+  const porSel = {};
+  historico.forEach(r => {
+    if (!r.campeaoSelId) return;
+    if (!porSel[r.campeaoSelId]) porSel[r.campeaoSelId] = { selId: r.campeaoSelId, nome: r.campeao, titulos: 0, primeiraData: r.data };
+    porSel[r.campeaoSelId].titulos++;
+    if (r.data < porSel[r.campeaoSelId].primeiraData) porSel[r.campeaoSelId].primeiraData = r.data;
+  });
+  return Object.values(porSel).sort((a, b) => b.titulos - a.titulos || a.primeiraData - b.primeiraData);
+}
+function montarEstrelasHall(titulos) {
+  const cheias = Math.min(titulos, 5);
+  const resto = titulos - cheias;
+  return '★'.repeat(cheias) + (resto > 0 ? ` +${resto}` : '');
+}
+function montarEscudoHall(selId, classeCss) {
+  const sel = BANCO_SELECOES.find(s => s.id === selId);
+  const fundo = sel ? `linear-gradient(135deg,${sel.cor1 || '#888'} 48%,${sel.cor2 || sel.cor1 || '#888'} 52%)` : 'rgba(255,255,255,.08)';
+  return `<div class="${classeCss}" style="background:${fundo};"></div>`;
+}
+function renderizarAlaGaleriaCampeoes(area) {
+  let historico = [];
+  try { historico = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]'); } catch (e) {}
+  const galeria = calcularGaleriaCampeoes(historico);
+  if (!galeria.length) {
+    area.innerHTML = `<p class="hall-vazio">Seu Hall da Fama ainda está vazio. Vença sua primeira Copa das Lendas pra começar a construir esse legado.</p>`;
+    return;
+  }
+  // "Líder isolado" vira a peça central do salão (like a estátua principal); em caso de empate no
+  // topo, evitamos eleger uma única seleção pra não parecer competição/desempate — todas entram na
+  // galeria comum, lado a lado.
+  const temLiderIsolado = galeria.length === 1 || galeria[0].titulos > galeria[1].titulos;
+  const centro = temLiderIsolado ? galeria[0] : null;
+  const resto = centro ? galeria.slice(1) : galeria;
+  const placasHtml = resto.map(g => {
+    const tier = g.titulos >= 3 ? ' tier-3' : g.titulos === 2 ? ' tier-2' : '';
+    return `<div class="hall-placa${tier}">
+      ${montarEscudoHall(g.selId, 'hall-placa-escudo')}
+      <div class="hall-placa-nome">${g.nome}</div>
+      <div class="hall-placa-estrelas">${montarEstrelasHall(g.titulos)}</div>
+      <div class="hall-placa-legenda">${g.titulos} título${g.titulos === 1 ? '' : 's'} conquistado${g.titulos === 1 ? '' : 's'}</div>
+    </div>`;
+  }).join('');
+  const centroHtml = centro ? `
+    <div class="hall-centro">
+      ${montarEscudoHall(centro.selId, 'hall-centro-escudo')}
+      <div class="hall-centro-nome">${centro.nome}</div>
+      <div class="hall-centro-estrelas">${montarEstrelasHall(centro.titulos)}</div>
+      <div class="hall-centro-legenda">A seleção mais vitoriosa do seu Hall</div>
+    </div>` : '';
+  const galeriaHtml = resto.length ? `${centro ? '<div class="hall-galeria-titulo">Demais seleções consagradas</div>' : ''}<div class="hall-galeria">${placasHtml}</div>` : '';
+  area.innerHTML = `${centroHtml}${galeriaHtml}`;
+}
+function renderizarAlaHall(alaId) {
+  const area = document.getElementById('hallConteudoAla');
+  if (!area) return;
+  document.querySelectorAll('.hall-ala-btn').forEach(b => b.classList.toggle('ativa', b.dataset.ala === alaId));
+  if (alaId === 'campeoes') renderizarAlaGaleriaCampeoes(area);
+}
+function mostrarHallDaFamaOverlay() {
+  const alasHtml = HALL_ALAS.map(a => `
+    <button type="button" class="hall-ala-btn${a.pronta ? '' : ' bloqueada'}${a.id === 'campeoes' ? ' ativa' : ''}" data-ala="${a.id}" ${a.pronta ? '' : 'disabled title="Em construção"'}>
+      <span class="hall-ala-icone">${a.icone}</span>${a.nome}
+      ${a.pronta ? '' : '<span class="hall-ala-legenda">em breve</span>'}
+    </button>`).join('');
+  const corpo = `
+    <div class="hall-intro">
+      <div class="hall-intro-titulo">Hall da Fama</div>
+      <p class="hall-intro-texto">As seleções que já deixaram sua marca eterna na Copa das Lendas.</p>
+    </div>
+    <div class="hall-alas">${alasHtml}</div>
+    <div id="hallConteudoAla"></div>`;
+  abrirOverlayGenericoCopa('🏛', 'Hall da Fama', corpo, 620);
+  document.querySelectorAll('.hall-ala-btn:not(.bloqueada)').forEach(b => b.addEventListener('click', () => renderizarAlaHall(b.dataset.ala)));
+  renderizarAlaHall('campeoes');
+}
+
 function renderCopaJogo() {
   renderCopaPainel();
   renderCopaGrupos();
@@ -11891,6 +12009,7 @@ document.getElementById('btnModoOnline').addEventListener('click', ()=>{
   mostrarTela('copaOnlineMenu');
 });
 document.getElementById('btnHistoricoCopas').addEventListener('click', mostrarLivroDasCopasOverlay);
+document.getElementById('btnHallDaFama').addEventListener('click', mostrarHallDaFamaOverlay);
 document.getElementById('btnVoltarModoJogo').addEventListener('click', ()=>mostrarTela('modoJogo'));
 document.getElementById('btnVoltarModoJogo2').addEventListener('click', ()=>mostrarTela('modoJogo'));
 
