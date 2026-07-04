@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '45'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '46'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1196,13 +1196,6 @@
       </div>
       <span id="numJogLabel" style="font-size:12px;font-weight:700;color:#f0c040;">jogador</span>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-shrink:0;">
-      <span style="font-size:12px;color:var(--cinza);flex-shrink:0;">Dificuldade:</span>
-      <div id="copaDificuldadeRow" style="display:flex;gap:6px;">
-        <button type="button" class="secondary modo-sel-btn dif-btn ativo" data-dif="normal">Normal</button>
-        <button type="button" class="secondary modo-sel-btn dif-btn" data-dif="dificil">Difícil</button>
-      </div>
-    </div>
     <div id="copaSelGrid" style="display:none;flex:1 1 0;min-height:60px;overflow-y:auto;padding:4px;background:#071f11;border-radius:6px;margin-bottom:10px;"></div>
     <p id="copaSetupInfo" style="font-size:12.5px;color:var(--cinza);margin:0 0 10px;flex-shrink:0;">Escolha o modo e clique em INICIAR.</p>
     <div id="copaSetupAcoes" style="display:flex;gap:10px;background:rgba(0,0,0,.28);margin:0 -22px -20px;padding:14px 22px 16px;border-top:1px solid rgba(255,255,255,.08);border-radius:0 0 14px 14px;flex-shrink:0;">
@@ -1681,7 +1674,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v45</div>
+  <div class="rodapezinho">v46</div>
 </div>
 
 <script>
@@ -5937,7 +5930,6 @@ function atualizarSeloZebraConfirmado(p, ladoVencedor) {
 function simularJogoCopa(selA, selB, rng) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
-  ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
   const golsA = poisson(lambdaGolsCopa(mA.atq, mB.def), rng);
   const golsB = poisson(lambdaGolsCopa(mB.atq, mA.def), rng);
   return { golsA, golsB };
@@ -5945,7 +5937,6 @@ function simularJogoCopa(selA, selB, rng) {
 function simularProrrogacaoCopa(selA, selB, rng) {
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
-  ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
   const golsA = poisson(lambdaGolsCopa(mA.atq, mB.def) / 3, rng);
   const golsB = poisson(lambdaGolsCopa(mB.atq, mA.def) / 3, rng);
   return { golsA, golsB };
@@ -6240,7 +6231,6 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
   if (!selA || !selB) return null;
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
-  ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
   ({ mA, mB } = aplicarBoostFinal(mA, mB, selA.id, selB.id, rodadaKey, jogoIdx));
   const variabilidade = sortearVariabilidadeDoDia(copaRng);
   mA = { atq: mA.atq * variabilidade.formaA, def: mA.def };
@@ -6404,7 +6394,6 @@ function finalizarRodadaBracketLive() {
     // vencedorId (não gA/gB) pro lado vencedor — nos pênaltis gA===gB sempre, então só o
     // vencedorId sabe quem realmente ganhou.
     atualizarSeloZebraConfirmado(p, jogo.vencedorId === jogo.a ? 'A' : jogo.vencedorId === jogo.b ? 'B' : null);
-    ajustarDificuldadeAdaptativa(p.a, p.b, gA, gB);
     if (!jogo.pens) jogo.pens = null;
     // Credita os marcadores REAIS dos eventos processados (antes re-sorteava a distribuição
     // na finalização — o artilheiro creditado podia não ser quem o jogador viu marcar ao vivo)
@@ -6667,39 +6656,6 @@ function forcaComEsquema(atq, def, selId) {
   return { atq: atq * (1 + e.a / 100) * mult, def: def * (1 + e.d / 100) * mult };
 }
 
-const DIFICULDADE_MULT = { normal: 1, dificil: 1.12 };
-// Aplica o seletor de dificuldade (só modo local — online fica sempre neutro/justo pra
-// não favorecer nenhum jogador humano da sala): ajusta a força do lado CONTROLADO POR CPU
-// quando exatamente um dos dois times é humano. CPU vs CPU e humano vs humano ficam neutros.
-function aplicarDificuldadeCopa(mA, mB, selIdA, selIdB) {
-  if (!copa || copa.onlineCopa) return { mA, mB };
-  const dif = copa.dificuldade || 'normal';
-  const mult = (DIFICULDADE_MULT[dif] ?? 1) + (copa.dificuldadeOffset || 0);
-  if (mult === 1) return { mA, mB };
-  const humA = ehMinhaSel(selIdA), humB = ehMinhaSel(selIdB);
-  if (humA === humB) return { mA, mB }; // ambos humanos ou ambos CPU: sem ajuste
-  if (!humA) return { mA: { atq: mA.atq * mult, def: mA.def * mult }, mB };
-  return { mA, mB: { atq: mB.atq * mult, def: mB.def * mult } };
-}
-// Dificuldade adaptativa (rubber-banding leve): depois de cada partida do jogador (offline),
-// nudge no offset conforme o saldo de gols — sequência de goleadas endurece a CPU, sequência
-// de surras suaviza. Teto de ±15% pra não dominar o multiplicador base escolhido no setup.
-function ajustarDificuldadeAdaptativa(selIdA, selIdB, golsA, golsB) {
-  if (!copa || copa.onlineCopa) return;
-  const humA = ehMinhaSel(selIdA), humB = ehMinhaSel(selIdB);
-  if (humA === humB) return; // só ajusta em confrontos humano x CPU
-  const golsHum = humA ? golsA : golsB;
-  const golsCpu = humA ? golsB : golsA;
-  const saldo = golsHum - golsCpu;
-  let delta = 0;
-  if (saldo >= 3) delta = 0.04;
-  else if (saldo >= 1) delta = 0.015;
-  else if (saldo <= -3) delta = -0.05;
-  else if (saldo <= -1) delta = -0.02;
-  if (!delta) return;
-  copa.dificuldadeOffset = Math.max(-0.15, Math.min(0.15, (copa.dificuldadeOffset || 0) + delta));
-}
-
 // Cresce em finais: pequeno multiplicador extra de ataque/defesa pra seleções historicamente
 // decisivas na hora da final — curadoria pontual, mesmo espírito da mentalidade tática, mas só
 // vale na FINAL de verdade (rodadaKey 'final_3' E jogoIdx 0 — jogoIdx 1 é a disputa de 3º lugar,
@@ -6754,7 +6710,6 @@ function regenerarSegundaMetadeCore(partida) {
   const selB = copa.selMap[partida.b];
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
-  ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
   ({ mA, mB } = aplicarBoostFinal(mA, mB, selA.id, selB.id, partida.rodadaKey, partida.jogoIdx));
   const nA2 = poisson(lambdaGolsCopa(mA.atq, mB.def) * 0.55, copaRng);
   const nB2 = poisson(lambdaGolsCopa(mB.atq, mA.def) * 0.55, copaRng);
@@ -7352,7 +7307,6 @@ function gerarPartidaLive(grupo, jogoIdx) {
   const selA = copa.selMap[jogo.a], selB = copa.selMap[jogo.b];
   let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
   let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
-  ({ mA, mB } = aplicarDificuldadeCopa(mA, mB, selA.id, selB.id));
   const variabilidade = sortearVariabilidadeDoDia(copaRng);
   mA = { atq: mA.atq * variabilidade.formaA, def: mA.def };
   mB = { atq: mB.atq * variabilidade.formaB, def: mB.def };
@@ -8507,11 +8461,6 @@ function iniciarShootoutInterativo(dadosTie, callback) {
       const selIdPerdedor = jogo.vencedorId === jogo.a ? jogo.b : jogo.a;
       copa.candidatosMaoDeAlface.push({ nome: nomeMaoDeAlface, selId: selIdPerdedor, fase: partida.rodadaKey });
     }
-    // Por consistência com o caminho normal do bracket (linha ajustarDificuldadeAdaptativa em
-    // finalizarRodadaBracketLive) — aqui gA/gB são sempre iguais (é por isso que foi a pênaltis),
-    // então o saldo sempre dá 0 e não muda copa.dificuldadeOffset hoje; existe só pra não deixar
-    // esse caminho estruturalmente diferente do resto caso a fórmula mude no futuro.
-    ajustarDificuldadeAdaptativa(partida.a, partida.b, gA, gB);
     // Credita os marcadores REAIS dos eventos processados (consistente com o que foi visto ao vivo)
     const golsReaisPen = golsPorJogadorDaPartida(partida);
     partida.golsDist = golsReaisPen;
@@ -8582,7 +8531,6 @@ function finalizarJornada() {
     const grupo = copa.grupos.find(g => g.id === p.grupoId);
     const jogo = grupo.jogos[p.jogoIdx];
     jogo.golsA = p.golsA; jogo.golsB = p.golsB;
-    ajustarDificuldadeAdaptativa(p.a, p.b, p.golsA, p.golsB);
     // Marcadores reais (dos eventos processados) — não a distribuição pré-gerada, que fica
     // obsoleta após expulsões, substituições e mudanças de tática no intervalo.
     const golsReais = golsPorJogadorDaPartida(p);
@@ -9032,13 +8980,6 @@ function renderCopaPainel(selId) {
             const icone = emb ? '🔥' : '📉';
             const rotulo = emb ? 'V seguidas' : 'D seguidas';
             return `<div class="plantel-stat" title="${emb?'Time embalado':'Time em crise'}: ${seq.qtd} ${emb?'vitórias':'derrotas'} seguidas"><span class="lbl" style="color:${hdrSub};">SEQ</span><span style="color:${cor2};font-size:11px;font-weight:700;">${icone} ${seq.qtd}${emb?'V':'D'}</span></div>`;
-          })()}
-          ${(() => {
-            if (copa.onlineCopa) return '';
-            const off = copa.dificuldadeOffset || 0;
-            if (Math.abs(off) < 0.02) return '';
-            const subindo = off > 0;
-            return `<div class="plantel-stat" title="Dificuldade adaptativa: os adversários ficam ${subindo?'mais fortes conforme você vence':'mais fracos pra equilibrar após derrotas'}"><span style="color:${subindo?'#f87171':'#60a5fa'};font-size:11px;font-weight:700;">${subindo?'🔥':'📉'} ${subindo?'+':''}${Math.round(off*100)}%</span></div>`;
           })()}
         </div>
         <table class="plantel-tbl">
@@ -10097,7 +10038,6 @@ let copaSelecaoEscolhida = null;
 let copaEsquema = '4-4-2';
 let jogadoresCopa = [];    // [{selId, esquema}] acumulado antes de iniciar
 let copaNumJogadores = 1;  // quantos jogadores humanos na Copa
-let copaDificuldadeEscolhida = 'normal'; // 'normal' | 'dificil' — só afeta modo local (ver aplicarDificuldadeCopa)
 let copaPlayerAtual = 0;   // índice do jogador configurando agora (0-based)
 let copaRandomQueue = [];  // seleções pré-sorteadas no modo aleatório
 let copaRandomSeed = null; // seed do tmpCopa no modo aleatório (para recriar com mesmos times)
@@ -12438,8 +12378,6 @@ function renderLobbyOnline(data){
 document.getElementById('btnModoSozinho').addEventListener('click', ()=>{
   copaSelecaoEscolhida = null;
   jogadoresCopa = []; copaPlayerAtual = 0; copaJogadorNomes = [];
-  copaDificuldadeEscolhida = 'normal';
-  document.querySelectorAll('#copaDificuldadeRow .dif-btn').forEach(b => b.classList.toggle('ativo', b.dataset.dif === 'normal'));
   document.getElementById('btnCopaAleatorio').classList.add('ativo');
   document.getElementById('btnCopaEscolher').classList.remove('ativo');
   document.getElementById('copaSelGrid').style.display = 'none';
@@ -12795,13 +12733,6 @@ document.getElementById('btnCopaEscolher').addEventListener('click', ()=>{
   ajustarAlturaSetupCopa();
 });
 
-document.querySelectorAll('#copaDificuldadeRow .dif-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    copaDificuldadeEscolhida = btn.dataset.dif;
-    document.querySelectorAll('#copaDificuldadeRow .dif-btn').forEach(b => b.classList.toggle('ativo', b === btn));
-  });
-});
-
 document.getElementById('btnNumJogMenos').addEventListener('click', () => {
   if (copaNumJogadores > 1) {
     copaNumJogadores--;
@@ -12873,7 +12804,6 @@ function iniciarCopaFinal() {
   // Usa seed salva do modo aleatório (para manter os mesmos times do tmpCopa)
   copa = novoEstadoCopa(primeiro.selId, copaRandomSeed ?? undefined, todasIds);
   copaRandomSeed = null;
-  copa.dificuldade = copaDificuldadeEscolhida; // só usado offline — ver aplicarDificuldadeCopa
   copa.minhasSelecoes = todasIds;
   copa.minhaEsquema = primeiro.esquema;
   copa.minhasEsquemas = {};
