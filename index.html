@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '53'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '54'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1674,7 +1674,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v53</div>
+  <div class="rodapezinho">v54</div>
 </div>
 
 <script>
@@ -5269,7 +5269,10 @@ function parseEsquemaPos(f) {
   return { GOL:1, DEF:p[0], MEI:p.slice(1,-1).reduce((s,n)=>s+n,0)||p[1]||0, ATA:p[p.length-1] };
 }
 
-function autoEscalar(sel, esqF) {
+// comparador opcional: por padrão escala pelo melhor OVR disponível por posição; passe
+// CMP_VIGOR_ESCALACAO pra escalar pelos mais descansados em vez dos melhores OVR.
+function autoEscalar(sel, esqF, comparador) {
+  const cmp = comparador || ((a, b) => b.ovr - a.ovr);
   const counts = parseEsquemaPos(esqF);
   const byPos = { GOL:[], DEF:[], MEI:[], ATA:[] };
   sel.jogadores.forEach(j => { if (byPos[j.pos]) byPos[j.pos].push(j); });
@@ -5278,7 +5281,7 @@ function autoEscalar(sel, esqF) {
       const indA = jogadorIndisponivelCopa(a) ? 1 : 0;
       const indB = jogadorIndisponivelCopa(b) ? 1 : 0;
       if (indA !== indB) return indA - indB;
-      return b.ovr - a.ovr;
+      return cmp(a, b);
     });
   });
   sel.jogadores.forEach(j => { j.titular = false; j.posCampo = j.pos; });
@@ -5290,15 +5293,16 @@ function autoEscalar(sel, esqF) {
     take.forEach(j => { j.titular = true; j.posCampo = pos; selecionados.add(j); });
     for (let k = take.length; k < count; k++) slotsFaltando.push(pos);
   });
-  // 2ª passagem: completar até 11 com melhores disponíveis, assumindo os slots vagos (fora de posição)
+  // 2ª passagem: completar até 11 com os melhores disponíveis pelo mesmo critério, assumindo os slots vagos (fora de posição)
   if (slotsFaltando.length > 0) {
     sel.jogadores
       .filter(j => !selecionados.has(j) && !jogadorIndisponivelCopa(j))
-      .sort((a,b) => b.ovr - a.ovr)
+      .sort(cmp)
       .slice(0, slotsFaltando.length)
       .forEach((j, i) => { j.titular = true; j.posCampo = slotsFaltando[i]; });
   }
 }
+const CMP_VIGOR_ESCALACAO = (a, b) => (b.cansaco ?? 100) - (a.cansaco ?? 100);
 
 function iniciarStatusJogadores(selMap) {
   Object.values(selMap).forEach(sel => {
@@ -8180,7 +8184,7 @@ function renderCopaPainel(selId) {
           })()}
         </div>
         <table class="plantel-tbl">
-          <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th id="thVigorPainel" style="font-size:8px;letter-spacing:.6px;cursor:pointer;${painelOrdenarPorVigor?'color:#22c55e;':''}" title="Clique pra ordenar cada posição do mais descansado pro mais cansado — facilita achar quem colocar quando quiser descansar o time">VIGOR ${painelOrdenarPorVigor?'▾':''}</th></tr></thead>
+          <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th id="thVigorPainel" style="font-size:8px;letter-spacing:.6px;cursor:pointer;${painelOrdenarPorVigor?'color:#22c55e;':''}" title="Clique pra escalar automaticamente os titulares mais descansados de cada posição — jeito rápido de dar descanso ao time">VIGOR ${painelOrdenarPorVigor?'⚡':''}</th></tr></thead>
           <tbody>
             <tr class="plantel-sep"><td colspan="5" style="color:${hdrTxt};opacity:.7;">● TITULARES (${tit.length}) — ${esq}</td></tr>
             ${tit.map(j=>mkRowToggle(j,true)).join('')}
@@ -8236,9 +8240,12 @@ function renderCopaPainel(selId) {
   conteudo.querySelectorAll('[data-painel-sel]').forEach(btn => {
     btn.addEventListener('click', () => renderCopaPainel(btn.dataset.painelSel));
   });
-  // Cabeçalho VIGOR: alterna ordenar cada posição do mais descansado pro mais cansado
+  // Cabeçalho VIGOR: escala automaticamente os titulares mais descansados de cada posição
+  // (mesma lógica de autoEscalar, só troca o critério de OVR pra vigor) e já deixa a tabela
+  // ordenada por vigor pra confirmar visualmente quem entrou.
   conteudo.querySelector('#thVigorPainel')?.addEventListener('click', () => {
-    painelOrdenarPorVigor = !painelOrdenarPorVigor;
+    autoEscalar(sel, esq, CMP_VIGOR_ESCALACAO);
+    painelOrdenarPorVigor = true;
     renderCopaPainel(selId);
   });
   conteudo.querySelectorAll('.esq-row[data-f]').forEach(el => {
@@ -12368,6 +12375,29 @@ function gerarJogadorIdCopa() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+// Fixa o resultado de "🎲 Aleatório" por até 12h: sem isso, quem cria a sala podia sair e criar
+// outra repetidamente (de graça, em privado, antes de mandar o código pros amigos) até sortear uma
+// seleção forte. Uma vez sorteado, o mesmo id volta em toda nova tentativa até a Copa realmente
+// começar (ver limparSelecaoAleatoriaFixa em entrarNaSalaCopaEAssinar).
+const COPA_ALEATORIO_FIXO_KEY = 'copa-lendas-aleatorio-fixo';
+function obterSelecaoAleatoriaFixa() {
+  try {
+    const raw = localStorage.getItem(COPA_ALEATORIO_FIXO_KEY);
+    if (raw) {
+      const salvo = JSON.parse(raw);
+      if (salvo && salvo.selId && Date.now() - salvo.em < 12 * 3600 * 1000 && BANCO_SELECOES.some(s => s.id === salvo.selId)) {
+        return salvo.selId;
+      }
+    }
+  } catch(e) {}
+  const selId = BANCO_SELECOES[Math.floor(Math.random() * BANCO_SELECOES.length)].id;
+  try { localStorage.setItem(COPA_ALEATORIO_FIXO_KEY, JSON.stringify({ selId, em: Date.now() })); } catch(e) {}
+  return selId;
+}
+function limparSelecaoAleatoriaFixa() {
+  try { localStorage.removeItem(COPA_ALEATORIO_FIXO_KEY); } catch(e) {}
+}
+
 function popularDropdownSelecoes(selectId) {
   const sel = document.getElementById(selectId);
   if (!sel || sel.options.length > 0) return;
@@ -12713,10 +12743,11 @@ function entrarNaSalaCopaEAssinar(codigo, jogadorId) {
       copaOnlineEmJogo = true;
       copaOnlineUltimoEvento = eventoKey;
       copaOnlineSeedJogada = (status === 'iniciando') ? null : (data.seedRodada || 0);
+      limparSelecaoAleatoriaFixa(); // a Copa começou de verdade: libera um novo sorteio aleatório pra próxima vez
       carregarCopaFromOnline(data);
       renderCopaJogo();
       mostrarTela('copaJogo');
-      mostrarPainelCopa(copa.faseAtual === 'grupos' ? 'grupos' : 'bracket');
+      mostrarPainelCopa('painel'); // tela padrão de início é o painel da equipe, não Grupos/Mata-Mata (mesmo critério do modo local)
       if (status !== 'iniciando') return;
     }
 
@@ -12802,7 +12833,7 @@ document.getElementById('btnConfirmarCopaCriarSala').addEventListener('click', a
   const nome = document.getElementById('copaOnlineCriarNome').value.trim() || 'Anônimo';
   let selId = document.getElementById('copaOnlineCriarSel').value;
   if (!selId) return;
-  if (selId === '__aleatorio__') selId = BANCO_SELECOES[Math.floor(Math.random() * BANCO_SELECOES.length)].id;
+  if (selId === '__aleatorio__') selId = obterSelecaoAleatoriaFixa();
   btn.disabled = true; btn.textContent = 'Criando…';
   try {
     await aguardarFirebase();
@@ -12827,9 +12858,13 @@ document.getElementById('btnConfirmarCopaEntrarSala').addEventListener('click', 
   try {
     await aguardarFirebase();
     if (selId === '__aleatorio__') {
-      const shuffle = [...BANCO_SELECOES].sort(() => Math.random() - 0.5);
+      // Tenta primeiro a seleção fixa da sessão (evita reroll saindo/entrando de novo); só sorteia
+      // entre as demais se ela já estiver ocupada nessa sala especificamente (caso legítimo).
+      const fixa = obterSelecaoAleatoriaFixa();
+      const resto = BANCO_SELECOES.filter(s => s.id !== fixa).sort(() => Math.random() - 0.5);
+      const candidatos = [BANCO_SELECOES.find(s => s.id === fixa), ...resto].filter(Boolean);
       let ok = false;
-      for (const s of shuffle) {
+      for (const s of candidatos) {
         try {
           const jogadorId = await entrarSalaCopa(codigo, nome, s.id);
           salvarIdentidadeCopa({ codigoSala: codigo, jogadorId, selId: s.id, nome });
