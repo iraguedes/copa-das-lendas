@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '62'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '63'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1370,6 +1370,7 @@
       <div class="copa-fase-bar">
         <h3 id="copaBracketTitulo">Mata-Mata</h3>
         <button id="btnSimularRodadaCopa" type="button" class="pequeno">▶ Simular rodada</button>
+        <span id="bktEliminadoMsg" class="hidden" style="font-size:12px;color:var(--cinza);">🏁 Eliminado — acompanhe o andamento da copa</span>
       </div>
       <div class="bracket-wrap" style="overflow-x:auto;padding-bottom:8px;"><div id="copaBracketRounds"></div></div>
     </div>
@@ -1742,7 +1743,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v62</div>
+  <div class="rodapezinho">v63</div>
 </div>
 
 <script>
@@ -8396,8 +8397,14 @@ function renderCopaBracket() {
     return;
   }
   const concluido = copa.faseAtual === 'fim';
-  btnSim.style.display = concluido ? 'none' : '';
-  if (!concluido) {
+  // Online, já eliminado (nenhuma seleção com pendência no bracket): esconde o botão de avanço —
+  // só quem ainda está vivo deve controlar a rodada. Mesma condição já usada em renderCopaPainel.
+  const meuSelIdBkt = copa.minhaSelecaoId || copa.minhasSelecoes?.[0];
+  const euEliminadoOnline = copa.onlineCopa && !concluido && meuSelIdBkt && !selAindaTemPendenciaNoBracket(copa, meuSelIdBkt);
+  const bktMsgElim = document.getElementById('bktEliminadoMsg');
+  btnSim.style.display = (concluido || euEliminadoOnline) ? 'none' : '';
+  if (bktMsgElim) bktMsgElim.classList.toggle('hidden', !euEliminadoOnline);
+  if (!concluido && !euEliminadoOnline) {
     const labels = { r32:'▶ Simular 16 Avos', r16:'▶ Simular Oitavas', qf:'▶ Simular Quartas', sf:'▶ Simular Semis', final_3:'▶ Simular Final + 3º Lugar' };
     btnSim.textContent = labels[bkt.rodadaAtual] || '▶ Simular rodada';
   }
@@ -13163,8 +13170,19 @@ function entrarNaSalaCopaEAssinar(codigo, jogadorId) {
       carregarCopaFromOnline(data);
       copaRng = criarRng(data.seedRodada);
       mostrarTela('copaJogo');
-      if (copa.faseAtual === 'grupos') iniciarJornada();
-      else { if (!copa.bracket) montarBracket(copa, copaRng); iniciarRodadaBracketLive(); }
+      if (copa.faseAtual === 'grupos') {
+        iniciarJornada();
+      } else {
+        if (!copa.bracket) montarBracket(copa, copaRng);
+        // Já eliminado: não roda a simulação local (que tickaria 6x mais rápido e revelaria o
+        // resultado antes de quem ainda disputa) — só espera o snapshot 'resolvida' que o próprio
+        // jogador vivo vai gravar ao terminar a rodada dele (handler mais abaixo já trata isso).
+        if (!selAindaTemPendenciaNoBracket(copa, copa.minhaSelecaoId)) {
+          mostrarPainelCopa('painel');
+        } else {
+          iniciarRodadaBracketLive();
+        }
+      }
       return;
     }
 
