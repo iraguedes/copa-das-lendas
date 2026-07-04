@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '55'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '56'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1684,7 +1684,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v55</div>
+  <div class="rodapezinho">v56</div>
 </div>
 
 <script>
@@ -1696,6 +1696,10 @@ const VERSAO_JOGO = '0.003'; // bump aqui a cada lote de mudanças futuras (0.00
 const STORAGE_KEY = 'ligad-save-v2';
 const STORAGE_KEY_HISTORICO_COPAS = 'copa-lendas-historico-v1'; // resumo local (por dispositivo) de cada copa concluída
 const STORAGE_KEY_FANTASMAS_COPA = 'copa-lendas-fantasmas-v1'; // times que te eliminaram no mata-mata em copas anteriores (por dispositivo)
+// Fase 0 do roadmap de universo persistente: registros que NUNCA são truncados (ao contrário do
+// histórico acima, que corta em 50 entradas) — sobrevivem além do teto e servem de matéria-prima
+// pro pilar "O Arauto" (narrativa dinâmica), sem precisar de tela própria.
+const STORAGE_KEY_RECORDES_COPA = 'copa-lendas-recordes-v1';
 
 // ============================================================
 // BANCO DE SELEÇÕES HISTÓRICAS — Copa das Lendas
@@ -8891,6 +8895,22 @@ function gerarNarrativaMenuPrincipal() {
     candidatos.push({ peso: 1, icone: '⚽', texto: `Seu recorde pessoal é de <b>${recorde.meusGols} gols</b> numa única Copa (com ${recorde.minhaSelecao}). Consegue superar?` });
   }
 
+  // Fase 0: apelido cômico da ÚLTIMA copa, só se foi o SEU time (titulosDaCopa agora persistido por inteiro)
+  const tit = ultima.titulosDaCopa;
+  if (tit?.zebraOficial && tit.zebraOficial.selId === ultima.minhaSelecaoId) {
+    candidatos.push({ peso: 2, icone: '🦓', texto: `Sua seleção foi a <b>Zebra Oficial</b> da última Copa — surpreendeu todo mundo.` });
+  } else if (tit?.maoDeAlface && tit.maoDeAlface.selId === ultima.minhaSelecaoId) {
+    candidatos.push({ peso: 2, icone: '🥶', texto: `Na última Copa, seu time levou a fama de <b>Mão de Alface</b> (pênalti perdido por ${tit.maoDeAlface.nome}).` });
+  }
+
+  // Fase 0: maior goleada perpétua já vista pelo jogador (nunca é descartada, mesmo além das 50 últimas copas)
+  let recordes = {};
+  try { recordes = JSON.parse(localStorage.getItem(STORAGE_KEY_RECORDES_COPA) || '{}'); } catch (e) {}
+  if (recordes.maiorGoleada) {
+    const rg = recordes.maiorGoleada;
+    candidatos.push({ peso: 1, icone: '💥', texto: `A maior goleada que você já viu na Copa das Lendas: <b>${rg.aNome} ${rg.golsA}×${rg.golsB} ${rg.bNome}</b>.` });
+  }
+
   // No máximo 2 frases por vez — silêncio é melhor que virar parede de texto.
   return candidatos.sort((a, b) => b.peso - a.peso).slice(0, 2);
 }
@@ -8933,6 +8953,28 @@ function construirWrappedDaCopa() {
   };
 }
 // ===== Histórico de carreira entre copas (localStorage, por dispositivo) =====
+// Fase 0: recorde que nunca é descartado (ao contrário do histórico, que corta em 50 entradas) —
+// hoje só cobre a maior goleada já vista pelo jogador; compara o resultado da copa que acabou de
+// terminar contra o melhor já salvo e só sobrescreve se for realmente maior.
+function atualizarRecordesPerpetuos(wrapped) {
+  if (!wrapped?.maiorGoleada) return;
+  try {
+    const atual = JSON.parse(localStorage.getItem(STORAGE_KEY_RECORDES_COPA) || '{}');
+    const g = wrapped.maiorGoleada;
+    if (!atual.maiorGoleada || g.diff > atual.maiorGoleada.diff) {
+      const selA = copa.selMap?.[g.a], selB = copa.selMap?.[g.b];
+      atual.maiorGoleada = {
+        diff: g.diff,
+        aNome: selA ? nomeCurtoSel(selA) : '?',
+        bNome: selB ? nomeCurtoSel(selB) : '?',
+        golsA: g.golsA,
+        golsB: g.golsB,
+        data: Date.now(),
+      };
+      localStorage.setItem(STORAGE_KEY_RECORDES_COPA, JSON.stringify(atual));
+    }
+  } catch (e) {}
+}
 function salvarHistoricoCopa() {
   if (!copa) return;
   try {
@@ -8955,15 +8997,21 @@ function salvarHistoricoCopa() {
       artilheiro: artilheiros[0] ? { nome: artilheiros[0][0], gols: artilheiros[0][1] } : null,
       craque: craques[0] ? { nome: craques[0][0], vezes: craques[0][1] } : null,
       minhaSelecao: minhaSel ? nomeCurtoSel(minhaSel) : null,
+      minhaSelecaoId: meuSelId || null,
       venci: !!(meuSelId && copa.campeao === meuSelId),
       online: !!copa.onlineCopa,
       totalGolsCopa: wrapped?.totalGols ?? null,
       maiorGoleadaDiff: wrapped?.maiorGoleada?.diff ?? null,
       meusGols: wrapped?.meusGols ?? null,
+      // Fase 0: antes só esses 3 campos extraídos sobreviviam; agora os objetos completos também
+      // ficam salvos, sem exigir tela própria — servem de matéria-prima pro pilar "O Arauto".
+      titulosDaCopa: copa.titulosDaCopa || null,
+      wrapped: wrapped || null,
     };
     copa.wrappedDaCopa = wrapped ? { ...wrapped, novoRecordeGols, melhorGolsAnterior } : null;
     lista.unshift(registro);
     localStorage.setItem(STORAGE_KEY_HISTORICO_COPAS, JSON.stringify(lista.slice(0, 50)));
+    atualizarRecordesPerpetuos(wrapped);
   } catch (e) {}
 }
 function mostrarHistoricoCopasOverlay() {
