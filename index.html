@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '50'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '51'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -780,7 +780,7 @@
   <div id="modoJogo" class="hidden">
     <div class="copa-trophy">🏆</div>
     <h1 class="copa-titulo">Copa das Lendas</h1>
-    <p class="copa-sub">Todas as seleções históricas. Uma Copa. Uma lenda.</p>
+    <p class="copa-sub">O maior torneio que nunca existiu.</p>
 
     <div class="legend-cards-row">
 
@@ -1182,7 +1182,7 @@
   <div id="copaSetup" class="card tela-central hidden" style="max-width:540px;display:flex;flex-direction:column;">
     <div class="copa-trophy" style="text-align:center;font-size:42px;margin-bottom:2px;line-height:1;">🏆</div>
     <h2 style="margin:0 0 4px;text-align:center;justify-content:center;">Copa das Lendas</h2>
-    <p style="font-size:13px;color:var(--cinza);margin:0 0 14px;text-align:center;">111 seleções históricas. Uma Copa. Uma lenda. <span style="color:var(--ouro);">★</span></p>
+    <p style="font-size:13px;color:var(--cinza);margin:0 0 14px;text-align:center;">111 seleções lendárias. O maior torneio que nunca existiu. <span style="color:var(--ouro);">★</span></p>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0;">
       <button type="button" id="btnCopaAleatorio" class="secondary modo-sel-btn ativo">Aleatório 🎲</button>
       <button type="button" id="btnCopaEscolher" class="secondary modo-sel-btn">Escolher seleção</button>
@@ -1674,7 +1674,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v50</div>
+  <div class="rodapezinho">v51</div>
 </div>
 
 <script>
@@ -8227,8 +8227,11 @@ function renderCopaPainel(selId) {
   const cor2 = sel.cor2 || cor;
   const posOrd = { GOL:0, DEF:1, MEI:2, ATA:3 };
   const posL   = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
-  const tit = [...sel.jogadores.filter(j=>j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4));
-  const res = [...sel.jogadores.filter(j=>!j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4));
+  // Dentro de cada posição, com o toggle ativo os mais descansados (maior vigor) vêm primeiro —
+  // facilita achar quem colocar quando o objetivo é dar descanso ao time.
+  const cmpVigor = (a, b) => (b.cansaco ?? 100) - (a.cansaco ?? 100);
+  const tit = [...sel.jogadores.filter(j=>j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4) || (painelOrdenarPorVigor ? cmpVigor(a,b) : 0));
+  const res = [...sel.jogadores.filter(j=>!j.titular)].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4) || (painelOrdenarPorVigor ? cmpVigor(a,b) : 0));
   const mkRow = j => {
     const t = j.traits||[];
     const star = t.includes('lenda') ? '<span style="color:#f0c040;">★</span> ' : '';
@@ -8351,7 +8354,7 @@ function renderCopaPainel(selId) {
           })()}
         </div>
         <table class="plantel-tbl">
-          <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th style="font-size:8px;letter-spacing:.6px;" title="Vigor físico (0–100): cai a cada partida e recupera no descanso">VIGOR</th></tr></thead>
+          <thead><tr><th></th><th></th><th></th><th style="text-align:right;">For</th><th id="thVigorPainel" style="font-size:8px;letter-spacing:.6px;cursor:pointer;${painelOrdenarPorVigor?'color:#22c55e;':''}" title="Clique pra ordenar cada posição do mais descansado pro mais cansado — facilita achar quem colocar quando quiser descansar o time">VIGOR ${painelOrdenarPorVigor?'▾':''}</th></tr></thead>
           <tbody>
             <tr class="plantel-sep"><td colspan="5" style="color:${hdrTxt};opacity:.7;">● TITULARES (${tit.length}) — ${esq}</td></tr>
             ${tit.map(j=>mkRowToggle(j,true)).join('')}
@@ -8406,6 +8409,11 @@ function renderCopaPainel(selId) {
   // Tab bar: trocar jogador exibido
   conteudo.querySelectorAll('[data-painel-sel]').forEach(btn => {
     btn.addEventListener('click', () => renderCopaPainel(btn.dataset.painelSel));
+  });
+  // Cabeçalho VIGOR: alterna ordenar cada posição do mais descansado pro mais cansado
+  conteudo.querySelector('#thVigorPainel')?.addEventListener('click', () => {
+    painelOrdenarPorVigor = !painelOrdenarPorVigor;
+    renderCopaPainel(selId);
   });
   conteudo.querySelectorAll('.esq-row[data-f]').forEach(el => {
     el.addEventListener('click', () => {
@@ -9416,6 +9424,7 @@ let copaPlayerAtual = 0;   // índice do jogador configurando agora (0-based)
 let copaRandomQueue = [];  // seleções pré-sorteadas no modo aleatório
 let copaRandomSeed = null; // seed do tmpCopa no modo aleatório (para recriar com mesmos times)
 let copaJogadorNomes = []; // nomes coletados na tela de nomes [{selId, nome}]
+let painelOrdenarPorVigor = false; // toggle do cabeçalho VIGOR no Painel — deixa os mais descansados no topo de cada posição
 
 // ===== Som (Web Audio API sintetizada — sem arquivos externos, sem custo de carregamento) =====
 let audioCtxCopa = null;
