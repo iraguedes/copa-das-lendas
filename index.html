@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '60'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '61'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1309,6 +1309,7 @@
       <button type="button" id="btnAbaCopaArt">Artilheiros</button>
       <button type="button" id="btnAbaCopaRegras">Regras</button>
       <button type="button" class="secondary" id="btnMuteSomCopa" title="Ativar/desativar som" style="flex:0 0 auto;padding:7px 11px;">🔊</button>
+      <button type="button" class="secondary" id="btnLivroCopaDurante" title="Livro das Copas" style="flex:0 0 auto;padding:7px 11px;">📖</button>
       <button type="button" class="secondary" id="btnSairCopa">Sair</button>
     </div>
     <div id="painelCopaPainel" class="hidden">
@@ -1710,7 +1711,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v60</div>
+  <div class="rodapezinho">v61</div>
 </div>
 
 <script>
@@ -9214,7 +9215,7 @@ function mostrarLivroDasCopasOverlay() {
   const vitorias = lista.filter(r => r.venci).length;
   const capa = `<div class="livro-capa">
     <div class="livro-capa-titulo">Livro das Copas</div>
-    <div class="livro-capa-sub">${lista.length} capítulo${lista.length===1?'':'s'} registrado${lista.length===1?'':'s'} · <b>${vitorias}</b> título${vitorias===1?'':'s'} conquistado${vitorias===1?'':'s'}</div>
+    <div class="livro-capa-sub">Sua história já conta ${lista.length} Copa${lista.length===1?'':'s'} · <b>${vitorias}</b> título${vitorias===1?'':'s'} conquistado${vitorias===1?'':'s'}</div>
   </div>`;
   abrirOverlayGenericoCopa('📖', 'Livro das Copas', `${capa}<div id="livroPaginaArea"></div>`, 540);
   renderizarPaginaLivro(lista, 0);
@@ -12602,6 +12603,7 @@ function dispararRodadaOnline(btn){
 
 document.getElementById('btnMuteSomCopa').textContent = somCopaAtivado ? '🔊' : '🔇';
 document.getElementById('btnMuteSomCopa').addEventListener('click', alternarSomCopa);
+document.getElementById('btnLivroCopaDurante').addEventListener('click', mostrarLivroDasCopasOverlay);
 
 document.getElementById('btnSairCopa').addEventListener('click', ()=>{
   const online = !!copa?.onlineCopa;
