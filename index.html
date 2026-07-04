@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '46'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '47'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1674,7 +1674,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v46</div>
+  <div class="rodapezinho">v47</div>
 </div>
 
 <script>
@@ -7211,7 +7211,7 @@ function bktSelRow(sel, selId, gols, isWin, penStr) {
   const nomeCor = minha ? accent : (isWin ? '#fff' : 'var(--areia)');
   const nomePeso = (minha || isWin) ? 800 : 400;
   const nome = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;flex:1;color:${nomeCor};font-weight:${nomePeso};${minha?'text-shadow:0 0 8px '+accent+'55;':''}">${sel.pais} ${sel.ano}</span>`;
-  return `<div class="bkt-row${isWin?' win':''}" style="background:${rowBg};${borderL}gap:5px;align-items:center;">
+  return `<div class="bkt-row${isWin?' win':''}" data-ver-sel="${selId}" style="background:${rowBg};${borderL}gap:5px;align-items:center;cursor:pointer;">
     ${dot}${nome}
     <span class="bkt-placar" style="${(isWin||minha)?`color:${accent};font-weight:900;`:''}">${gols!=null?gols+penStr:'–'}</span>
   </div>`;
@@ -9230,6 +9230,12 @@ function renderCopaBracket() {
     if (!jogo) return;
     const sA = copa.selMap[jogo.a], sB = copa.selMap[jogo.b];
     mostrarReplayGolsCopa(jogo, sA ? nomeCurtoSel(sA) : jogo.a, sB ? nomeCurtoSel(sB) : jogo.b);
+  }));
+  // Clicar no nome de uma seleção do chaveamento abre o plantel dela (mesmo padrão dos Grupos) —
+  // stopPropagation pra não também disparar o replay do card (que ouve o card inteiro, por cima).
+  document.querySelectorAll('#copaBracketRounds [data-ver-sel]').forEach(el => el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    mostrarPlantelSelecao(el.dataset.verSel);
   }));
 }
 
@@ -12830,6 +12836,7 @@ function iniciarCopaFinal() {
   copaModoPlantel = 'setup';
   renderCopaJogo();
   mostrarTela('copaJogo');
+  mostrarPainelCopa('painel'); // tela padrão de início é o painel da equipe, não Grupos
   // O plantel de setup JÁ foi a configuração da 1ª partida — inicia direto (sem 2º plantel).
   iniciarJornada();
 }
@@ -12846,6 +12853,7 @@ function configurarJogadoresParaJornada(callback) {
       copaModoPlantel = 'setup';
       copaConfigCallback = null;
       mostrarTela('copaJogo');
+      mostrarPainelCopa('painel'); // tela padrão de início é o painel da equipe, não Grupos
       callback();
       return;
     }
@@ -12873,6 +12881,7 @@ function mostrarProximaConfiguracaoJornada() {
     // Volta para copaJogo antes de iniciar a partida
     // (abrirCopaPlantel navega para 'copaPlantel', precisamos retornar)
     mostrarTela('copaJogo');
+    mostrarPainelCopa('painel'); // tela padrão de início é o painel da equipe, não Grupos
     if (cb) cb();
     return;
   }
