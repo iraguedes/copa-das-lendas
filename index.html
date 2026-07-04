@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '51'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '52'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1674,7 +1674,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v51</div>
+  <div class="rodapezinho">v52</div>
 </div>
 
 <script>
@@ -5009,6 +5009,34 @@ function sortearSelecoes(n, rng) {
   return resultado;
 }
 
+// Distribui as 48 selecionadas em 12 grupos de 4, preferindo NÃO repetir país no mesmo grupo —
+// preferência, não proibição: se não houver grupo válido sem aquele país, cai no fallback (repete).
+// Isso empurra confrontos entre gerações do mesmo país pro mata-mata, onde pesam narrativamente
+// mais, sem impedir o sorteio de fechar quando a quantidade de um país tornar isso impossível.
+// Processa países com mais representantes primeiro (mais restritivos), preservando a ordem
+// relativa (já embaralhada por sortearSelecoes) dentro de cada país.
+function distribuirEmGruposCopa(selecoes, numGrupos, tamGrupo) {
+  const grupos = Array.from({ length: numGrupos }, () => []);
+  const porPais = {};
+  selecoes.forEach(s => { (porPais[s.pais] = porPais[s.pais] || []).push(s); });
+  const paisesOrdenados = Object.keys(porPais).sort((a, b) => porPais[b].length - porPais[a].length);
+  paisesOrdenados.forEach(pais => {
+    porPais[pais].forEach(sel => {
+      let candidatos = grupos
+        .map((g, i) => ({ i, g }))
+        .filter(({ g }) => g.length < tamGrupo && !g.some(t => t.pais === pais));
+      if (!candidatos.length) {
+        candidatos = grupos
+          .map((g, i) => ({ i, g }))
+          .filter(({ g }) => g.length < tamGrupo);
+      }
+      candidatos.sort((a, b) => a.g.length - b.g.length);
+      grupos[candidatos[0].i].push(sel);
+    });
+  });
+  return grupos;
+}
+
 function jogadorIndisponivelCopa(j) {
   return !!(j.lesionado || j.suspenso > 0);
 }
@@ -5512,8 +5540,9 @@ function novoEstadoCopa(minhaSelecaoId, semente, todasMinhasSelecoes) {
   }));
   const selMap = Object.fromEntries(selecoes.map(s => [s.id, s]));
   const letras = [...'ABCDEFGHIJKL'];
+  const gruposArr = distribuirEmGruposCopa(selecoes, letras.length, 4);
   const grupos = letras.map((letra, i) => {
-    const ids = selecoes.slice(i * 4, i * 4 + 4).map(s => s.id);
+    const ids = gruposArr[i].map(s => s.id);
     const jogos = [];
     for (let a = 0; a < ids.length - 1; a++)
       for (let b = a + 1; b < ids.length; b++)
