@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '56'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '57'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1684,7 +1684,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v56</div>
+  <div class="rodapezinho">v57</div>
 </div>
 
 <script>
@@ -5668,8 +5668,19 @@ function finalizarRodadaBracketLive() {
       const jogosDaRodada = rodadaKey === 'final_3' ? [copa.bracket.final, copa.bracket.terceiro].filter(Boolean) : (copa.bracket[rodadaKey] || []);
       (copa.minhasSelecoes || []).forEach(meuId => {
         const jogoMeu = jogosDaRodada.find(j => j.a === meuId || j.b === meuId);
-        if (jogoMeu && jogoMeu.vencedorId && jogoMeu.vencedorId !== meuId) {
+        if (!jogoMeu || !jogoMeu.vencedorId) return;
+        if (jogoMeu.vencedorId !== meuId) {
           registrarFantasmaCopa(meuId, jogoMeu.vencedorId);
+        } else {
+          // Nêmesis Pessoal: acabei de vencer quem já me eliminou 3+ vezes antes desta copa?
+          const oponenteId = jogoMeu.a === meuId ? jogoMeu.b : jogoMeu.a;
+          let fantasmasAtuais = [];
+          try { fantasmasAtuais = JSON.parse(localStorage.getItem(STORAGE_KEY_FANTASMAS_COPA) || '[]'); } catch (e) {}
+          const info = contarEliminacoesPorTime(fantasmasAtuais).get(oponenteId);
+          if (info && info.vezes >= LIMIAR_NEMESIS) {
+            copa.notificacoesEspeciais = copa.notificacoesEspeciais || [];
+            copa.notificacoesEspeciais.push({ tipo: 'superacao_nemesis', nome: info.eliminadorNome, vezes: info.vezes });
+          }
         }
       });
       // A cura de lesões e o desconto de suspensão que rodava aqui foi movido pro TOPO de
@@ -5695,6 +5706,7 @@ function finalizarRodadaBracketLive() {
       if (liveInd) liveInd.style.display = 'none';
       document.getElementById('painelCopaLive').classList.add('hidden');
       renderCopaBracket(); renderCopaArtilheiros();
+      mostrarNotificacoesEspeciaisCopa(); // Nêmesis superada / fim de dinastia, se algum ocorreu nesta rodada
       // Sem nenhum time humano restando na copa (todos eliminados, ou modo espectador — offline;
       // o online tem seu próprio fluxo de "todos prontos" e não deve ser mexido aqui): em vez de
       // esperar clique no Painel, encadeia sozinho a rodada seguinte até a copa terminar de vez.
@@ -8860,6 +8872,44 @@ function detectarCampeaAnteriorNaCopa(selecoes) {
     return sel ? { selId: sel.id, nome: nomeCurtoSel(sel) } : null;
   } catch (e) { return null; }
 }
+// Nêmesis Pessoal: conta quantas vezes cada eliminador aparece no array BRUTO de fantasmas —
+// diferente de detectarFantasmasNaCopa (que resume só a ocorrência mais recente por id, pro selo
+// simples "Fantasma"), aqui contamos TODAS as ocorrências pra saber quem já virou Nêmesis de
+// verdade (3+ eliminações). Não muda a escrita nem o formato salvo — só lê o mesmo array já
+// existente de outro jeito, porque cada eliminação nova já era um item separado (unshift).
+const LIMIAR_NEMESIS = 3;
+function contarEliminacoesPorTime(fantasmas) {
+  const porId = new Map();
+  (fantasmas || []).forEach(f => {
+    const atual = porId.get(f.eliminadorId) || { eliminadorId: f.eliminadorId, eliminadorNome: f.eliminadorNome, vezes: 0 };
+    atual.vezes++;
+    porId.set(f.eliminadorId, atual);
+  });
+  return porId;
+}
+// Dinastia: sequência de títulos CONSECUTIVOS do mesmo campeaoSelId a partir do topo do histórico
+// (mais recente primeiro). Puramente derivado do array já existente, sem dado novo persistido.
+function calcularDinastiaAtual(historico) {
+  if (!historico?.length || !historico[0].campeaoSelId) return null;
+  const id = historico[0].campeaoSelId;
+  let streak = 0;
+  for (const r of historico) {
+    if (r.campeaoSelId === id) streak++; else break;
+  }
+  return { selId: id, nome: historico[0].campeao, streak };
+}
+// Notificações especiais acumuladas durante o avanço do bracket (superação de Nêmesis, fim de
+// dinastia) — mostra e consome UMA por vez, reaproveitando o overlay genérico já existente (sem UI nova).
+function mostrarNotificacoesEspeciaisCopa() {
+  const fila = copa?.notificacoesEspeciais || [];
+  if (!fila.length) return;
+  const n = fila.shift();
+  if (n.tipo === 'superacao_nemesis') {
+    abrirOverlayGenericoCopa('🎉', 'Nêmesis Superada!', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);">Você finalmente venceu <b style="color:var(--ouro);">${n.nome}</b>, o time que já te eliminou <b>${n.vezes}</b> vezes. A revanche foi consumada!</div>`, 420);
+  } else if (n.tipo === 'fim_dinastia') {
+    abrirOverlayGenericoCopa('💥', 'Fim de uma Dinastia', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);"><b style="color:var(--ouro);">${n.nome}</b> não repetiu o título depois de <b>${n.streak}</b> conquistas seguidas — a dinastia chegou ao fim nesta Copa.</div>`, 420);
+  }
+}
 // ===== Prova de conceito: narrativa dinâmica no menu principal =====
 // Não cria nenhum dado novo nem toca em persistência — só lê STORAGE_KEY_HISTORICO_COPAS e
 // STORAGE_KEY_FANTASMAS_COPA (já existentes) e calcula frases na hora. Objetivo: o jogo "conversa"
@@ -8873,15 +8923,28 @@ function gerarNarrativaMenuPrincipal() {
   const candidatos = [];
   const ultima = historico[0];
 
-  // Revanche: o fantasma mais recente registrado (quem te eliminou por último no mata-mata)
+  // Nêmesis Pessoal: se algum time já te eliminou 3+ vezes, ele é sua Nêmesis — senão, é só o
+  // fantasma mais recente (revanche simples, como antes).
   if (fantasmas.length) {
-    candidatos.push({ peso: 3, icone: '👻', texto: `Da última vez, <b>${fantasmas[0].eliminadorNome}</b> encerrou sua campanha. Hora da revanche?` });
+    const maisFrequente = [...contarEliminacoesPorTime(fantasmas).values()].sort((a, b) => b.vezes - a.vezes)[0];
+    if (maisFrequente.vezes >= LIMIAR_NEMESIS) {
+      candidatos.push({ peso: 4, icone: '💀', texto: `<b>${maisFrequente.eliminadorNome}</b> já te eliminou <b>${maisFrequente.vezes}</b> vezes — virou sua Nêmesis pessoal. Hora de superar de vez?` });
+    } else {
+      candidatos.push({ peso: 3, icone: '👻', texto: `Da última vez, <b>${fantasmas[0].eliminadorNome}</b> encerrou sua campanha. Hora da revanche?` });
+    }
   }
 
-  // Campeã anterior / jejum pessoal (calculado na hora contando o array já existente, sem novo dado)
-  if (ultima.venci) {
+  // Dinastia: sequência de títulos consecutivos do mesmo campeão (não precisa ser o meu time).
+  const dinastia = calcularDinastiaAtual(historico);
+  if (dinastia && dinastia.streak >= 2) {
+    const titulo = dinastia.streak === 2 ? 'Bicampeã' : dinastia.streak === 3 ? 'Tricampeã' : `${dinastia.streak}x campeã seguida`;
+    candidatos.push({ peso: 3, icone: '👑', texto: `<b>${dinastia.nome}</b> é ${titulo} consecutiva — uma dinastia em curso. Será que ela continua na próxima Copa?` });
+  } else if (ultima.venci) {
     candidatos.push({ peso: 3, icone: '👑', texto: `Você é o atual campeão, com <b>${ultima.minhaSelecao || ultima.campeao}</b>. Vai defender o título?` });
-  } else {
+  }
+
+  // Jejum pessoal (calculado na hora contando o array já existente, sem novo dado)
+  if (!ultima.venci) {
     let copasDesdeUltimoTitulo = historico.findIndex(r => r.venci);
     if (copasDesdeUltimoTitulo === -1) copasDesdeUltimoTitulo = historico.length;
     candidatos.push({ peso: 2, icone: '⏳', texto: `Você não é campeão há <b>${copasDesdeUltimoTitulo}</b> cop${copasDesdeUltimoTitulo === 1 ? 'a' : 'as'}. Hora de mudar isso?` });
@@ -9009,6 +9072,14 @@ function salvarHistoricoCopa() {
       wrapped: wrapped || null,
     };
     copa.wrappedDaCopa = wrapped ? { ...wrapped, novoRecordeGols, melhorGolsAnterior } : null;
+    // Dinastia: se a campeã da copa anterior tinha 2+ títulos seguidos, foi sorteada de novo nesta
+    // copa mas NÃO repetiu, é o fim de uma dinastia — vale um momento dramático (não só a etiqueta
+    // "em curso", que sozinha é decoração passiva).
+    const dinastiaAnterior = calcularDinastiaAtual(lista);
+    if (dinastiaAnterior && dinastiaAnterior.streak >= 2 && copa.selMap?.[dinastiaAnterior.selId] && copa.campeao !== dinastiaAnterior.selId) {
+      copa.notificacoesEspeciais = copa.notificacoesEspeciais || [];
+      copa.notificacoesEspeciais.push({ tipo: 'fim_dinastia', nome: dinastiaAnterior.nome, streak: dinastiaAnterior.streak });
+    }
     lista.unshift(registro);
     localStorage.setItem(STORAGE_KEY_HISTORICO_COPAS, JSON.stringify(lista.slice(0, 50)));
     atualizarRecordesPerpetuos(wrapped);
