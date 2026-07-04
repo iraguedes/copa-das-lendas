@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '47'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '48'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1182,7 +1182,7 @@
   <div id="copaSetup" class="card tela-central hidden" style="max-width:540px;display:flex;flex-direction:column;">
     <div class="copa-trophy" style="text-align:center;font-size:42px;margin-bottom:2px;line-height:1;">🏆</div>
     <h2 style="margin:0 0 4px;text-align:center;justify-content:center;">Copa das Lendas</h2>
-    <p style="font-size:13px;color:var(--cinza);margin:0 0 14px;text-align:center;">48 seleções históricas. Uma Copa. Uma lenda. <span style="color:var(--ouro);">★</span></p>
+    <p style="font-size:13px;color:var(--cinza);margin:0 0 14px;text-align:center;">133 seleções históricas. Uma Copa. Uma lenda. <span style="color:var(--ouro);">★</span></p>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0;">
       <button type="button" id="btnCopaAleatorio" class="secondary modo-sel-btn ativo">Aleatório 🎲</button>
       <button type="button" id="btnCopaEscolher" class="secondary modo-sel-btn">Escolher seleção</button>
@@ -1674,7 +1674,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v47</div>
+  <div class="rodapezinho">v48</div>
 </div>
 
 <script>
@@ -1689,7 +1689,7 @@ const STORAGE_KEY_FANTASMAS_COPA = 'copa-lendas-fantasmas-v1'; // times que te e
 
 // ============================================================
 // BANCO DE SELEÇÕES HISTÓRICAS — Copa das Lendas
-// 96 entradas · 54 países únicos
+// 133 entradas · 60 países únicos
 // Sorteio garante 48 países únicos por torneio (um por país)
 // ============================================================
 const BANCO_SELECOES = [
