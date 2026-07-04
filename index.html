@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '54'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '55'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -457,6 +457,14 @@
   .copa-sorteio{
     font-family:'Georgia',serif;font-size:12px;color:#7a9a78;letter-spacing:.3px;margin:0;
   }
+  .menu-narrativa{
+    max-width:480px;margin:0 auto 26px;padding:12px 18px;text-align:left;
+    background:rgba(217,164,74,.08);border:1px solid rgba(217,164,74,.3);border-radius:10px;
+  }
+  .menu-narrativa .mn-linha{display:flex;align-items:flex-start;gap:9px;font-family:'Georgia',serif;font-size:13px;color:#dcd8c8;line-height:1.45;}
+  .menu-narrativa .mn-linha+.mn-linha{margin-top:7px;}
+  .menu-narrativa .mn-icone{flex-shrink:0;font-size:15px;line-height:1.4;}
+  .menu-narrativa .mn-texto b{color:var(--ouro);}
   @media(max-width:580px){
     .copa-titulo{letter-spacing:2px;}
     .legend-card{width:82px;}
@@ -781,6 +789,8 @@
     <div class="copa-trophy">🏆</div>
     <h1 class="copa-titulo">Copa das Lendas</h1>
     <p class="copa-sub">O maior torneio que nunca existiu.</p>
+
+    <div id="menuNarrativa" class="menu-narrativa hidden"></div>
 
     <div class="legend-cards-row">
 
@@ -1674,7 +1684,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v54</div>
+  <div class="rodapezinho">v55</div>
 </div>
 
 <script>
@@ -8846,6 +8856,52 @@ function detectarCampeaAnteriorNaCopa(selecoes) {
     return sel ? { selId: sel.id, nome: nomeCurtoSel(sel) } : null;
   } catch (e) { return null; }
 }
+// ===== Prova de conceito: narrativa dinâmica no menu principal =====
+// Não cria nenhum dado novo nem toca em persistência — só lê STORAGE_KEY_HISTORICO_COPAS e
+// STORAGE_KEY_FANTASMAS_COPA (já existentes) e calcula frases na hora. Objetivo: o jogo "conversa"
+// com o jogador antes mesmo de escolher o modo, sem esperar a Fase 0 (fundação completa) do roadmap.
+function gerarNarrativaMenuPrincipal() {
+  let historico = [], fantasmas = [];
+  try { historico = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORICO_COPAS) || '[]'); } catch (e) {}
+  try { fantasmas = JSON.parse(localStorage.getItem(STORAGE_KEY_FANTASMAS_COPA) || '[]'); } catch (e) {}
+  if (!historico.length) return [];
+
+  const candidatos = [];
+  const ultima = historico[0];
+
+  // Revanche: o fantasma mais recente registrado (quem te eliminou por último no mata-mata)
+  if (fantasmas.length) {
+    candidatos.push({ peso: 3, icone: '👻', texto: `Da última vez, <b>${fantasmas[0].eliminadorNome}</b> encerrou sua campanha. Hora da revanche?` });
+  }
+
+  // Campeã anterior / jejum pessoal (calculado na hora contando o array já existente, sem novo dado)
+  if (ultima.venci) {
+    candidatos.push({ peso: 3, icone: '👑', texto: `Você é o atual campeão, com <b>${ultima.minhaSelecao || ultima.campeao}</b>. Vai defender o título?` });
+  } else {
+    let copasDesdeUltimoTitulo = historico.findIndex(r => r.venci);
+    if (copasDesdeUltimoTitulo === -1) copasDesdeUltimoTitulo = historico.length;
+    candidatos.push({ peso: 2, icone: '⏳', texto: `Você não é campeão há <b>${copasDesdeUltimoTitulo}</b> cop${copasDesdeUltimoTitulo === 1 ? 'a' : 'as'}. Hora de mudar isso?` });
+    candidatos.push({ peso: 1, icone: '🏆', texto: `Na sua última Copa, <b>${ultima.campeao}</b> ficou com o título.` });
+  }
+
+  // Recorde pessoal de gols numa única Copa (máximo do array já existente, sem objeto novo)
+  const comGols = historico.filter(r => r.meusGols != null);
+  if (comGols.length) {
+    const recorde = comGols.reduce((max, r) => r.meusGols > max.meusGols ? r : max, comGols[0]);
+    candidatos.push({ peso: 1, icone: '⚽', texto: `Seu recorde pessoal é de <b>${recorde.meusGols} gols</b> numa única Copa (com ${recorde.minhaSelecao}). Consegue superar?` });
+  }
+
+  // No máximo 2 frases por vez — silêncio é melhor que virar parede de texto.
+  return candidatos.sort((a, b) => b.peso - a.peso).slice(0, 2);
+}
+function renderizarNarrativaMenuPrincipal() {
+  const el = document.getElementById('menuNarrativa');
+  if (!el) return;
+  const linhas = gerarNarrativaMenuPrincipal();
+  if (!linhas.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  el.innerHTML = linhas.map(l => `<div class="mn-linha"><span class="mn-icone">${l.icone}</span><span class="mn-texto">${l.texto}</span></div>`).join('');
+  el.classList.remove('hidden');
+}
 // "Wrapped da Copa": recap estilo resumo-de-fim-de-ano, calculado direto dos resultados já
 // registrados em grupos + bracket — não precisa de nenhuma contagem incremental à parte.
 function construirWrappedDaCopa() {
@@ -10590,6 +10646,7 @@ function mostrarTela(nome){
   TELAS.forEach(id=>{
     document.getElementById(id).classList.toggle('hidden', id!==nome);
   });
+  if (nome === 'modoJogo') renderizarNarrativaMenuPrincipal();
   const jogoAtivo = ['turno','simulacaoRodada','resultadoRodada','fimTemporada','copaPlantel','copaJogo'].includes(nome);
   document.getElementById('rodapeReset').classList.toggle('hidden', !jogoAtivo);
   // Oculta o cabeçalho grande nas telas internas da Copa (são redundantes com o título do card e liberam espaço vertical)
