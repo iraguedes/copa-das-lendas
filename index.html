@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '68'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '69'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -402,8 +402,9 @@
     text-shadow:0 1px 0 #a9781a, 0 2px 16px rgba(0,0,0,.55), 0 0 30px rgba(245,216,0,.35);
   }
   .copa-sub{
-    font-family:'Georgia',serif;font-size:14px;color:#b0cab0;
-    margin:0 0 26px;letter-spacing:.4px;
+    font-family:'Georgia',serif;font-size:clamp(15px,2.4vw,20px);font-style:italic;font-weight:700;
+    color:#e8d9ae;margin:4px 0 28px;letter-spacing:.5px;
+    text-shadow:0 1px 8px rgba(0,0,0,.45);
   }
   .legend-cards-row{
     display:flex;gap:10px;justify-content:center;margin-bottom:26px;flex-wrap:wrap;
@@ -484,7 +485,7 @@
   .livro-rodape p:last-child{margin-bottom:0;}
   .livro-rodape b{color:rgba(232,245,233,.75);font-style:normal;}
   .livro-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(217,164,74,.15);}
-  .livro-nav-btn{background:transparent;border:none;box-shadow:none;color:var(--terracota);font-size:11px;font-weight:700;padding:4px 2px;cursor:pointer;}
+  .livro-nav-btn{background:transparent;border:none;box-shadow:none;color:var(--terracota);font-size:11px;font-weight:700;padding:12px 6px;cursor:pointer;}
   .livro-nav-btn:hover:not(:disabled){filter:none;color:var(--ouro);transform:none;}
   .livro-nav-btn:disabled{color:rgba(232,245,233,.2);cursor:not-allowed;}
   .livro-nav-pos{font-size:10px;color:rgba(232,245,233,.4);white-space:nowrap;}
@@ -779,6 +780,7 @@
     .copa-grupos-grid{grid-template-columns:1fr;}
     /* Chaveamento: NÃO comprimir — deixa expandir e rolar horizontalmente (senão fica ilegível) */
     .bracket-wrap{-webkit-overflow-scrolling:touch;}
+    .bracket-scroll-hint{display:block !important;}
     .bracket-wrap{--bkt-gap:18px;}
     .bracket-sym{width:max-content;min-width:100%;min-height:440px;align-items:stretch;}
     .bracket-half{flex:0 0 auto;}
@@ -793,6 +795,29 @@
     /* Tabela de grupos não pode estourar a largura do card */
     .grupo-tbl{font-size:10.5px;}
     .grupo-tbl td:first-child,.grupo-tbl th:first-child{max-width:100px;}
+    /* Linhas clicáveis do plantel (trocar posição) e do banco (substituição): mais altura de toque */
+    .plantel-tbl tr[data-jnome] td{padding:8px 4px;}
+    .sub-player{padding:11px 9px;}
+    /* Contador de jogadores no setup: alvo de toque um pouco maior */
+    #btnNumJogMenos,#btnNumJogMais{width:38px !important;height:38px !important;}
+    /* A barra fixa de ações do setup (Voltar/Iniciar) usa margem negativa pra colar nas bordas do
+       card — o valor (-22px/-20px) é calibrado pro padding do .card no desktop (20px 22px); no
+       mobile o .card cai pra 12px 10px, então sem este ajuste a barra vaza pra fora do cartão. */
+    #copaSetupAcoes{margin:0 -10px -12px !important;padding:14px 10px 16px !important;}
+  }
+
+  /* ===== Mobile landscape — Copa das Lendas (viewport baixo, típico de celular deitado).
+     Em paisagem a LARGURA é a maior dimensão (ex.: 812px), então o gatilho certo é altura baixa,
+     não max-width — por isso aqui é max-height, ao contrário do bloco mobile-retrato acima. ===== */
+  @media(max-height:430px) and (orientation:landscape) and (max-width:900px){
+    .copa-trophy{font-size:34px;margin-bottom:2px;}
+    .copa-titulo{font-size:26px;letter-spacing:2px;margin-bottom:4px;}
+    .copa-sub{font-size:13px;margin:2px 0 12px;}
+    .legend-cards-row{margin-bottom:14px;}
+    .legend-card{width:64px;padding:5px 4px 6px;}
+    .legend-card-figure{width:44px;height:52px;}
+    .menu-narrativa{margin-bottom:14px;padding:9px 14px;}
+    #modoJogo{padding:12px 16px 20px;}
   }
 
   /* ===== Imersão — atmosfera, brilho de ouro e placar ===== */
@@ -1375,6 +1400,7 @@
       <p style="text-align:center;margin:0 0 10px;">
         <button type="button" id="btnVerClassificacaoGrupos" class="secondary pequeno">📋 Ver classificação dos grupos</button>
       </p>
+      <p class="bracket-scroll-hint" style="display:none;text-align:center;font-size:10px;color:rgba(232,245,233,.4);letter-spacing:.5px;margin:0 0 4px;">◄ arraste para o lado para ver todo o chaveamento ►</p>
       <div class="bracket-wrap" style="overflow-x:auto;padding-bottom:8px;"><div id="copaBracketRounds"></div></div>
     </div>
     <div id="painelCopaArt" class="hidden">
@@ -1746,7 +1772,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v68 – Auditoria de Qualidade</div>
+  <div class="rodapezinho">v69 – Pronta pra Estreia</div>
 </div>
 
 <script>
@@ -6376,7 +6402,7 @@ function mostrarPlantelSelecao(selId){
       +'<div style="background:linear-gradient(135deg,'+cor+','+cor2+');color:'+headTxt+';padding:13px 16px;border-radius:13px 13px 0 0;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1;">'
         +'<div><div style="font-weight:900;font-size:16px;">'+sel.pais+' '+sel.ano+'</div>'
           +'<div style="font-size:11px;opacity:.88;">'+(sel.lenda?'★ '+sel.lenda+' · ':'')+'Tier '+sel.tier+' · OVR '+sel.ovr+'</div></div>'
-        +'<button onclick="fecharPlantelSelecao()" style="background:rgba(0,0,0,.22);color:'+headTxt+';border:none;border-radius:8px;width:30px;height:30px;font-size:20px;line-height:1;cursor:pointer;">×</button></div>'
+        +'<button onclick="fecharPlantelSelecao()" style="background:rgba(0,0,0,.22);color:'+headTxt+';border:none;border-radius:8px;width:36px;height:36px;font-size:20px;line-height:1;cursor:pointer;">×</button></div>'
       +'<div style="padding:12px 10px 16px;">'+secoes+'</div></div></div>';
   ov.style.display='block';
 }
@@ -6428,7 +6454,7 @@ function abrirEscolhaPosicao(selId,pos,nomeAtual){
       +'<div style="padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:#0d2418;z-index:1;">'
         +'<div><div style="font-weight:900;font-size:14px;color:var(--ouro);">'+(posNome[pos]||pos)+' — quem joga aqui?</div>'
           +'<div style="font-size:10px;color:var(--cinza);margin-top:2px;">Escolha quem entra no lugar de '+nomeAtual+'</div></div>'
-        +'<button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;">×</button></div>'
+        +'<button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;">×</button></div>'
       +'<div style="padding:10px;">'+secMesma+secOutras+'</div></div></div>';
   ov.style.display='block';
   ov.querySelectorAll('[data-esc-nome]').forEach(el=>el.addEventListener('click',()=>{
@@ -6465,7 +6491,7 @@ function mostrarGruposCopaOverlay(){
     +'<div style="background:linear-gradient(165deg,#0f2c1c,#07150c);border:1px solid rgba(217,164,74,.35);border-radius:14px;max-width:780px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.7);">'
       +'<div style="padding:13px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:#0d2418;z-index:1;">'
         +'<div style="font-weight:900;font-size:15px;color:var(--ouro);">📋 Grupos da Copa</div>'
-        +'<button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer;">×</button></div>'
+        +'<button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;line-height:1;cursor:pointer;">×</button></div>'
       +'<div style="padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">'+grid+'</div></div></div>';
   ov.style.display='block';
 }
@@ -8889,7 +8915,7 @@ function abrirOverlayGenericoCopa(icone, titulo, bodyHtml, maxWidth) {
     <div style="background:linear-gradient(165deg,#0f2c1c,#07150c);border:1px solid rgba(217,164,74,.35);border-radius:14px;max-width:${maxWidth||780}px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.7);">
       <div style="padding:13px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:#0d2418;z-index:1;">
         <div style="font-weight:900;font-size:15px;color:var(--ouro);">${icone} ${titulo}</div>
-        <button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:28px;height:28px;font-size:18px;line-height:1;cursor:pointer;">×</button></div>
+        <button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;line-height:1;cursor:pointer;">×</button></div>
       <div style="padding:12px;">${bodyHtml}</div>
     </div></div>`;
   ov.style.display = 'block';
