@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '70'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '71'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1775,7 +1775,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v70 – Polimento Final</div>
+  <div class="rodapezinho">v71 – Correções do Playtest</div>
 </div>
 
 <script>
@@ -5668,7 +5668,13 @@ function finalizarRodadaBracketLive() {
     });
   });
   const shootoutsHumanos = [];
-  livePartidas.forEach(p => {
+  // Ordem CANÔNICA (por selId, não a ordem local de livePartidas — que põe o time de cada
+  // cliente primeiro e por isso difere de cliente pra cliente): este loop consome copaRng()
+  // (pênaltis de CPU + fadiga pós-jogo), e no modo online todo mundo precisa consumir o RNG
+  // compartilhado na MESMA sequência, senão o resultado diverge entre clientes (bug relatado:
+  // adversário anunciado ≠ adversário real; empate declarado eliminação sem pênaltis). Mesmo
+  // padrão já usado em aplicarTaticasIntervaloEContinuar.
+  [...livePartidas].sort((x, y) => (x.a + x.b).localeCompare(y.a + y.b)).forEach(p => {
     const bkt = copa.bracket;
     const rodada = p.rodadaKey;
     const jogos = rodada==='final_3' ? [bkt.final, bkt.terceiro].filter(Boolean) : (bkt[rodada]||[]);
@@ -5875,7 +5881,11 @@ function elegerTitulosDaCopa() {
       const probVencedor = (j.vencedorId === j.a ? probA : probB) / somaSemEmpate;
       // Pré-filtro de elegibilidade (não pós-filtro no argmin): só entra candidato quem já era
       // claramente azarão — só ENTRE os elegíveis é que se pega o de menor probabilidade.
-      if (probVencedor >= 0.4) return;
+      // Teto reduzido de 40%→33% (playtest): times/traits/mentalidade combinados fazem duas
+      // seleções Tier S comparáveis (ex.: Brasil 1970 x Argentina 1986, ambas ~OVR 97-99)
+      // ficarem em ~34% mesmo sem diferença real de força — 40% ainda deixava passar esses
+      // casos como "zebra", quebrando a credibilidade do título pra confrontos entre favoritos.
+      if (probVencedor >= 0.33) return;
       if (!zebraOficial || probVencedor < zebraOficial.prob) {
         zebraOficial = { selId: j.vencedorId, selIdDerrotado: j.vencedorId === j.a ? j.b : j.a, prob: probVencedor, fase: j.fase };
       }
@@ -7127,7 +7137,10 @@ function tickLive() {
   liveMinuto++;
   atualizarClockLive();
   let _penaltiDetectado = false;
-  for (const p of livePartidas) {
+  // Ordem canônica (não a ordem local de livePartidas) — pênaltis de CPU ao vivo consomem
+  // copaRng() aqui dentro (linha abaixo), e no online todo cliente precisa consumir na mesma
+  // sequência (ver nota em finalizarRodadaBracketLive).
+  for (const p of [...livePartidas].sort((x, y) => (x.a + x.b).localeCompare(y.a + y.b))) {
     if (_penaltiDetectado) break;
     if (p.finalizado90) continue; // score congelado nos 90', não processar ET
     while (p.eventoIdx < p.eventos.length && p.eventos[p.eventoIdx].minuto <= liveMinuto) {
@@ -7257,7 +7270,8 @@ function tickLive() {
         }
         // Sem ninguém pra trocar antes da ET começar: ainda assim recalcula a força de quem
         // já está desfalcado do tempo normal, senão a prorrogação roda com o time completo.
-        livePartidas.forEach(p => { if (p.emProrrogacao) regenerarProrrogacaoCore(p); });
+        // Ordem canônica — regenerarProrrogacaoCore consome copaRng() quando há desfalque (ver nota em finalizarRodadaBracketLive).
+        [...livePartidas].sort((x, y) => (x.a + x.b).localeCompare(y.a + y.b)).forEach(p => { if (p.emProrrogacao) regenerarProrrogacaoCore(p); });
         // Recalcula a velocidade: se nenhuma partida em prorrogação tem time humano, acelera.
         // (liveTimer já foi zerado acima — sempre recria aqui, sem substituição pendente.)
         liveTimer = setInterval(tickLive, velocidadeLiveMs());
@@ -7477,7 +7491,9 @@ function continuarSegundaMetade() {
   }
   // Expulsão/lesão que mudou a força do time no 1º tempo, mesmo sem troca de tática — o
   // recálculo em si é idempotente (regenerarSegundaMetadeCore trava em partida._regen2TFeito).
-  livePartidas.forEach(p => {
+  // Ordem canônica (não a ordem local de livePartidas) — ambas as funções consomem copaRng()
+  // quando há desfalque, e no online todo cliente precisa consumir na mesma sequência.
+  [...livePartidas].sort((x, y) => (x.a + x.b).localeCompare(y.a + y.b)).forEach(p => {
     if (p.emProrrogacao) regenerarProrrogacaoCore(p);
     else if (p._forcaMudou) regenerarSegundaMetadeCore(p);
   });
@@ -8004,7 +8020,10 @@ function finalizarJornada() {
     });
   });
   // Salva resultados e atualiza status dos jogadores
-  livePartidas.forEach(p => {
+  // Ordem canônica (não a ordem local de livePartidas, que põe o time de cada cliente primeiro)
+  // — a fadiga pós-jogo abaixo consome copaRng(), e no online todo cliente precisa consumir o
+  // RNG compartilhado na mesma sequência (mesmo motivo documentado em finalizarRodadaBracketLive).
+  [...livePartidas].sort((x, y) => (x.a + x.b).localeCompare(y.a + y.b)).forEach(p => {
     const grupo = copa.grupos.find(g => g.id === p.grupoId);
     const jogo = grupo.jogos[p.jogoIdx];
     jogo.golsA = p.golsA; jogo.golsB = p.golsB;
