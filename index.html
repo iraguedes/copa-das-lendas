@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '65'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '66'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1753,7 +1753,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v65 – Qualidade de Vida</div>
+  <div class="rodapezinho">v66 – Lesões e Expulsões</div>
 </div>
 
 <script>
@@ -4986,6 +4986,15 @@ function emojiMoralCopa(m) {
 // Posição em campo: onde o jogador foi escalado (pode diferir da posição natural).
 // Jogar fora de posição tem custo real: -10% de OVR efetivo (-28% se envolver o gol).
 function posCampoCopa(j) { return j.posCampo || j.pos; }
+// Quem está fora desta partida especificamente (expulso, ou lesão que já tirou o jogador de
+// campo) — usado pra força de ataque/defesa não contar quem não está mais jogando, mesmo que
+// o objeto do jogador continue com titular:true (só muda no momento da substituição de fato).
+function jogadoresForaDaPartida(partida, lado) {
+  return new Set([
+    ...((lado === 'A' ? partida.vermelhosA : partida.vermelhosB) || []),
+    ...((lado === 'A' ? partida.foraDefinitivoA : partida.foraDefinitivoB) || []),
+  ]);
+}
 function fatorForaPosicaoCopa(j) {
   const pe = posCampoCopa(j);
   if (pe === j.pos) return 1;
@@ -5076,8 +5085,8 @@ function calcularMultiplicadorTraitsCopa(tit, ladoConfig, decay) {
   excessosJogadores.forEach((e, i) => { somaElenco += e * Math.pow(decay, i); });
   return 1 + somaElenco;
 }
-function forcaAtaqueCopa(sel) {
-  const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
+function forcaAtaqueCopa(sel, foraNestaPartida) {
+  const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j) && !(foraNestaPartida && foraNestaPartida.has(j.nome)));
   // Penalidade por plantel incompleto (referência: 11 titulares = 100%)
   const penLineup = tit.length >= 11 ? 1 : Math.max(0.25, tit.length / 11);
   const ata = tit.filter(j => posCampoCopa(j) === 'ATA');
@@ -5111,8 +5120,8 @@ function forcaAtaqueCopa(sel) {
   base *= MENTALIDADE_MULT[mentalidadeDaSelecao(sel.id)].atq;
   return base;
 }
-function forcaDefesaCopa(sel) {
-  const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j));
+function forcaDefesaCopa(sel, foraNestaPartida) {
+  const tit = sel.jogadores.filter(j => j.titular && !jogadorIndisponivelCopa(j) && !(foraNestaPartida && foraNestaPartida.has(j.nome)));
   const penLineup = tit.length >= 11 ? 1 : Math.max(0.25, tit.length / 11);
   const def = tit.filter(j => posCampoCopa(j) === 'DEF');
   const gol = tit.filter(j => posCampoCopa(j) === 'GOL');
@@ -5507,6 +5516,22 @@ function sortearVariabilidadeDoDia(rng) {
   const arbitragem = r < 0.15 ? 1.4 : r < 0.30 ? 0.75 : 1; // 15% rigoroso (+40% cartão), 15% permissivo (-25%), resto normal
   return { formaA, formaB, arbitragem };
 }
+// Sorteia a gravidade de uma lesão e, se for o caso, agenda a saída de campo — sem criar
+// nenhuma pausa nova, isso vira só mais um evento na linha do tempo já pré-gerada.
+// 🟢 leve → segue até o intervalo (fluxo manual de substituição já existente decide o resto).
+// 🟡 moderada → sai sozinho em poucos minutos (atendimento médico).
+// 🔴 grave → sai imediatamente.
+function gerarEventoLesaoCopa(eventos, time, minuto, jogador) {
+  const r = copaRng();
+  const gravidade = r < 0.15 ? 'grave' : r < 0.45 ? 'moderada' : 'leve';
+  eventos.push({ tipo:'lesao', time, minuto, jogador, gravidade });
+  if (gravidade === 'grave') {
+    eventos.push({ tipo:'lesao_saida', time, minuto, jogador });
+  } else if (gravidade === 'moderada') {
+    const minutoSaida = Math.min(90, minuto + Math.floor(copaRng() * 4) + 2);
+    eventos.push({ tipo:'lesao_saida', time, minuto: minutoSaida, jogador });
+  }
+}
 function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
   const selA = copa.selMap[jogo.a], selB = copa.selMap[jogo.b];
   if (!selA || !selB) return null;
@@ -5573,7 +5598,7 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
     const lChance = avgCan<40?0.45:avgCan<65?0.30:0.18;
     if (copaRng() < lChance) {
       const cand = [...tit].sort((a,b)=>(a.cansaco??100)-(b.cansaco??100));
-      eventos.push({ tipo:'lesao', time, minuto:Math.floor(copaRng()*55)+30, jogador:cand[0].nome });
+      gerarEventoLesaoCopa(eventos, time, Math.floor(copaRng()*55)+30, cand[0].nome);
     }
   };
   addEventos(selA,'A'); addEventos(selB,'B');
@@ -5591,6 +5616,7 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
     eventos, eventoIdx:0, ultimoEv:null,
     minha: ehMinhaSel(jogo.a)||ehMinhaSel(jogo.b),
     amarelosA:[], amarelosB:[], vermelhoA:false, vermelhoB:false, vermelhosA:[], vermelhosB:[], lesaoA:[], lesaoB:[],
+    foraDefinitivoA:[], foraDefinitivoB:[],
     eliminatorio:true, subsUsadas:{}, lambdaA, lambdaB,
   };
 }
@@ -6002,13 +6028,20 @@ function regenerarSegundaMetade(partida) {
   regenerarSegundaMetadeCore(partida);
 }
 function regenerarSegundaMetadeCore(partida) {
+  // Chamada tanto por troca de tática quanto pelo novo check automático de força pós-lesão/
+  // expulsão (ver continuarSegundaMetade/aplicarTaticasIntervaloEContinuar) — sem essa trava,
+  // as duas chamadas juntas regenerariam os gols do 2º tempo duas vezes na mesma partida.
+  if (partida._regen2TFeito) return;
+  partida._regen2TFeito = true;
   // Re-sorteia apenas os GOLS do 2º tempo; cartões/lesões/pênaltis pré-gerados permanecem
   // (senão trocar de tática viraria imunidade a cartão no 2º tempo)
   partida.eventos = partida.eventos.filter(e => e.minuto <= 45 || (e.tipo && e.tipo !== 'gol'));
   const selA = copa.selMap[partida.a];
   const selB = copa.selMap[partida.b];
-  let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
-  let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
+  const foraA = jogadoresForaDaPartida(partida, 'A');
+  const foraB = jogadoresForaDaPartida(partida, 'B');
+  let mA = forcaComEsquema(forcaAtaqueCopa(selA, foraA), forcaDefesaCopa(selA, foraA), selA.id);
+  let mB = forcaComEsquema(forcaAtaqueCopa(selB, foraB), forcaDefesaCopa(selB, foraB), selB.id);
   ({ mA, mB } = aplicarBoostFinal(mA, mB, selA.id, selB.id, partida.rodadaKey, partida.jogoIdx));
   const nA2 = poisson(lambdaGolsCopa(mA.atq, mB.def) * 0.55, copaRng);
   const nB2 = poisson(lambdaGolsCopa(mB.atq, mA.def) * 0.55, copaRng);
@@ -6696,7 +6729,7 @@ function gerarPartidaLive(grupo, jogoIdx) {
       // Preferencialmente lesiona jogadores mais cansados
       const candidatos = [...tit].sort((a,b)=>(a.cansaco??100)-(b.cansaco??100));
       const p = candidatos[Math.floor(copaRng() * Math.min(3, candidatos.length))];
-      eventos.push({ tipo:'lesao', time, minuto: Math.floor(copaRng() * 55) + 30, jogador: p.nome });
+      gerarEventoLesaoCopa(eventos, time, Math.floor(copaRng() * 55) + 30, p.nome);
     }
   };
   addEventos(selA, 'A'); addEventos(selB, 'B');
@@ -6719,6 +6752,7 @@ function gerarPartidaLive(grupo, jogoIdx) {
     vermelhoA: false, vermelhoB: false,
     vermelhosA: [], vermelhosB: [],
     lesaoA: [], lesaoB: [],
+    foraDefinitivoA: [], foraDefinitivoB: [],
     subsUsadas: {}, lambdaA, lambdaB,
   };
 }
@@ -6910,6 +6944,10 @@ function reatribuirEventosFuturosCopa(p, lado, nomeFora) {
       if (dist && dist[nomeFora]) { dist[nomeFora]--; if (dist[nomeFora] <= 0) delete dist[nomeFora]; dist[herdeiro.nome] = (dist[herdeiro.nome] || 0) + 1; }
     } else if (ev.tipo === 'penalti') {
       ev.jogador = herdeiro.nome;
+    } else if (ev.tipo === 'lesao_saida') {
+      // Não é estatística pra redirecionar nem duplicata pra limpar — é a própria saída de
+      // campo agendada (lesão moderada/grave); precisa sobreviver até tickLive processá-la.
+      continue;
     } else {
       p.eventos.splice(i, 1);
     }
@@ -6981,7 +7019,10 @@ function atualizarEventoCopa(p, ev) {
       else linha.style.borderRightColor = bordaOriginal;
     }, 2500);
   } else if (ev.tipo === 'lesao') {
-    if (iconSpan) iconSpan.textContent = `🤕 ${ev.jogador} ${ev.minuto}'`;
+    const selo = ev.gravidade === 'grave' ? '🔴' : ev.gravidade === 'moderada' ? '🟡' : '🟢';
+    if (iconSpan) iconSpan.textContent = `🤕${selo} ${ev.jogador} ${ev.minuto}'`;
+  } else if (ev.tipo === 'lesao_saida') {
+    if (iconSpan) iconSpan.textContent = ev.jogadorEntrou ? `🔄 ${ev.jogadorEntrou} entra ${ev.minuto}'` : `🤕 ${ev.jogador} sai sem substituto ${ev.minuto}'`;
   } else if (ev.tipo === 'penalti') {
     if (ev.resultado === 'gol') {
       linha.querySelector('.placar').textContent = `${p.golsA} x ${p.golsB}`;
@@ -6997,6 +7038,35 @@ function atualizarEventoCopa(p, ev) {
   // só aparece confirmado quando atualizarSeloZebraConfirmado rodar (fim real da partida).
   const zebraDiv = linha.querySelector('.zebra-prob-linha');
   if (zebraDiv && !p._resultadoConfirmado) { zebraDiv.innerHTML = ''; zebraDiv.style.cssText = 'display:none;'; }
+}
+// Substituição automática por lesão moderada/grave — sem UI, sem pausa nova (o jogador "recebe
+// atendimento e sai", já narrado pelo próprio evento). Prioriza reserva disponível na mesma
+// posição com maior OVR; sem reserva elegível ou sem trocas disponíveis, o time segue com um a
+// menos (mesma regra já valia pra expulsão). Não consome copaRng() — escolha determinística por
+// OVR, então roda idêntica em todos os clientes sem risco de dessincronizar a sala online.
+function tentarSubstituicaoAutomaticaCopa(partida, lado, nomeSaindo) {
+  const selId = lado === 'A' ? partida.a : partida.b;
+  const sel = copa.selMap[selId];
+  if (!sel) return null;
+  const usadas = (partida.subsUsadas && partida.subsUsadas[selId]) || 0;
+  if (usadas >= 4) return null;
+  const jOut = sel.jogadores.find(j => j.nome === nomeSaindo);
+  if (!jOut || !jOut.titular) return null;
+  const posAlvo = posCampoCopa(jOut);
+  const foraDeCampo = jogadoresForaDaPartida(partida, lado);
+  foraDeCampo.add(nomeSaindo);
+  const banco = sel.jogadores.filter(j => !j.titular && !jogadorIndisponivelCopa(j) && !foraDeCampo.has(j.nome));
+  if (!banco.length) return null;
+  const mesmaPos = banco.filter(j => posCampoCopa(j) === posAlvo);
+  const jIn = (mesmaPos.length ? mesmaPos : banco).sort((a, b) => b.ovr - a.ovr)[0];
+  jOut.titular = false; jOut.posCampo = jOut.pos;
+  jIn.titular = true; jIn.posCampo = posAlvo;
+  partida.subsUsadas = partida.subsUsadas || {};
+  partida.subsUsadas[selId] = usadas + 1;
+  partida.saiuDoJogoPorSel = partida.saiuDoJogoPorSel || {};
+  partida.saiuDoJogoPorSel[selId] = [...(partida.saiuDoJogoPorSel[selId] || []), nomeSaindo];
+  partida._forcaMudou = true;
+  return jIn;
 }
 function tickLive() {
   if (livePenaltiPendente) return;
@@ -7050,10 +7120,19 @@ function tickLive() {
         if (ev.time === 'A') { p.vermelhoA = true; (p.vermelhosA = p.vermelhosA || []).push(ev.jogador); }
         else { p.vermelhoB = true; (p.vermelhosB = p.vermelhosB || []).push(ev.jogador); }
         reatribuirEventosFuturosCopa(p, ev.time, ev.jogador); // expulso não participa mais
+        p._forcaMudou = true;
       }
       if (ev.tipo === 'lesao') {
         if (ev.time === 'A') p.lesaoA.push(ev.jogador); else p.lesaoB.push(ev.jogador);
-        reatribuirEventosFuturosCopa(p, ev.time, ev.jogador); // lesionado sai de campo
+        reatribuirEventosFuturosCopa(p, ev.time, ev.jogador); // lesionado (qualquer gravidade) não marca mais
+      }
+      if (ev.tipo === 'lesao_saida') {
+        const jIn = tentarSubstituicaoAutomaticaCopa(p, ev.time, ev.jogador);
+        if (jIn) { ev.jogadorEntrou = jIn.nome; }
+        else {
+          (ev.time === 'A' ? p.foraDefinitivoA : p.foraDefinitivoB).push(ev.jogador);
+          p._forcaMudou = true;
+        }
       }
       if (ev.tipo === 'amarelo') {
         if (ev.time === 'A') p.amarelosA.push(ev.jogador); else p.amarelosB.push(ev.jogador);
@@ -7278,6 +7357,7 @@ function renderSubstituicoes(partida, selId, manterContagem) {
           jOut.titular = false; jIn.titular = true; liveSubCount++;
           if (partida) {
             partida.subsUsadas = partida.subsUsadas || {}; partida.subsUsadas[selId] = liveSubCount;
+            partida._forcaMudou = true;
             // Quem sai não pode voltar pro jogo (regra real) — marca só nesta partida.
             partida.saiuDoJogoPorSel = partida.saiuDoJogoPorSel || {};
             partida.saiuDoJogoPorSel[selId] = [...(partida.saiuDoJogoPorSel[selId] || []), nomeOut];
@@ -7335,6 +7415,9 @@ function continuarSegundaMetade() {
     aguardarIntervaloOnlineCopa();
     return;
   }
+  // Expulsão/lesão que mudou a força do time no 1º tempo, mesmo sem troca de tática — o
+  // recálculo em si é idempotente (regenerarSegundaMetadeCore trava em partida._regen2TFeito).
+  livePartidas.forEach(p => { if (p._forcaMudou) regenerarSegundaMetadeCore(p); });
   document.getElementById('copaLiveBanner').classList.add('hidden');
   liveSubPendente = false;
   liveTimer = setInterval(tickLive, velocidadeLiveMs());
@@ -7474,6 +7557,13 @@ function aplicarTaticasIntervaloEContinuar(taticas) {
     copa.minhasEsquemas[selId] = taticas[selId];
     const partida = livePartidas.find(p => p.a === selId || p.b === selId);
     if (partida) regenerarSegundaMetadeCore(partida);
+  });
+  // Expulsão/lesão que mudou a força do time, mesmo sem troca de tática — mesma ordem canônica
+  // por selId (não a ordem local de livePartidas, que difere por cliente) pra consumir o
+  // copaRng compartilhado na mesma sequência em todo mundo; regenerarSegundaMetadeCore em si é
+  // idempotente (trava em partida._regen2TFeito), então não regenera de novo quem já rodou acima.
+  [...livePartidas].sort((x, y) => (x.a + x.b).localeCompare(y.a + y.b)).forEach(p => {
+    if (p._forcaMudou) regenerarSegundaMetadeCore(p);
   });
   document.getElementById('copaLiveBanner').classList.add('hidden');
   liveSubPendente = false;
