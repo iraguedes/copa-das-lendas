@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '66'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '67'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1345,9 +1345,10 @@
       <button type="button" id="btnAbaCopaBracket">Mata-Mata</button>
       <button type="button" id="btnAbaCopaVivo" style="display:none;background:#22c55e;color:#000;font-weight:900;animation:selGlow .8s ease-in-out infinite alternate;">◉ Ao Vivo</button>
       <button type="button" id="btnAbaCopaArt">Artilheiros</button>
+      <button type="button" class="secondary" id="btnLivroCopaDurante" title="Livro das Copas">📖 Livro das Copas</button>
+      <button type="button" class="secondary" id="btnHallCopaDurante" title="Hall da Fama">🏛 Hall da Fama</button>
       <button type="button" id="btnAbaCopaRegras">Regras</button>
       <button type="button" class="secondary" id="btnMuteSomCopa" title="Ativar/desativar som" style="flex:0 0 auto;padding:7px 11px;">🔊</button>
-      <button type="button" class="secondary" id="btnLivroCopaDurante" title="Livro das Copas" style="flex:0 0 auto;padding:7px 11px;">📖</button>
       <button type="button" class="secondary" id="btnSairCopa">Sair</button>
     </div>
     <div id="painelCopaPainel" class="hidden">
@@ -1753,7 +1754,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v66 – Lesões e Expulsões</div>
+  <div class="rodapezinho">v67 – Curadoria das Seleções</div>
 </div>
 
 <script>
@@ -2023,12 +2024,12 @@ const BANCO_SELECOES = [
     cor1:'#ce2939', cor2:'#ffffff',
     jogadores:[
       {nome:'Gyula Grosics',     pos:'GOL', ovr:88, titular:true},
-      {nome:'Gábor Gellér',      pos:'GOL', ovr:81, titular:false},
+      {nome:'Sándor Gellér',     pos:'GOL', ovr:78, titular:false},
       {nome:'Jenő Buzánszky',    pos:'DEF', ovr:83, titular:true},
       {nome:'Gyula Lóránt',      pos:'DEF', ovr:85, titular:true},
       {nome:'Mihály Lantos',     pos:'DEF', ovr:84, titular:true},
       {nome:'József Bozsik',     pos:'DEF', ovr:88, titular:true,  traits:['armador']},
-      {nome:'Ernő Szűcs',        pos:'DEF', ovr:81, titular:false},
+      {nome:'Ferenc Machos',     pos:'ATA', ovr:74, titular:false},
       {nome:'Nándor Hidegkuti',  pos:'MEI', ovr:90, titular:true,  traits:['lenda','finalizador','armador']},
       {nome:'Péter Palotás',     pos:'MEI', ovr:83, titular:true},
       {nome:'László Budai',      pos:'MEI', ovr:83, titular:true},
@@ -2110,7 +2111,7 @@ const BANCO_SELECOES = [
     cor1:'#009c3b', cor2:'#ffdf00',
     jogadores:[
       {nome:'Waldir Peres',     pos:'GOL', ovr:82, titular:true},
-      {nome:'Emerson Leão',     pos:'GOL', ovr:84, titular:false},
+      {nome:'Paulo Sérgio',     pos:'GOL', ovr:80, titular:false},
       {nome:'Leandro',          pos:'DEF', ovr:85, titular:true},
       {nome:'Luizinho',         pos:'DEF', ovr:83, titular:true},
       {nome:'Oscar',            pos:'DEF', ovr:84, titular:true},
@@ -2152,7 +2153,7 @@ const BANCO_SELECOES = [
       {nome:'Paolo Rossi',         pos:'ATA', ovr:95, titular:true, traits:['lenda','finalizador']},
       {nome:'Francesco Graziani',  pos:'ATA', ovr:83, titular:true},
       {nome:'Alessandro Altobelli',pos:'ATA', ovr:84, titular:true},
-      {nome:'Roberto Pruzzo',      pos:'ATA', ovr:82, titular:false},
+      {nome:'Franco Selvaggi',     pos:'ATA', ovr:78, titular:false},
       {nome:'Beppe Dossena',       pos:'ATA', ovr:81, titular:false},
     
       {nome:'Franco Baresi', pos:'DEF', ovr:84, titular:false},
@@ -2313,7 +2314,7 @@ const BANCO_SELECOES = [
     cor1:'#009c3b', cor2:'#ffdf00',
     jogadores:[
       {nome:'Dida',            pos:'GOL', ovr:87, titular:true},
-      {nome:'Marcos',          pos:'GOL', ovr:84, titular:false},
+      {nome:'Julio Cesar',     pos:'GOL', ovr:82, titular:false},
       {nome:'Cafu',            pos:'DEF', ovr:85, titular:true, traits:['capitao']},
       {nome:'Lúcio',           pos:'DEF', ovr:87, titular:true},
       {nome:'Juan',            pos:'DEF', ovr:83, titular:true},
@@ -2345,7 +2346,7 @@ const BANCO_SELECOES = [
       {nome:'Frank Rost',         pos:'GOL', ovr:81, titular:false},
       {nome:'Thomas Linke',       pos:'DEF', ovr:82, titular:true},
       {nome:'Christoph Metzelder',pos:'DEF', ovr:82, titular:true},
-      {nome:'Christian Wörns',    pos:'DEF', ovr:83, titular:true},
+      {nome:'Carsten Jancker',    pos:'ATA', ovr:79, titular:true},
       {nome:'Torsten Frings',     pos:'DEF', ovr:83, titular:true},
       {nome:'Christian Ziege',    pos:'DEF', ovr:82, titular:false},
       {nome:'Dietmar Hamann',     pos:'MEI', ovr:84, titular:true},
@@ -2356,7 +2357,7 @@ const BANCO_SELECOES = [
       {nome:'Oliver Neuville',    pos:'ATA', ovr:82, titular:true},
       {nome:'Gerald Asamoah',     pos:'ATA', ovr:82, titular:true},
       {nome:'Oliver Bierhoff',    pos:'ATA', ovr:83, titular:false},
-      {nome:'Sebastian Deisler',  pos:'ATA', ovr:82, titular:false},
+      {nome:'Lars Ricken',        pos:'ATA', ovr:80, titular:false},
     
       {nome:'Frank Baumann', pos:'DEF', ovr:81, titular:false},
       {nome:'Marko Rehmer', pos:'DEF', ovr:80, titular:false},
@@ -2376,7 +2377,7 @@ const BANCO_SELECOES = [
       {nome:'Ernie Brandts',      pos:'DEF', ovr:83, titular:true},
       {nome:'Ruud Krol',          pos:'DEF', ovr:87, titular:true, traits:['capitao']},
       {nome:'Willy v/d Kerkhof',  pos:'DEF', ovr:84, titular:true},
-      {nome:'Cor Coster',         pos:'DEF', ovr:80, titular:false},
+      {nome:'Wim Suurbier',       pos:'DEF', ovr:83, titular:false},
       {nome:'Johan Neeskens',     pos:'MEI', ovr:89, titular:true,  traits:['finalizador','desarmador','batedor']},
       {nome:'Arie Haan',          pos:'MEI', ovr:86, titular:true,  traits:['finalizador','batedor']},
       {nome:'René v/d Kerkhof',   pos:'MEI', ovr:84, titular:true},
@@ -2519,10 +2520,10 @@ const BANCO_SELECOES = [
       {nome:'Dino Zoff',          pos:'GOL', ovr:85, titular:false},
       {nome:'Tarcisio Burgnich',  pos:'DEF', ovr:84, titular:true},
       {nome:'Pierluigi Cera',     pos:'DEF', ovr:83, titular:true},
-      {nome:'Mario Rosato',       pos:'DEF', ovr:81, titular:true},
+      {nome:'Roberto Rosato',     pos:'DEF', ovr:81, titular:true},
       {nome:'Giacinto Facchetti', pos:'DEF', ovr:87, titular:true,  traits:['capitao','lenda','armador']},
       {nome:'Fabrizio Poletti',   pos:'DEF', ovr:80, titular:false},
-      {nome:'Oreste Bertini',     pos:'MEI', ovr:82, titular:true},
+      {nome:'Mario Bertini',      pos:'MEI', ovr:82, titular:true},
       {nome:'Sandro Mazzola',     pos:'MEI', ovr:87, titular:true,  traits:['lenda','armador','finalizador']},
       {nome:'Angelo Domenghini',  pos:'MEI', ovr:83, titular:true},
       {nome:'Gianni Rivera',      pos:'MEI', ovr:91, titular:false, traits:['lenda','armador','finalizador']},
@@ -2579,7 +2580,7 @@ const BANCO_SELECOES = [
       {nome:'Luigi Allemandi',     pos:'DEF', ovr:82, titular:true},
       {nome:'Luisito Monti',       pos:'DEF', ovr:87, titular:true},
       {nome:'Luigi Bertolini',     pos:'DEF', ovr:81, titular:true},
-      {nome:'Pietro Rava',         pos:'DEF', ovr:82, titular:false},
+      {nome:'Attilio Demaría',     pos:'ATA', ovr:78, titular:false},
       {nome:'Attilio Ferraris',    pos:'MEI', ovr:82, titular:true},
       {nome:'Giovanni Ferrari',    pos:'MEI', ovr:84, titular:true},
       {nome:'Mario Pizziolo',      pos:'MEI', ovr:80, titular:true},
@@ -2603,7 +2604,7 @@ const BANCO_SELECOES = [
     cor1:'#0038a8', cor2:'#ffffff',
     jogadores:[
       {nome:'Aldo Olivieri',       pos:'GOL', ovr:83, titular:true},
-      {nome:'L. Sentimenti IV',    pos:'GOL', ovr:81, titular:false},
+      {nome:'Guido Masetti',       pos:'GOL', ovr:81, titular:false},
       {nome:'Alfredo Foni',        pos:'DEF', ovr:83, titular:true},
       {nome:'Pietro Rava',         pos:'DEF', ovr:83, titular:true},
       {nome:'Michele Andreolo',    pos:'DEF', ovr:83, titular:true},
@@ -2719,7 +2720,7 @@ const BANCO_SELECOES = [
     cor1:'#ffffff', cor2:'#000000',
     jogadores:[
       {nome:'Toni Turek',        pos:'GOL', ovr:86, titular:true},
-      {nome:'Anton Maislinger',  pos:'GOL', ovr:80, titular:false},
+      {nome:'Heinz Kwiatkowski', pos:'GOL', ovr:78, titular:false},
       {nome:'Josef Posipal',     pos:'DEF', ovr:81, titular:true},
       {nome:'Werner Kohlmeyer',  pos:'DEF', ovr:82, titular:true},
       {nome:'Werner Liebrich',   pos:'DEF', ovr:83, titular:true},
@@ -2777,20 +2778,20 @@ const BANCO_SELECOES = [
     cor1:'#4d9ccd', cor2:'#ffffff',
     jogadores:[
       {nome:'Roque Maspoli',      pos:'GOL', ovr:85, titular:true},
-      {nome:'Carlos Pose',        pos:'GOL', ovr:80, titular:false},
+      {nome:'Julio César Britos', pos:'ATA', ovr:76, titular:false},
       {nome:'Matías González',    pos:'DEF', ovr:82, titular:true},
       {nome:'Eusebio Tejera',     pos:'DEF', ovr:81, titular:true},
       {nome:'Víctor R. Andrade',  pos:'DEF', ovr:83, titular:true},
       {nome:'Obdulio Varela',     pos:'DEF', ovr:90, titular:true, traits:['capitao','desarmador']},
       {nome:'Schubert Gambetta',  pos:'DEF', ovr:81, titular:false},
-      {nome:'Martín Pérez',       pos:'MEI', ovr:81, titular:true},
+      {nome:'Carlos Romero',      pos:'MEI', ovr:78, titular:true},
       {nome:'Oscar Míguez',       pos:'MEI', ovr:83, titular:true},
       {nome:'Julio Pérez',        pos:'MEI', ovr:81, titular:true},
       {nome:'Ernesto Vidal',      pos:'MEI', ovr:80, titular:false},
       {nome:'Juan A. Schiaffino', pos:'ATA', ovr:93, titular:true, traits:['lenda','finalizador']},
       {nome:'Alcides Ghiggia',    pos:'ATA', ovr:88, titular:true},
       {nome:'Rubén Morán',        pos:'ATA', ovr:80, titular:true},
-      {nome:'Aníbal Paz',         pos:'ATA', ovr:80, titular:false},
+      {nome:'Aníbal Paz',         pos:'GOL', ovr:80, titular:false},
       {nome:'Hugo Gómez',         pos:'ATA', ovr:80, titular:false},
     
       {nome:'William Martínez', pos:'DEF', ovr:78, titular:false},
@@ -2814,7 +2815,7 @@ const BANCO_SELECOES = [
       {nome:'Pedro Arispe',       pos:'DEF', ovr:80, titular:false},
       {nome:'Álvaro Gestido',     pos:'MEI', ovr:83, titular:true},
       {nome:'Santos Iriarte',     pos:'MEI', ovr:82, titular:true},
-      {nome:'Santos Umpiérrez',   pos:'MEI', ovr:80, titular:true},
+      {nome:'Santos Urdinarán',   pos:'ATA', ovr:76, titular:true},
       {nome:'Aníbal Cioccari',    pos:'MEI', ovr:80, titular:false},
       {nome:'Héctor Scarone',     pos:'ATA', ovr:86, titular:true, traits:['lenda','finalizador']},
       {nome:'Pedro Cea',          pos:'ATA', ovr:85, titular:true},
@@ -2840,7 +2841,7 @@ const BANCO_SELECOES = [
     cor1:'#006600', cor2:'#ff0000',
     jogadores:[
       {nome:'José Pereira',       pos:'GOL', ovr:83, titular:true},
-      {nome:'José Henrique',      pos:'GOL', ovr:80, titular:false},
+      {nome:'Joaquim Carvalho',   pos:'GOL', ovr:79, titular:false},
       {nome:'João Morais',        pos:'DEF', ovr:83, titular:true},
       {nome:'Germano',            pos:'DEF', ovr:83, titular:true},
       {nome:'Vicente',            pos:'DEF', ovr:82, titular:true},
@@ -3043,20 +3044,20 @@ const BANCO_SELECOES = [
     cor1:'#ff0000', cor2:'#ffffff',
     jogadores:[
       {nome:'Dražen Ladić',       pos:'GOL', ovr:82, titular:true},
-      {nome:'Stipe Pletikosa',    pos:'GOL', ovr:81, titular:false},
+      {nome:'Marijan Mrmić',      pos:'GOL', ovr:76, titular:false},
       {nome:'Mario Stanić',       pos:'DEF', ovr:82, titular:true},
       {nome:'Slaven Bilić',       pos:'DEF', ovr:84, titular:true},
       {nome:'Igor Tudor',         pos:'DEF', ovr:82, titular:true},
       {nome:'Robert Jarni',       pos:'DEF', ovr:83, titular:true},
-      {nome:'Nikola Jerkan',      pos:'DEF', ovr:81, titular:false},
+      {nome:'Igor Štimac',        pos:'DEF', ovr:82, titular:false},
       {nome:'Zvonimir Boban',     pos:'MEI', ovr:90, titular:true,  traits:['capitao','armador','desarmador']},
       {nome:'Robert Prosinečki',  pos:'MEI', ovr:85, titular:true,  traits:['armador','batedor']},
       {nome:'Zvonimir Soldo',     pos:'MEI', ovr:83, titular:true},
       {nome:'Aljosa Asanovic',    pos:'MEI', ovr:82, titular:false},
       {nome:'Davor Šuker',        pos:'ATA', ovr:92, titular:true,  traits:['lenda','finalizador','driblador']},
       {nome:'Goran Vlaović',      pos:'ATA', ovr:82, titular:true},
-      {nome:'Alen Bokšić',        pos:'ATA', ovr:83, titular:true},
-      {nome:'Eduardo Vugrinec',   pos:'ATA', ovr:80, titular:false},
+      {nome:'Ardian Kozniku',     pos:'ATA', ovr:78, titular:true},
+      {nome:'Petar Krpan',        pos:'ATA', ovr:76, titular:false},
       {nome:'Ivan Cvitanović',    pos:'ATA', ovr:80, titular:false},
     
       {nome:'Dario Šimić', pos:'DEF', ovr:80, titular:false},
@@ -3247,15 +3248,15 @@ const BANCO_SELECOES = [
     jogadores:[
       {nome:'Lev Yashin',         pos:'GOL', ovr:95, titular:true, traits:['lenda','pegadorPenalti']},
       {nome:'A. Kavazashvili',    pos:'GOL', ovr:82, titular:false},
-      {nome:'Yuri Ponomaryov',    pos:'DEF', ovr:81, titular:true},
+      {nome:'Vladimir Ponomaryov', pos:'DEF', ovr:81, titular:true},
       {nome:'Albert Shesternev',  pos:'DEF', ovr:84, titular:true},
       {nome:'Murtaz Khurtsilava', pos:'DEF', ovr:83, titular:true},
-      {nome:'Igor Mudrik',        pos:'DEF', ovr:81, titular:true},
-      {nome:'Viktor Afonin',      pos:'DEF', ovr:81, titular:false},
+      {nome:'Leonid Ostrovski',   pos:'DEF', ovr:82, titular:true},
+      {nome:'Valentin Afonin',    pos:'DEF', ovr:80, titular:false},
       {nome:'Valeriy Voronin',    pos:'MEI', ovr:86, titular:true, traits:['capitao']},
       {nome:'Slava Metreveli',    pos:'MEI', ovr:84, titular:true},
       {nome:'Viktor Serebryanikov',pos:'MEI',ovr:82, titular:true},
-      {nome:'Yuri Sabo',          pos:'MEI', ovr:81, titular:false},
+      {nome:'Yozhef Sabo',        pos:'MEI', ovr:85, titular:false},
       {nome:'A. Banishevsky',     pos:'ATA', ovr:83, titular:true},
       {nome:'Eduard Malofeyev',   pos:'ATA', ovr:82, titular:true},
       {nome:'Viktor Porkuyan',    pos:'ATA', ovr:82, titular:true},
@@ -3512,20 +3513,20 @@ const BANCO_SELECOES = [
     cor1:'#006847', cor2:'#CE1126',
     jogadores:[
       {nome:'Pablo Larios',      pos:'GOL', ovr:83, titular:true},
-      {nome:'Adrián Martínez',   pos:'GOL', ovr:80, titular:false},
-      {nome:'E. de la Torre',    pos:'DEF', ovr:81, titular:true},
+      {nome:'Ignacio Rodríguez', pos:'GOL', ovr:78, titular:false},
+      {nome:'Carlos de los Cobos', pos:'DEF', ovr:78, titular:true},
       {nome:'Fernando Quirarte', pos:'DEF', ovr:84, titular:true, traits:['capitao']},
       {nome:'Félix Cruz',        pos:'DEF', ovr:82, titular:true},
       {nome:'Carlos Muñoz',      pos:'DEF', ovr:81, titular:true},
-      {nome:'Agustín Manzo',     pos:'DEF', ovr:80, titular:false},
+      {nome:'Armando Manzo',     pos:'DEF', ovr:79, titular:false},
       {nome:'Manuel Negrete',    pos:'MEI', ovr:83, titular:true, traits:['finalizador']},
       {nome:'Tomás Boy',         pos:'MEI', ovr:82, titular:true},
       {nome:'Raúl Servín',       pos:'MEI', ovr:82, titular:true},
-      {nome:'Héctor Sanabria',   pos:'MEI', ovr:81, titular:false},
+      {nome:'Javier Hernández Gutiérrez', pos:'MEI', ovr:74, titular:false},
       {nome:'Hugo Sánchez',      pos:'ATA', ovr:86, titular:true, traits:['lenda']},
       {nome:'Luis Flores',       pos:'ATA', ovr:80, titular:true},
       {nome:'Cristóbal Ortega',  pos:'ATA', ovr:81, titular:true},
-      {nome:'Adrián Camacho',    pos:'ATA', ovr:80, titular:false},
+      {nome:'Carlos Hermosillo', pos:'ATA', ovr:79, titular:false},
       {nome:'Francisco Cruz',    pos:'ATA', ovr:80, titular:false},
     
       {nome:'Mario Trejo', pos:'DEF', ovr:78, titular:false},
@@ -3639,7 +3640,7 @@ const BANCO_SELECOES = [
       {nome:'Miguel Ángel Nadal',pos:'MEI', ovr:83, titular:true},
       {nome:'J.A. Goikoetxea',   pos:'MEI', ovr:83, titular:false},
       {nome:'Julio Salinas',     pos:'ATA', ovr:83, titular:true, traits:['finalizador']},
-      {nome:'Kiko Narváez',      pos:'ATA', ovr:82, titular:true},
+      {nome:'Juanele',           pos:'ATA', ovr:76, titular:true},
       {nome:'Txiki Begiristain', pos:'ATA', ovr:82, titular:true},
       {nome:'Martín Vázquez',    pos:'ATA', ovr:82, titular:false},
       {nome:'Jon Andoni Larrañaga',pos:'ATA',ovr:80,titular:false},
@@ -4190,7 +4191,7 @@ const BANCO_SELECOES = [
     jogadores:[
       {nome:'Unai Simón',        pos:'GOL', ovr:84, titular:true},
       {nome:'David Raya',        pos:'GOL', ovr:85, titular:false},
-      {nome:'Dani Carvajal',     pos:'DEF', ovr:84, titular:true},
+      {nome:'Alejandro Grimaldo', pos:'DEF', ovr:83, titular:true},
       {nome:'Pau Cubarsí',       pos:'DEF', ovr:86, titular:true},
       {nome:'Aymeric Laporte',   pos:'DEF', ovr:83, titular:true},
       {nome:'Marc Cucurella',    pos:'DEF', ovr:83, titular:true},
@@ -4201,7 +4202,7 @@ const BANCO_SELECOES = [
       {nome:'Martín Zubimendi',  pos:'MEI', ovr:84, titular:false},
       {nome:'Lamine Yamal',      pos:'ATA', ovr:91, titular:true, traits:['lenda']},
       {nome:'Nico Williams',     pos:'ATA', ovr:88, titular:true, traits:['finalizador']},
-      {nome:'Álvaro Morata',     pos:'ATA', ovr:83, titular:true, traits:['capitao']},
+      {nome:'Ferran Torres',     pos:'ATA', ovr:82, titular:true},
       {nome:'Dani Olmo',         pos:'ATA', ovr:85, titular:false},
       {nome:'Mikel Oyarzabal',   pos:'ATA', ovr:84, titular:false},
     
@@ -4314,7 +4315,7 @@ const BANCO_SELECOES = [
       {nome:'Bruno Fernandes',   pos:'MEI', ovr:87, titular:true},
       {nome:'Vitinha',           pos:'MEI', ovr:87, titular:true},
       {nome:'Bernardo Silva',    pos:'MEI', ovr:88, titular:true},
-      {nome:'João Palhinha',     pos:'MEI', ovr:85, titular:false},
+      {nome:'Samu Costa',        pos:'MEI', ovr:83, titular:false},
       {nome:'Rafael Leão',       pos:'ATA', ovr:90, titular:true, traits:['lenda','finalizador']},
       {nome:'Gonçalo Ramos',     pos:'ATA', ovr:86, titular:true},
       {nome:'Pedro Neto',        pos:'ATA', ovr:85, titular:false},
@@ -8321,21 +8322,26 @@ function renderCopaPainel(selId) {
       t.includes('batedor')       ? '<span class="trait-cap" style="background:#854d0e;padding:0 3px;">FAL</span>' : '',
       t.includes('armador')       ? '<span class="trait-fin" style="background:#0369a1;padding:0 3px;">ARM</span>' : '',
     ].filter(Boolean).join('');
-    // Status: cansaco, lesão, pendurado
+    // Status: cansaco, suspensão, lesão, pendurado
     const can = Math.min(100, j.cansaco ?? 100);
     const canColor = can >= 70 ? '#22c55e' : can >= 40 ? '#eab308' : '#ef4444';
+    const indisponivel = jogadorIndisponivelCopa(j);
+    const motivoIndisponivel = j.suspenso > 0
+      ? 'Suspenso — cartão vermelho, não pode jogar a próxima partida'
+      : j.lesionado ? 'Lesionado — não pode jogar a próxima partida' : '';
     const statusIcons = [
-      j.lesionado ? '<span title="Lesionado" style="color:#ef4444;font-size:12px;">🤕</span>' : '',
-      j.amarelos > 0 ? '<span title="Pendurado" style="font-size:11px;">🟨</span>' : '',
-    ].filter(Boolean).join('');
+      j.suspenso > 0 ? '<span title="Suspenso (cartão vermelho)" style="color:#fca5a5;font-size:10px;font-weight:900;background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.4);border-radius:4px;padding:1px 5px;">🟥 SUSPENSO</span>' : '',
+      j.lesionado ? '<span title="Lesionado" style="color:#fdba74;font-size:10px;font-weight:900;background:rgba(249,115,22,.16);border:1px solid rgba(249,115,22,.4);border-radius:4px;padding:1px 5px;">🤕 LESIONADO</span>' : '',
+      !indisponivel && j.amarelos > 0 ? '<span title="Pendurado" style="font-size:11px;">🟨</span>' : '',
+    ].filter(Boolean).join(' ');
     const canEl = `<span title="Vigor físico: ${can}/100 — cai a cada partida e recupera no descanso" style="display:inline-flex;align-items:center;gap:2px;"><span style="width:5px;height:5px;border-radius:50%;background:${canColor};flex-shrink:0;display:inline-block;"></span><span style="font-size:8px;font-family:monospace;color:${canColor};font-weight:700;">${can}</span></span>`;
     const moralEl = `<span title="Moral: ${Math.round(j.moral ?? 70)}/100 — sobe com vitórias e craque da partida, cai com derrotas e ficar engavetado no banco" style="font-size:10px;">${emojiMoralCopa(j.moral)}</span>`;
     // Toggle: círculo maior e mais visível
     const tglBg = isTit ? canColor : 'transparent';
     const tglBdr = `2px solid rgba(255,255,255,.45)`;
     const tglTxt = isTit ? '#fff' : 'transparent';
-    const disabledOpa = j.lesionado ? 'opacity:.4;' : '';
-    return `<tr data-jnome="${j.nome.replace(/"/g,'&quot;')}" style="cursor:pointer;${disabledOpa}">
+    const disabledOpa = indisponivel ? 'opacity:.4;' : '';
+    return `<tr data-jnome="${j.nome.replace(/"/g,'&quot;')}" title="${motivoIndisponivel}" style="cursor:${indisponivel?'not-allowed':'pointer'};${disabledOpa}">
       <td style="width:24px;text-align:center;">
         <span class="esc-toggle" title="${isTit?'Remover da escalação':'Colocar como titular'}"
           style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${tglBg};border:${tglBdr};box-sizing:border-box;"></span>
@@ -12900,6 +12906,7 @@ function dispararRodadaOnline(btn){
 document.getElementById('btnMuteSomCopa').textContent = somCopaAtivado ? '🔊' : '🔇';
 document.getElementById('btnMuteSomCopa').addEventListener('click', alternarSomCopa);
 document.getElementById('btnLivroCopaDurante').addEventListener('click', mostrarLivroDasCopasOverlay);
+document.getElementById('btnHallCopaDurante').addEventListener('click', mostrarHallDaFamaOverlay);
 // Clicar no nome de uma seleção no grid ao vivo abre o plantel dela (mesmo padrão já usado nos
 // Grupos e no Chaveamento). Delegação de evento no container (registrada uma única vez aqui, não
 // dentro de iniciarLiveGrid) porque o grid é reconstruído várias vezes numa mesma partida (início,
