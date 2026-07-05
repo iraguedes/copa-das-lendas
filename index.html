@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '67'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '68'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -230,7 +230,6 @@
     max-height:220px;overflow-y:auto;margin-top:10px;
   }
   .narracao p{margin:0 0 6px;}
-  .lider{color:var(--ouro);font-weight:bold;}
   .bloco-posicao{margin-bottom:16px;}
   .bloco-posicao h3{
     font-family:'Trebuchet MS',sans-serif;font-size:12px;text-transform:uppercase;
@@ -261,7 +260,6 @@
   }
   .notificacoes-pendentes p{margin:4px 0;}
   .caixa-valor{font-family:'Trebuchet MS',sans-serif;font-weight:700;color:var(--verde-ok);}
-  .topo-turno{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;}
   .abas-mercado{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
   .abas-mercado button{background:var(--cinza);}
   .abas-mercado button.ativa{background:var(--terracota);}
@@ -316,7 +314,6 @@
     margin:0 2px;
   }
   .escudo-time svg{display:block;}
-  .menu-voltar{margin-top:14px;}
   .matematica-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;}
   .matematica-item{border:1px solid #d6cdb4;border-radius:4px;padding:12px;background:rgba(255,255,255,.22);}
   .matematica-item strong{display:block;font-family:'Trebuchet MS',sans-serif;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--terracota);margin-bottom:5px;}
@@ -561,14 +558,6 @@
   .rj-eq-dir{justify-content:flex-end;}
   .rj-sc{font-weight:900;color:var(--areia);text-align:center;font-size:11px;padding:0 4px;white-space:nowrap;}
   .bracket-wrap{overflow-x:auto;margin-top:12px;padding-bottom:8px;}
-  .bracket-rounds{display:flex;gap:14px;align-items:flex-start;min-width:max-content;}
-  .bracket-col{min-width:178px;}
-  .bracket-col-h{font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:1.5px;color:var(--cinza);margin-bottom:6px;}
-  .bracket-card{background:#0b2e1c;border:1px solid #1a4a28;border-radius:6px;padding:8px 10px;margin-bottom:5px;}
-  .bracket-row{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding:2px 0;}
-  .bracket-row.win{font-weight:800;color:#22c55e;}
-  .bracket-row .bg{min-width:22px;text-align:right;font-variant-numeric:tabular-nums;}
-  .minha-badge{display:inline-block;background:#22c55e;color:#000;font-size:8px;font-weight:900;text-transform:uppercase;padding:1px 4px;border-radius:2px;margin-left:3px;vertical-align:middle;}
   .copa-fase-bar{display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;gap:8px;flex-wrap:wrap;}
   .copa-fase-bar h3{margin:0;font-size:15px;color:var(--ouro);font-family:'Trebuchet MS',sans-serif;font-weight:800;letter-spacing:.5px;}
   /* Botões de ação da copa (Simular/Montar) — verde premium do tema, nada de laranja */
@@ -584,7 +573,6 @@
   }
   .campeao-box>*{position:relative;z-index:1;}
   .campeao-trofeu{font-size:66px;line-height:1;margin-bottom:6px;filter:drop-shadow(0 0 32px rgba(245,216,0,.6));animation:trofeuFlut 4.2s ease-in-out infinite;transform-origin:50% 90%;}
-  .campeao-flag{font-size:40px;line-height:1;}
   .campeao-nome{font-size:23px;font-weight:900;margin:6px 0 3px;letter-spacing:1px;color:#f6d43a;text-shadow:0 1px 0 #a9781a,0 0 18px rgba(245,216,0,.3);}
   .campeao-lenda{font-size:13px;color:var(--ouro);}
   .campeao-eyebrow{font-family:'Georgia',serif;font-style:italic;font-size:11.5px;color:rgba(232,245,233,.55);letter-spacing:.3px;margin-bottom:8px;}
@@ -622,7 +610,6 @@
   .plantel-esq{flex:1;min-width:0;}
   .plantel-dir{width:235px;flex-shrink:0;}
   .plantel-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  .plantel-flag{font-size:28px;line-height:1;}
   .plantel-nome{font-family:'Trebuchet MS',sans-serif;font-weight:900;color:var(--areia);font-size:17px;letter-spacing:1px;}
   .plantel-sub{font-size:11px;color:var(--cinza);margin-top:2px;}
   .plantel-ovr{margin-left:auto;background:#071f11;border:2px solid #eab308;border-radius:8px;padding:4px 14px;text-align:center;}
@@ -684,7 +671,6 @@
   .bkt-placeholder{background:#071f11;border:1px dashed #1e3a28;border-radius:6px;padding:16px 10px;text-align:center;color:var(--cinza);font-size:10px;}
   /* Group nameplates */
   .sel-nameplate{display:inline-flex;align-items:center;gap:3px;border-radius:4px;padding:1px 6px 1px 2px;overflow:hidden;vertical-align:middle;max-width:100%;}
-  .sel-code-box{background:rgba(0,0,0,.32);border-radius:2px;padding:0 3px;font-size:8px;font-family:monospace;font-weight:900;color:#fff;flex-shrink:0;letter-spacing:.3px;}
   .sel-name-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:9.5px;font-weight:700;}
   .pos-badge{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:9px;font-weight:900;line-height:1;flex-shrink:0;}
   /* Live board */
@@ -705,13 +691,20 @@
   .live-banner.fim{background:#22c55e;color:#0a2415;}
   /* Copa nav elegante */
   #copaJogo{color:var(--areia);}
-  #copaJogo>.abas-mercado, #copaPlantelMenu{background:linear-gradient(180deg,#0c2013 0%,#081710 100%);border-radius:14px;border:1px solid rgba(217,164,74,.16);padding:6px 8px;gap:4px;margin-bottom:16px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);display:flex;}
+  #copaJogo>.abas-mercado, #copaPlantelMenu{background:linear-gradient(180deg,#0c2013 0%,#081710 100%);border-radius:14px;border:1px solid rgba(217,164,74,.16);padding:6px 8px;gap:4px;margin-bottom:16px;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04);display:flex;flex-wrap:wrap;}
   #copaJogo>.abas-mercado button, #copaPlantelMenu button{background:transparent;color:rgba(232,245,233,.45);border:none;border-radius:9px;font-size:10.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:8px 16px;transition:all .15s ease;}
   #copaJogo>.abas-mercado button:hover, #copaPlantelMenu button:hover{color:rgba(232,245,233,.9);background:rgba(255,255,255,.06);}
   #copaJogo>.abas-mercado button.ativa{color:#0a1a10;background:linear-gradient(135deg,#f0c040 0%,#d9a44a 100%);box-shadow:0 2px 10px rgba(217,164,74,.35);}
   #copaJogo>.abas-mercado #btnSairCopa{color:rgba(232,245,233,.28);margin-left:auto;font-size:9.5px;padding:7px 13px;border:1px solid rgba(255,255,255,.08);border-radius:8px;}
   #copaJogo>.abas-mercado #btnSairCopa:hover{color:#fca5a5;background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);}
   #copaJogo>.abas-mercado #btnAbaCopaVivo.ativa{color:#04150a !important;background:linear-gradient(135deg,#4ade80,#22c55e);box-shadow:0 2px 10px rgba(34,197,94,.4);}
+  /* Em telas pequenas a barra chega a ter 7-9 botões (Livro/Hall promovidos na v67 já vêm com
+     texto completo) — o padding generoso de #copaJogo>.abas-mercado button (acima) tem mais
+     especificidade que a regra mobile genérica .abas-mercado button do @media antigo, então
+     precisa de um override tão específico quanto, colocado depois no arquivo pra vencer o empate. */
+  @media(max-width:640px){
+    #copaJogo>.abas-mercado button, #copaPlantelMenu button{padding:6px 9px;font-size:9px;letter-spacing:.6px;}
+  }
 
   /* ===== Telas centrais (setup / online) — tema escuro premium da Copa ===== */
   .card.tela-central{background:linear-gradient(168deg,#0e2818 0%,#081a0f 100%);border:1px solid rgba(217,164,74,.22);box-shadow:0 18px 50px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04);color:var(--areia);}
@@ -767,7 +760,6 @@
   .sub-player.selecionado{border-color:#22c55e;background:rgba(34,197,94,.16);box-shadow:0 0 10px rgba(34,197,94,.2);}
   .sub-player .sp{color:var(--cinza);font-size:9px;flex-shrink:0;}
   .sub-player .sovr{color:#eab308;font-family:monospace;font-size:11px;font-weight:700;margin-left:auto;flex-shrink:0;}
-  .sub-count{font-size:11px;color:var(--cinza);margin-bottom:8px;}
 
   /* ===== Mobile — Copa das Lendas ===== */
   @media(max-width:640px){
@@ -1754,7 +1746,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v67 – Curadoria das Seleções</div>
+  <div class="rodapezinho">v68 – Auditoria de Qualidade</div>
 </div>
 
 <script>
@@ -5213,20 +5205,6 @@ function atualizarSeloZebraConfirmado(p, ladoVencedor) {
   if (zi) { linha.innerHTML = zi.html; linha.style.cssText = zi.style; }
   else { linha.innerHTML = ''; linha.style.cssText = 'display:none;'; }
 }
-function simularJogoCopa(selA, selB, rng) {
-  let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
-  let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
-  const golsA = poisson(lambdaGolsCopa(mA.atq, mB.def), rng);
-  const golsB = poisson(lambdaGolsCopa(mB.atq, mA.def), rng);
-  return { golsA, golsB };
-}
-function simularProrrogacaoCopa(selA, selB, rng) {
-  let mA = forcaComEsquema(forcaAtaqueCopa(selA), forcaDefesaCopa(selA), selA.id);
-  let mB = forcaComEsquema(forcaAtaqueCopa(selB), forcaDefesaCopa(selB), selB.id);
-  const golsA = poisson(lambdaGolsCopa(mA.atq, mB.def) / 3, rng);
-  const golsB = poisson(lambdaGolsCopa(mB.atq, mA.def) / 3, rng);
-  return { golsA, golsB };
-}
 function simularPenaltisCopa(rng, selA, selB) {
   // A bate contra o goleiro de B e vice-versa — goleiro lendário (pegadorPenalti) reduz a
   // conversão de quem bate contra ele (mesma regra do pênalti in-game, ver chanceConversaoPenaltiCopa).
@@ -5259,19 +5237,6 @@ function simularPenaltisCopa(rng, selA, selB) {
   }
   const maoDeAlface = gA < gB ? ultimaFalhaA : gA > gB ? ultimaFalhaB : null;
   return { golsA: gA, golsB: gB, maoDeAlface };
-}
-function simularEliminatorioCopa(selA, selB, rng) {
-  const norm = simularJogoCopa(selA, selB, rng);
-  let golsA = norm.golsA, golsB = norm.golsB, pens = null;
-  if (golsA === golsB) {
-    const et = simularProrrogacaoCopa(selA, selB, rng);
-    golsA += et.golsA; golsB += et.golsB;
-    if (golsA === golsB) pens = simularPenaltisCopa(rng, selA, selB);
-  }
-  const vencedorId = pens
-    ? (pens.golsA > pens.golsB ? selA.id : selB.id)
-    : (golsA > golsB ? selA.id : selB.id);
-  return { golsA, golsB, pens, vencedorId };
 }
 
 // Lendas decisivas: crescem na hora do mata-mata (só pesam mais em jogos eliminatórios —
@@ -5592,6 +5557,9 @@ function gerarPartidaBracketLive(jogo, rodadaKey, jogoIdx) {
         jaAmarelo.add(p.nome);
         eventos.push({ tipo:'amarelo', time, minuto:min, jogador:p.nome });
         if (copaRng() < 0.18 * discMult) eventos.push({ tipo:'vermelho', time, minuto:Math.min(min+Math.floor(copaRng()*35)+10,90), jogador:p.nome, motivo:'duplo_amarelo' });
+      } else {
+        // Mesmo jogador sorteado de novo pro amarelo = segundo cartão = vermelho na hora (igual grupo).
+        eventos.push({ tipo:'vermelho', time, minuto:Math.min(min+5,90), jogador:p.nome, motivo:'duplo_amarelo' });
       }
     }
     if (copaRng() < 0.05 * discMult) eventos.push({ tipo:'vermelho', time, minuto:Math.floor(copaRng()*80)+10, jogador:rndP().nome, motivo:'direto' });
@@ -5817,13 +5785,17 @@ function finalizarRodadaBracketLive() {
       if (copa.onlineCopa) salvarCopaOnline();
     };
     if (goleadasBkt.length) {
-      const gv = goleadasBkt[0];
-      const perdId = gv.golsA < gv.golsB ? gv.a : gv.b;
-      const perdSel = copa.selMap[perdId];
-      const tec = copa.tecnicos?.[perdId];
-      const nomeTec = tec ? tec : `o técnico de ${perdSel?.pais||'?'}`;
+      // Multi-seleção/sofá: reconhece todos os jogadores humanos goleados nesta rodada, não só
+      // o primeiro por ordem interna de livePartidas.
+      const nomesBkt = goleadasBkt.map(gv => {
+        const perdId = gv.golsA < gv.golsB ? gv.a : gv.b;
+        const perdSel = copa.selMap[perdId];
+        const tec = copa.tecnicos?.[perdId];
+        return tec ? tec : `o técnico de ${perdSel?.pais||'?'}`;
+      });
+      const nomeTec = nomesBkt.length === 1 ? nomesBkt[0] : nomesBkt.slice(0,-1).join(', ') + ' e ' + nomesBkt[nomesBkt.length-1];
       const banner = document.getElementById('copaLiveBanner');
-      banner.textContent = `😰 CHICOTADAS PSICOLÓGICAS! ${nomeTec} vai precisar levantar a moral após este vexame!`;
+      banner.textContent = `😰 CHICOTADAS PSICOLÓGICAS! ${nomeTec} ${nomesBkt.length===1?'vai':'vão'} precisar levantar a moral após este vexame!`;
       banner.style.cssText = 'background:#7f1d1d;color:#fca5a5;';
       banner.className = 'live-banner'; banner.classList.remove('hidden');
       setTimeout(() => { banner.style.cssText = ''; _fazerAvanco(); }, 3500);
@@ -6078,6 +6050,51 @@ function regenerarSegundaMetadeCore(partida) {
       ...((lado === 'A' ? partida.vermelhosA : partida.vermelhosB) || []),
       ...((lado === 'A' ? partida.lesaoA : partida.lesaoB) || []),
     ];
+    fora.forEach(nome => reatribuirEventosFuturosCopa(partida, lado, nome));
+  });
+}
+
+// Mesma ideia de regenerarSegundaMetadeCore, mas pra prorrogação: os gols de ET (91-120) são
+// pré-sorteados na criação da partida com o time completo — sem isso, jogar a prorrogação
+// desfalcado (expulsão/lesão sem substituto) não reduzia a expectativa de gols daquele time.
+function regenerarProrrogacaoCore(partida) {
+  if (partida._regenETFeito) return;
+  partida._regenETFeito = true;
+  const foraA = jogadoresForaDaPartida(partida, 'A');
+  const foraB = jogadoresForaDaPartida(partida, 'B');
+  if (!foraA.size && !foraB.size) return; // sem desfalque, os gols de ET já sorteados continuam válidos
+  partida.eventos = partida.eventos.filter(e => e.minuto <= 90 || (e.tipo && e.tipo !== 'gol'));
+  const selA = copa.selMap[partida.a];
+  const selB = copa.selMap[partida.b];
+  let mA = forcaComEsquema(forcaAtaqueCopa(selA, foraA), forcaDefesaCopa(selA, foraA), selA.id);
+  let mB = forcaComEsquema(forcaAtaqueCopa(selB, foraB), forcaDefesaCopa(selB, foraB), selB.id);
+  ({ mA, mB } = aplicarBoostFinal(mA, mB, selA.id, selB.id, partida.rodadaKey, partida.jogoIdx));
+  const etA2 = poisson(lambdaGolsCopa(mA.atq, mB.def) * 0.33, copaRng);
+  const etB2 = poisson(lambdaGolsCopa(mB.atq, mA.def) * 0.33, copaRng);
+  const dEtA2 = distribuirGolsCopa(etA2, selA, copaRng, true);
+  const dEtB2 = distribuirGolsCopa(etB2, selB, copaRng, true);
+  const addGols = (dist, sel, time) => {
+    Object.entries(dist).forEach(([jog, qtd]) => {
+      for (let i = 0; i < qtd; i++) {
+        const min = Math.floor(copaRng() * 29) + 91;
+        let narrativa = null;
+        if (LENDAS_DECISIVAS.has(jog) && NARRATIVAS_DECISIVO[jog] && copaRng() < 0.5) {
+          const nd = NARRATIVAS_DECISIVO[jog];
+          narrativa = nd[Math.floor(copaRng() * nd.length)];
+        } else {
+          const ns = NARRATIVAS_LENDA[jog]; if (ns) narrativa = ns[Math.floor(copaRng() * ns.length)];
+        }
+        partida.eventos.push({ tipo:'gol', time, minuto:min, jogador:jog, narrativa, etGol:true });
+      }
+    });
+  };
+  addGols(dEtA2, selA, 'A');
+  addGols(dEtB2, selB, 'B');
+  partida.eventos.sort((a, b) => a.minuto - b.minuto);
+  partida.eventoIdx = partida.eventos.findIndex(e => e.minuto > 90);
+  if (partida.eventoIdx < 0) partida.eventoIdx = partida.eventos.length;
+  ['A', 'B'].forEach(lado => {
+    const fora = [...jogadoresForaDaPartida(partida, lado)];
     fora.forEach(nome => reatribuirEventosFuturosCopa(partida, lado, nome));
   });
 }
@@ -6609,7 +6626,6 @@ let liveIntervaloFeito = false; // intervalo por flag (não ===45): um pênalti 
 let livePenaltiPendente = false, livePenaltiPartida = null, livePenaltiEv = null;
 let liveSubQueue = [];  // [{partida, selId}] fila de substituições pendentes no intervalo
 let copaOnlineIntervaloUnsub = null; // listener temporário: espera todos confirmarem o intervalo online
-let copaConfigQueue = [];   // [selId] fila de times a configurar antes de cada jornada/rodada
 let copaConfigCallback = null; // chamado depois que todos configuraram
 let copaModoPlantel = 'setup'; // 'setup' | 'jornada' — contexto do btnConfirmarPlantel
 const MS_MIN = 222; // ~20s por jornada (90 ticks)
@@ -7053,10 +7069,18 @@ function tentarSubstituicaoAutomaticaCopa(partida, lado, nomeSaindo) {
   if (usadas >= 4) return null;
   const jOut = sel.jogadores.find(j => j.nome === nomeSaindo);
   if (!jOut || !jOut.titular) return null;
+  // Expulso não pode ser "substituído" (regra real de futebol) — se o mesmo jogador já está em
+  // vermelhosA/B (sorteado pro cartão antes ou depois da lesão, de forma independente), a saída
+  // dele já está coberta pela expulsão; não tenta repor.
+  const jaExpulso = ((lado === 'A' ? partida.vermelhosA : partida.vermelhosB) || []).includes(nomeSaindo);
+  if (jaExpulso) return null;
   const posAlvo = posCampoCopa(jOut);
   const foraDeCampo = jogadoresForaDaPartida(partida, lado);
   foraDeCampo.add(nomeSaindo);
-  const banco = sel.jogadores.filter(j => !j.titular && !jogadorIndisponivelCopa(j) && !foraDeCampo.has(j.nome));
+  // Quem já saiu desta partida (troca manual ou automática anterior) não pode voltar — mesma
+  // regra que a tela manual de substituições já aplica via jaSaiuDoJogo.
+  const jaSaiu = new Set((partida.saiuDoJogoPorSel && partida.saiuDoJogoPorSel[selId]) || []);
+  const banco = sel.jogadores.filter(j => !j.titular && !jogadorIndisponivelCopa(j) && !foraDeCampo.has(j.nome) && !jaSaiu.has(j.nome));
   if (!banco.length) return null;
   const mesmaPos = banco.filter(j => posCampoCopa(j) === posAlvo);
   const jIn = (mesmaPos.length ? mesmaPos : banco).sort((a, b) => b.ovr - a.ovr)[0];
@@ -7202,6 +7226,9 @@ function tickLive() {
           renderSubstituicoes(next.partida, next.selId);
           return;
         }
+        // Sem ninguém pra trocar antes da ET começar: ainda assim recalcula a força de quem
+        // já está desfalcado do tempo normal, senão a prorrogação roda com o time completo.
+        livePartidas.forEach(p => { if (p.emProrrogacao) regenerarProrrogacaoCore(p); });
         // Recalcula a velocidade: se nenhuma partida em prorrogação tem time humano, acelera.
         // (liveTimer já foi zerado acima — sempre recria aqui, sem substituição pendente.)
         liveTimer = setInterval(tickLive, velocidadeLiveMs());
@@ -7298,7 +7325,10 @@ function renderSubstituicoes(partida, selId, manterContagem) {
   // Alertas do intervalo (expulsão não pode ser substituída; lesão deve ser)
   const _ocorr = [];
   expulsos.forEach(n => _ocorr.push(`<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:6px;padding:6px 9px;font-size:11px;color:#fca5a5;">🟥 <b>${n}</b> foi expulso — o time joga com ${11-expulsos.length} e ele <b>não pode ser substituído</b>.</div>`));
-  lesionadosJogo.forEach(n => _ocorr.push(`<div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.4);border-radius:6px;padding:6px 9px;font-size:11px;color:#fdba74;">🤕 <b>${n}</b> se lesionou no 1º tempo — recomendado substituir.</div>`));
+  // Só avisa pra quem ainda está em campo (titular:true) — lesão moderada/grave que já saiu
+  // sozinha (substituição automática da v66) não precisa de aviso nem aparece mais na lista
+  // pra trocar; leve continua titular e o aviso segue valendo como recomendação opcional.
+  lesionadosJogo.filter(n => sel.jogadores.find(j => j.nome === n)?.titular).forEach(n => _ocorr.push(`<div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.4);border-radius:6px;padding:6px 9px;font-size:11px;color:#fdba74;">🤕 <b>${n}</b> se lesionou no 1º tempo — recomendado substituir.</div>`));
   const alertasHTML = _ocorr.length ? `<div style="display:flex;flex-direction:column;gap:4px;margin:0 0 9px;">${_ocorr.join('')}</div>` : '';
   const esqAtual = copa.minhasEsquemas?.[selId] || '4-4-2';
   const esqRows = ESQUEMAS_COPA.map(e2 => {
@@ -7418,7 +7448,10 @@ function continuarSegundaMetade() {
   }
   // Expulsão/lesão que mudou a força do time no 1º tempo, mesmo sem troca de tática — o
   // recálculo em si é idempotente (regenerarSegundaMetadeCore trava em partida._regen2TFeito).
-  livePartidas.forEach(p => { if (p._forcaMudou) regenerarSegundaMetadeCore(p); });
+  livePartidas.forEach(p => {
+    if (p.emProrrogacao) regenerarProrrogacaoCore(p);
+    else if (p._forcaMudou) regenerarSegundaMetadeCore(p);
+  });
   document.getElementById('copaLiveBanner').classList.add('hidden');
   liveSubPendente = false;
   liveTimer = setInterval(tickLive, velocidadeLiveMs());
@@ -7587,7 +7620,10 @@ function renderEscolhaBatedorPenalti(partida, ev) {
   const posL = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
   // Expulsos/lesionados desta partida não podem bater
   const _foraPen = new Set([...((ev.time==='A'?partida.vermelhosA:partida.vermelhosB)||[]), ...((ev.time==='A'?partida.lesaoA:partida.lesaoB)||[])]);
-  const tit = [...sel.jogadores.filter(j=>j.titular && !_foraPen.has(j.nome))].sort((a,b)=>(ordBat[a.pos]??9)-(ordBat[b.pos]??9) || b.ovr-a.ovr);
+  let tit = [...sel.jogadores.filter(j=>j.titular && !_foraPen.has(j.nome))].sort((a,b)=>(ordBat[a.pos]??9)-(ordBat[b.pos]??9) || b.ovr-a.ovr);
+  // Salvaguarda: se expulsões/lesões deixaram ninguém elegível, nunca renderiza a tela vazia
+  // (travaria a partida) — mesma rede de segurança que o shootout de disputa já tem.
+  if (!tit.length) tit = [...sel.jogadores.filter(j=>j.titular)].sort((a,b)=>(ordBat[a.pos]??9)-(ordBat[b.pos]??9) || b.ovr-a.ovr);
   const rows = tit.map(j => {
     const t = j.traits||[];
     const star = t.includes('lenda') ? '<span style="color:#f0c040;">★</span> ' : '';
@@ -8033,12 +8069,16 @@ function finalizarJornada() {
     if (copa.onlineCopa) salvarCopaOnline();
   };
   if (goleadasJ.length) {
-    const gv = goleadasJ[0];
-    const perdId = gv.golsA < gv.golsB ? gv.a : gv.b;
-    const perdSel = copa.selMap[perdId];
-    const tec = copa.tecnicos?.[perdId];
-    const nomeTec = tec ? tec : `o técnico de ${perdSel?.pais||'?'}`;
-    banner.textContent = `😰 CHICOTADAS PSICOLÓGICAS! ${nomeTec} vai precisar levantar a moral após este vexame histórico!`;
+    // Multi-seleção/sofá: mais de um jogador humano pode ter tomado goleada na mesma jornada —
+    // reconhece todos, não só o primeiro por ordem interna de livePartidas.
+    const nomesJ = goleadasJ.map(gv => {
+      const perdId = gv.golsA < gv.golsB ? gv.a : gv.b;
+      const perdSel = copa.selMap[perdId];
+      const tec = copa.tecnicos?.[perdId];
+      return tec ? tec : `o técnico de ${perdSel?.pais||'?'}`;
+    });
+    const nomeTec = nomesJ.length === 1 ? nomesJ[0] : nomesJ.slice(0,-1).join(', ') + ' e ' + nomesJ[nomesJ.length-1];
+    banner.textContent = `😰 CHICOTADAS PSICOLÓGICAS! ${nomeTec} ${nomesJ.length===1?'vai':'vão'} precisar levantar a moral após este vexame histórico!`;
     banner.style.cssText = 'background:#7f1d1d;color:#fca5a5;';
     banner.className = 'live-banner'; banner.classList.remove('hidden');
     setTimeout(() => {
@@ -8084,51 +8124,6 @@ function iniciarJornada() {
   liveTimer = setInterval(tickLive, velocidadeLiveMs());
 }
 
-function plantelHTML(sel, esqF) {
-  const e = ESQUEMAS_COPA.find(e => e.f === esqF) ?? ESQUEMAS_COPA[3];
-  const atk = Math.round(forcaAtaqueCopa(sel) * (1 + e.a / 100));
-  const def = Math.round(forcaDefesaCopa(sel) * (1 + e.d / 100));
-  const posOrd = { GOL:0, DEF:1, MEI:2, ATA:3 };
-  const posL   = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
-  const tit = [...sel.jogadores.filter(j => j.titular)].sort((a,b) => (posOrd[a.pos]??4)-(posOrd[b.pos]??4));
-  const rows = tit.map(j => {
-    const t = j.traits || [];
-    const star = t.includes('lenda') ? '<span style="color:#f0c040;margin-right:2px;">★</span>' : '';
-    // Status badges
-    const c = j.cansaco ?? 100;
-    const cBadge = j.suspenso > 0 ? '<span style="background:#7f1d1d;color:#fca5a5;font-size:8px;padding:0 3px;border-radius:2px;margin-right:2px;">🟥 SUSP</span>'
-                 : j.lesionado    ? '<span style="background:#1e3a5f;color:#93c5fd;font-size:8px;padding:0 3px;border-radius:2px;margin-right:2px;">🏥 LES</span>'
-                 : (j.amarelos||0)>=1 ? '<span style="background:#78350f;color:#fde68a;font-size:8px;padding:0 3px;border-radius:2px;margin-right:2px;">🟨 1°</span>'
-                 : c < 35 ? '<span style="background:#450a0a;color:#fca5a5;font-size:8px;padding:0 3px;border-radius:2px;margin-right:2px;">😮‍💨</span>'
-                 : c < 60 ? '<span style="background:#431407;color:#fed7aa;font-size:8px;padding:0 3px;border-radius:2px;margin-right:2px;">😓</span>'
-                 : '';
-    const badges = [
-      t.includes('capitao')       ? '<span class="trait-cap">Cap</span>'    : '',
-      t.includes('finalizador')   ? '<span class="trait-fin">Fin</span>' : '',
-      t.includes('pegadorPenalti')? '<span class="trait-pen">Pen</span>'    : '',
-    ].join('');
-    const dimStyle = (j.suspenso > 0 || j.lesionado) ? 'opacity:.5;' : '';
-    return `<tr style="${dimStyle}"><td class="pos">${posBadgeCopa(j.pos)}</td><td>${cBadge}${star}${j.nome}</td><td class="ovr">${j.ovr}</td><td class="traits">${badges}</td></tr>`;
-  }).join('');
-  const cor = sel.cor1 || '#1a4428';
-  return `<div style="max-width:520px;">
-    <div style="height:4px;background:${cor};border-radius:4px;margin-bottom:10px;"></div>
-    <div class="plantel-header">
-      <span style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,${cor} 48%,${sel.cor2||cor} 52%);border:2px solid rgba(255,255,255,.25);flex-shrink:0;display:inline-block;"></span>
-      <div><div class="plantel-nome">${sel.pais} ${sel.ano}</div>
-        <div class="plantel-sub" style="color:${cor};">Esquema: ${e.f} — ${e.n}</div></div>
-      <div class="plantel-ovr" style="border-color:${cor};"><div class="plantel-ovr-lbl">OVR</div><div class="plantel-ovr-val" style="color:${cor};">${sel.ovr}</div></div>
-    </div>
-    <div class="plantel-stats">
-      <div class="plantel-stat"><span class="lbl">ATK</span><span class="atk">${atk}</span></div>
-      <div class="plantel-stat"><span class="lbl">DEF</span><span class="def">${def}</span></div>
-    </div>
-    <table class="plantel-tbl">
-      <thead><tr><th></th><th></th><th style="text-align:right;">For</th><th></th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>`;
-}
 
 function renderCampoTatico(sel, esqF, corTime, editavel) {
   // Blindagem: se por qualquer motivo (sync online em trânsito, corrida de eventos) a escalação
@@ -8465,6 +8460,10 @@ function renderCopaPainel(selId) {
   // (mesma lógica de autoEscalar, só troca o critério de OVR pra vigor) e já deixa a tabela
   // ordenada por vigor pra confirmar visualmente quem entrou.
   conteudo.querySelector('#thVigorPainel')?.addEventListener('click', () => {
+    // Com uma partida rolando em segundo plano, autoEscalar não sabe quem saiu de campo nesta
+    // partida (expulso/lesionado/substituído) — reescalar aqui poderia desfazer uma troca
+    // legítima do motor ao vivo. Mesma guarda que já esconde o botão JOGAR com liveTimer ativo.
+    if (liveTimer) return;
     autoEscalar(sel, esq, CMP_VIGOR_ESCALACAO);
     painelOrdenarPorVigor = true;
     painelOrdenarPorForca = false;
@@ -8473,6 +8472,7 @@ function renderCopaPainel(selId) {
   // Cabeçalho FOR (Força/OVR): mesma ideia do Vigor, só que escala pelos melhores OVR de cada
   // posição — autoEscalar(sel, esq) sem comparador já faz exatamente isso por padrão.
   conteudo.querySelector('#thForcaPainel')?.addEventListener('click', () => {
+    if (liveTimer) return;
     autoEscalar(sel, esq);
     painelOrdenarPorForca = true;
     painelOrdenarPorVigor = false;
@@ -9138,22 +9138,30 @@ function calcularDinastiaAtual(historico) {
 function mostrarNotificacoesEspeciaisCopa() {
   const fila = copa?.notificacoesEspeciais || [];
   if (!fila.length) return;
-  const n = fila.shift();
   // Quando a copa acabou de terminar, o banner de campeão já tem sua própria cerimônia em camadas
   // (núcleo + detalhes com ~1.2s de intervalo) — espera ela toda terminar antes de competir por
   // atenção. Fora desse caso (ex.: Nêmesis Superada no meio do mata-mata, sem banner de fim de copa
   // por perto), mantém o atraso curto de sempre.
   const delay = (copa?.faseAtual === 'fim') ? 2600 : 1100;
-  setTimeout(() => {
-    if (n.tipo === 'superacao_nemesis') {
-      abrirOverlayGenericoCopa('🎉', 'Nêmesis Superada!', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);">Você finalmente venceu <b style="color:var(--ouro);">${n.nome}</b>, o time que já te eliminou <b>${n.vezes}</b> vezes. A revanche foi consumada!</div>`, 420);
-    } else if (n.tipo === 'fim_dinastia') {
-      abrirOverlayGenericoCopa('💥', 'Fim de uma Dinastia', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);"><b style="color:var(--ouro);">${n.nome}</b> não repetiu o título depois de <b>${n.streak}</b> conquistas seguidas — a dinastia chegou ao fim nesta Copa.</div>`, 420);
-    }
-    // Se sobrou mais alguma notificação na fila (raro, mas possível), espera um pouco mais antes da
-    // próxima em vez de empilhar as duas ao mesmo tempo.
-    if (fila.length) setTimeout(mostrarNotificacoesEspeciaisCopa, 4500);
-  }, delay);
+  setTimeout(exibirProximaNotificacaoEspecial, delay);
+}
+function exibirProximaNotificacaoEspecial() {
+  const fila = copa?.notificacoesEspeciais || [];
+  if (!fila.length) return;
+  // Se o jogador abriu algum overlay manualmente (Livro/Hall/Grupos/Artilheiros/Regras) durante
+  // a janela de espera, não sobrescreve silenciosamente o que ele está lendo — tenta de novo em
+  // breve, sem descartar a notificação da fila nem interromper o que ele abriu.
+  const ov = document.getElementById('plantelOverlayCopa');
+  if (ov && ov.style.display === 'block') { setTimeout(exibirProximaNotificacaoEspecial, 2000); return; }
+  const n = fila.shift();
+  if (n.tipo === 'superacao_nemesis') {
+    abrirOverlayGenericoCopa('🎉', 'Nêmesis Superada!', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);">Você finalmente venceu <b style="color:var(--ouro);">${n.nome}</b>, o time que já te eliminou <b>${n.vezes}</b> vezes. A revanche foi consumada!</div>`, 420);
+  } else if (n.tipo === 'fim_dinastia') {
+    abrirOverlayGenericoCopa('💥', 'Fim de uma Dinastia', `<div style="text-align:center;padding:10px 6px;font-size:14px;line-height:1.6;color:var(--areia);"><b style="color:var(--ouro);">${n.nome}</b> não repetiu o título depois de <b>${n.streak}</b> conquistas seguidas — a dinastia chegou ao fim nesta Copa.</div>`, 420);
+  }
+  // Se sobrou mais alguma notificação na fila (raro, mas possível), espera ~4.5s antes da
+  // próxima — chama direto (sem reaplicar o delay inicial), senão o espaçamento real dobra.
+  if (fila.length) setTimeout(exibirProximaNotificacaoEspecial, 4500);
 }
 // ===== Prova de conceito: narrativa dinâmica no menu principal =====
 // Não cria nenhum dado novo nem toca em persistência — só lê STORAGE_KEY_HISTORICO_COPAS e
@@ -9367,7 +9375,7 @@ function montarNarrativaCapituloLivro(r) {
     frases.push(`${r.craque.nome} foi o nome mais lembrado da campanha, eleito craque da partida ${r.craque.vezes} ${r.craque.vezes===1?'vez':'vezes'}.`);
   }
   if (goleada?.aNome && goleada?.bNome) {
-    frases.push(`O confronto mais lopsided do torneio foi <b>${goleada.aNome} ${goleada.golsA}×${goleada.golsB} ${goleada.bNome}</b>.`);
+    frases.push(`O confronto mais desigual do torneio foi <b>${goleada.aNome} ${goleada.golsA}×${goleada.golsB} ${goleada.bNome}</b>.`);
   }
   if (r.minhaSelecao) {
     frases.push(r.venci
@@ -12012,7 +12020,7 @@ function limparEstadoLive() {
   livePartidas = []; liveSubQueue = []; liveMinuto = 0; liveIntervaloFeito = false;
   livePenaltiPendente = false; livePenaltiPartida = null; livePenaltiEv = null;
   liveBracketEmProrrogacao = false; liveSubPendente = false; liveSubCount = 0;
-  copaConfigQueue = []; copaConfigCallback = null; copaModoPlantel = 'setup';
+  copaConfigCallback = null; copaModoPlantel = 'setup';
   jogadoresCopa = []; copaPlayerAtual = 0; copaJogadorNomes = [];
   copaRandomQueue = []; copaRandomSeed = null;
 }
@@ -12631,63 +12639,6 @@ function iniciarCopaFinal() {
   iniciarJornada();
 }
 
-function configurarJogadoresParaJornada(callback) {
-  if (copaModoPlantel === 'jornada') return;
-  const selsHumanas = (copa.minhasSelecoes || []).filter(id => copa.selMap[id]);
-  if (!selsHumanas.length) { callback(); return; }
-  const total = selsHumanas.length;
-  let idx = 0;
-  copaModoPlantel = 'jornada';
-  function avancar() {
-    if (idx >= total) {
-      copaModoPlantel = 'setup';
-      copaConfigCallback = null;
-      mostrarTela('copaJogo');
-      mostrarPainelCopa('painel'); // tela padrão de início é o painel da equipe, não Grupos
-      callback();
-      return;
-    }
-    const selId = selsHumanas[idx];
-    const restam = total - idx - 1;
-    copaEsquema = copa.minhasEsquemas?.[selId] || '4-4-2';
-    copaSelecaoEscolhida = selId;
-    const tecNome = copa.tecnicos?.[selId];
-    const numIdx = (copa.minhasSelecoes || []).indexOf(selId);
-    const quem = tecNome || (total > 1 ? `Jogador ${numIdx + 1}` : '');
-    document.getElementById('copaPlayerInfo').textContent =
-      total > 1 ? `${quem} — ${numIdx + 1}/${total}${restam ? '' : ' (último)'}` : (quem || '');
-    idx++;
-    abrirCopaPlantel(selId);
-  }
-  copaConfigCallback = avancar;
-  avancar();
-}
-
-function mostrarProximaConfiguracaoJornada() {
-  if (!copaConfigQueue.length) {
-    copaModoPlantel = 'setup';
-    const cb = copaConfigCallback;
-    copaConfigCallback = null;
-    // Volta para copaJogo antes de iniciar a partida
-    // (abrirCopaPlantel navega para 'copaPlantel', precisamos retornar)
-    mostrarTela('copaJogo');
-    mostrarPainelCopa('painel'); // tela padrão de início é o painel da equipe, não Grupos
-    if (cb) cb();
-    return;
-  }
-  const selId = copaConfigQueue.shift();
-  copaEsquema = copa.minhasEsquemas?.[selId] || '4-4-2';
-  copaSelecaoEscolhida = selId;
-  const tecNome = copa.tecnicos?.[selId];
-  const idx = (copa.minhasSelecoes||[]).indexOf(selId);
-  const total = (copa.minhasSelecoes||[]).length;
-  const quem = tecNome || (total > 1 ? `Jogador ${idx+1}` : '');
-  const restam = copaConfigQueue.length;
-  document.getElementById('copaPlayerInfo').textContent =
-    total > 1 ? `${quem} — ${idx+1}/${total}${restam ? '' : ' (último)'}` : (quem || '');
-  abrirCopaPlantel(selId);
-}
-
 function mostrarTelaNomes(jogadores, onConfirm, hideTeam) {
   // jogadores = [{selId, num}], hideTeam = true no modo aleatório (revelação depois)
   const plural = jogadores.length > 1;
@@ -12875,7 +12826,11 @@ document.getElementById('btnSimularFaseCopa').addEventListener('click', (e)=>{
   if (copa?.onlineCopa) { dispararRodadaOnline(e.currentTarget); return; }
   iniciarJornada();
 });
-document.getElementById('btnMontarBracket').addEventListener('click', ()=>{
+document.getElementById('btnMontarBracket').addEventListener('click', (e)=>{
+  // Mesma guarda dos botões irmãos (Simular Fase/Rodada): numa sala online, montar o bracket
+  // aqui mesmo consumiria copaRng só neste cliente, dessincronizando o resto da sala. O fluxo
+  // de "iniciando" já monta o bracket pra todo mundo com a seed compartilhada (linha ~13443).
+  if (copa?.onlineCopa) { dispararRodadaOnline(e.currentTarget); return; }
   montarBracket(copa, copaRng);
   copa.faseAtual = 'bracket';
   renderCopaBracket();
@@ -13391,8 +13346,12 @@ function entrarNaSalaCopaEAssinar(codigo, jogadorId) {
 
     // Rodada resolvida — sincroniza o estado autoritativo UMA vez, mantendo a aba atual do usuário
     if (status === 'resolvida' && ehNovoEvento) {
-      copaOnlineUltimoEvento = eventoKey;
+      // Não marca como processado ainda se o cliente está no meio da própria partida ao vivo —
+      // assim o próximo snapshot (heartbeat) tenta de novo, e o jogador não perde a chance de
+      // ressincronizar assim que sair do live/plantel (antes, ficava esperando só a próxima
+      // rodada pra se realinhar).
       if (emLive || naPlantel) return;
+      copaOnlineUltimoEvento = eventoKey;
       carregarCopaFromOnline(data);
       renderCopaGrupos(); renderCopaBracket(); renderCopaArtilheiros(); renderCopaPainel();
       return;
