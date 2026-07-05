@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '72'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '73'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1775,7 +1775,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v72 – Modo Espectador Online</div>
+  <div class="rodapezinho">v73 – Pênaltis e Painel mais claros</div>
 </div>
 
 <script>
@@ -7826,15 +7826,22 @@ function iniciarShootoutInterativo(dadosTie, callback) {
 
   // Regra oficial: a ordem de TODOS os batedores é definida antes da 1ª cobrança — ninguém
   // bate pela 2ª vez até que todo o time apto tenha batido uma vez (o ciclo se repete na
-  // morte súbita a partir do início da mesma ordem escolhida aqui).
+  // morte súbita a partir do início da mesma ordem escolhida aqui). O JOGADOR só escolhe os
+  // primeiros ALVO_BATEDORES_MANUAL — o resto (só entra em jogo se a disputa for à morte súbita)
+  // é completado automaticamente com a MESMA prioridade já usada pro time adversário logo acima
+  // (pegador de pênalti > finalizador > batedor > maior OVR) — reduz o atrito de ter que ordenar
+  // o time inteiro pra um cenário (morte súbita) que raramente acontece.
+  const ALVO_BATEDORES_MANUAL = 5;
   let ordemBatedores = [];
 
   const mostrarSelecaoOrdem = () => {
+    const metaEscolha = Math.min(ALVO_BATEDORES_MANUAL, tit.length);
+    const completo = ordemBatedores.length >= metaEscolha;
     const restantes = tit.filter(j => !ordemBatedores.includes(j));
     const linhaOrdem = ordemBatedores.length
       ? `<div style="font-size:10px;color:var(--cinza);margin-bottom:7px;line-height:1.6;">${ordemBatedores.map((j,i)=>`<b style="color:#f0c040;">${i+1}ª</b> ${j.nome}`).join(' · ')}</div>`
       : '';
-    const rows = restantes.map(j => {
+    const rows = completo ? '' : restantes.map(j => {
       const t = j.traits||[];
       const star = t.includes('lenda') ? '<span style="color:#f0c040;">★</span> ' : '';
       const isPen = t.includes('pegadorPenalti'), isFin = t.includes('finalizador');
@@ -7847,14 +7854,15 @@ function iniciarShootoutInterativo(dadosTie, callback) {
         <span style="color:#eab308;font-family:monospace;font-size:11px;">${j.ovr}</span>${badge}
       </div>`;
     }).join('');
-    const completo = ordemBatedores.length >= tit.length;
+    const notaAuto = `<div style="font-size:9.5px;color:rgba(232,245,233,.4);text-align:center;margin:2px 0 6px;">${completo ? `Se a disputa continuar depois desses ${metaEscolha}, o resto do time entra sozinho, do batedor mais indicado em diante.` : `Só os ${metaEscolha} primeiros — o resto só entra numa eventual morte súbita, automaticamente.`}</div>`;
     subDiv.innerHTML = `<div class="sub-wrap" style="border:1px solid #eab308;">
       <div style="font-size:10px;color:var(--cinza);text-align:center;margin-bottom:2px;">${nomeHum} <b style="color:var(--areia);">vs</b> ${nomeOpp}</div>
-      <div style="font-size:11px;font-weight:900;color:#eab308;margin-bottom:4px;text-align:center;">Escolha a ordem dos batedores (${ordemBatedores.length}/${tit.length})</div>
-      <div style="font-size:10px;color:var(--cinza);text-align:center;margin-bottom:6px;">Toque na ordem em que cada um vai bater. Ninguém repete antes de todos baterem uma vez.</div>
+      <div style="font-size:11px;font-weight:900;color:#eab308;margin-bottom:4px;text-align:center;">Escolha os ${metaEscolha} primeiros batedores (${ordemBatedores.length}/${metaEscolha})</div>
+      <div style="font-size:10px;color:var(--cinza);text-align:center;margin-bottom:6px;">Toque na ordem em que cada um vai bater.</div>
       ${linhaOrdem}
+      ${notaAuto}
       <div style="max-height:190px;overflow-y:auto;">${rows}</div>
-      <button id="btnConfirmarOrdemPen" type="button" class="pequeno" style="width:100%;margin-top:8px;${completo?'':'opacity:.35;pointer-events:none;'}">▶ Confirmar ordem e iniciar cobranças</button>
+      <button id="btnConfirmarOrdemPen" type="button" class="pequeno" style="width:100%;margin-top:8px;${completo?'':'opacity:.35;pointer-events:none;'}">▶ Confirmar e iniciar cobranças</button>
     </div>`;
     subDiv.classList.remove('hidden');
     subDiv.querySelectorAll('[data-ord-nome]').forEach(el => {
@@ -7864,7 +7872,14 @@ function iniciarShootoutInterativo(dadosTie, callback) {
       });
     });
     const btnConf = document.getElementById('btnConfirmarOrdemPen');
-    if (btnConf) btnConf.addEventListener('click', () => { if (completo) mostrarEscolhaCanto(); });
+    if (btnConf) btnConf.addEventListener('click', () => {
+      if (!completo) return;
+      // Completa o resto da ordem sozinho, com a mesma prioridade usada pro time adversário
+      // (prioridadeBatedor, definida acima): pegador de pênalti > finalizador > batedor > maior OVR.
+      const restoAuto = tit.filter(j => !ordemBatedores.includes(j)).sort((a,b) => prioridadeBatedor(b)-prioridadeBatedor(a) || b.ovr-a.ovr);
+      ordemBatedores.push(...restoAuto);
+      mostrarEscolhaCanto();
+    });
   };
 
   const mostrarPlacarRodada = () => {
@@ -8463,7 +8478,7 @@ function renderCopaPainel(selId) {
           })()}
         </div>
         <table class="plantel-tbl">
-          <thead><tr><th></th><th></th><th></th><th id="thForcaPainel" style="text-align:right;cursor:pointer;${painelOrdenarPorForca?'color:#22c55e;':''}" title="Clique pra escalar automaticamente os titulares de maior OVR em cada posição">For</th><th id="thVigorPainel" style="font-size:8px;letter-spacing:.6px;cursor:pointer;${painelOrdenarPorVigor?'color:#22c55e;':''}" title="Clique pra escalar automaticamente os titulares mais descansados de cada posição — jeito rápido de dar descanso ao time">VIGOR</th></tr></thead>
+          <thead><tr><th></th><th></th><th></th><th id="thForcaPainel" style="text-align:right;cursor:pointer;white-space:nowrap;font-weight:900;border-radius:5px;padding:2px 5px;${painelOrdenarPorForca?'color:#22c55e;background:rgba(34,197,94,.16);':'color:#eab308;background:rgba(234,179,8,.14);'}" title="Toque pra escalar automaticamente os jogadores mais fortes (maior OVR) em cada posição">💪 For</th><th id="thVigorPainel" style="font-size:8px;letter-spacing:.6px;cursor:pointer;white-space:nowrap;font-weight:900;border-radius:5px;padding:2px 5px;${painelOrdenarPorVigor?'color:#22c55e;background:rgba(34,197,94,.16);':'color:#eab308;background:rgba(234,179,8,.14);'}" title="Toque pra escalar automaticamente os jogadores mais descansados (maior vigor) em cada posição">🔋 Vigor</th></tr></thead>
           <tbody>
             <tr class="plantel-sep"><td colspan="5" style="color:${hdrTxt};opacity:.7;">● TITULARES (${tit.length}) — ${esq}</td></tr>
             ${tit.map(j=>mkRowToggle(j,true)).join('')}
