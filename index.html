@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '75'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '76'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1793,7 +1793,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v75 – Intervalo sem Rolagem</div>
+  <div class="rodapezinho">v76 – Fim de Grupos e Adversário Legível</div>
 </div>
 
 <script>
@@ -6353,14 +6353,12 @@ function abrirCopaPlantel(selId) {
     // (iniciarRodadaBracketLive), pra não surpreender o jogador com um rótulo diferente lá.
     const NOMES_FASE_TORNEIO = { r32:'16 Avos de Final', r16:'Oitavas de Final', qf:'Quartas de Final', sf:'Semifinais', final_3:'Final + 3° Lugar' };
     const faseLabel = copa?.faseAtual === 'grupos' ? 'Fase de Grupos' : (NOMES_FASE_TORNEIO[copa?.bracket?.rodadaAtual] || '');
-    advEl.innerHTML = a ? `<div onclick="mostrarPlantelSelecao('${adv}')" style="margin-top:10px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 11px;display:flex;align-items:center;gap:9px;">
-        <div style="flex-shrink:0;">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--ouro);">${faseLabel}</div>
-          <div style="font-size:8px;color:rgba(232,245,233,.4);">Adversário</div>
-        </div>
-        <span style="width:9px;height:9px;border-radius:50%;background:${a.cor1||'#888'};flex-shrink:0;"></span>
-        <div style="flex:1;min-width:0;font-size:15px;font-weight:800;color:var(--areia);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.pais} ${a.ano}</div>
-        <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span></div>` : '';
+    advEl.innerHTML = a ? `<div onclick="mostrarPlantelSelecao('${adv}')" style="margin-top:10px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 11px;">
+        <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--ouro);line-height:1.35;">${faseLabel} · Adversário</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+          <div style="flex:1;min-width:0;font-size:15px;font-weight:800;color:var(--areia);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.pais} ${a.ano}</div>
+          <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span>
+        </div></div>` : '';
   }
 
   // Botão Ver Grupos (disponível já na tela inicial, antes da 1ª partida)
@@ -8193,18 +8191,28 @@ function finalizarJornada() {
       const sel = copa.selMap[selId];
       if (sel) autoEscalar(sel, copa.minhasEsquemas?.[selId] || copa.minhaEsquema || '4-4-2');
     });
-    // Sem nenhum time humano na copa (modo espectador — offline; online tem seu próprio fluxo
-    // de "todos prontos" e não deve ser mexido aqui): em vez de esperar clique, encadeia sozinho
-    // a próxima jornada/rodada até a copa terminar.
-    const semTimeHumano = !copa.onlineCopa && (!copa.minhasSelecoes || copa.minhasSelecoes.length === 0);
     if (copa.jornadaAtual >= 3) {
       copa.grupos.forEach(g => g.simulado = true);
       montarBracket(copa, copaRng);
       copa.faseAtual = 'bracket';
       renderCopaBracket();
+      // Quem não se classificou não tem mais nenhuma decisão a tomar — sem podar minhasSelecoes
+      // aqui, a lista só ficava atualizada rodada a rodada DENTRO do mata-mata (avancarBracket já
+      // faz essa poda, ver ~linha 5839), então logo após o fim dos grupos o jogador eliminado
+      // ainda "tinha" uma seleção e caía no Painel normal (como se houvesse escalação/tática pra
+      // decidir) antes de seguir pro resto da copa como espectador. Mesmo critério de "sem time
+      // humano" já usado no restante do mata-mata, só que aplicado 1 rodada mais cedo.
+      const idsNoBracket = new Set((copa.bracket.r32 || []).flatMap(j => [j.a, j.b]));
+      copa.minhasSelecoes = (copa.minhasSelecoes || []).filter(id => idsNoBracket.has(id));
+      const semTimeHumano = !copa.onlineCopa && copa.minhasSelecoes.length === 0;
       if (semTimeHumano) { iniciarRodadaBracketLive(); } else { mostrarPainelCopa('painel'); }
     } else {
       renderCopaGrupos();
+      // Sem nenhum time humano na copa (modo espectador — offline; online tem seu próprio fluxo
+      // de "todos prontos" e não deve ser mexido aqui): em vez de esperar clique, encadeia sozinho
+      // a próxima jornada. Na fase de grupos ninguém é eliminado antes da 3ª rodada (ver branch
+      // acima), então minhasSelecoes ainda não precisa de poda aqui.
+      const semTimeHumano = !copa.onlineCopa && (!copa.minhasSelecoes || copa.minhasSelecoes.length === 0);
       if (semTimeHumano) { iniciarJornada(); } else { mostrarPainelCopa('painel'); }
     }
     if (copa.onlineCopa) salvarCopaOnline();
@@ -8575,14 +8583,12 @@ function renderCopaPainel(selId) {
           // Painel não mostrava a fase do torneio antes, só o adversário.
           const NOMES_FASE_TORNEIO = { r32:'16 Avos de Final', r16:'Oitavas de Final', qf:'Quartas de Final', sf:'Semifinais', final_3:'Final + 3° Lugar' };
           const faseLabel = copa.faseAtual === 'grupos' ? 'Fase de Grupos' : (NOMES_FASE_TORNEIO[copa.bracket?.rodadaAtual] || '');
-          return `<div onclick="mostrarPlantelSelecao('${adv}')" style="margin-top:10px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 11px;display:flex;align-items:center;gap:9px;">
-            <div style="flex-shrink:0;">
-              <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--ouro);">${faseLabel}</div>
-              <div style="font-size:8px;color:rgba(232,245,233,.4);">Adversário</div>
-            </div>
-            <span style="width:9px;height:9px;border-radius:50%;background:${a.cor1||'#888'};flex-shrink:0;"></span>
-            <div style="flex:1;min-width:0;font-size:15px;font-weight:800;color:var(--areia);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.pais} ${a.ano}</div>
-            <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span></div>`;
+          return `<div onclick="mostrarPlantelSelecao('${adv}')" style="margin-top:10px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 11px;">
+            <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--ouro);line-height:1.35;">${faseLabel} · Adversário</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+              <div style="flex:1;min-width:0;font-size:15px;font-weight:800;color:var(--areia);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.pais} ${a.ano}</div>
+              <span style="font-size:15px;color:var(--cinza);flex-shrink:0;">›</span>
+            </div></div>`;
         })()}
         ${(() => {
           const jaJogou = copa.jornadaAtual > 0 || (copa.bracket && copa.faseAtual !== 'grupos');
