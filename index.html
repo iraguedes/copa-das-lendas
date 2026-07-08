@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '73'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '74'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1775,7 +1775,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v73 – Pênaltis e Painel mais claros</div>
+  <div class="rodapezinho">v74 – Campo Tático no Intervalo</div>
 </div>
 
 <script>
@@ -5007,7 +5007,15 @@ function emojiMoralCopa(m) {
 }
 // Posição em campo: onde o jogador foi escalado (pode diferir da posição natural).
 // Jogar fora de posição tem custo real: -10% de OVR efetivo (-28% se envolver o gol).
-function posCampoCopa(j) { return j.posCampo || j.pos; }
+// j.posCampo guarda "POS" (ex 'DEF') OU "POS:COLUNA" (ex 'DEF:2' — coluna esquerda→direita
+// dentro da linha, usada só por renderCampoTatico pra saber ONDE desenhar; todo o resto do
+// motor — validação de escalação, cálculo de força, penalidade de posição — só quer a posição,
+// por isso posCampoCopa sempre devolve só a parte antes dos ':'.
+function posCampoCopa(j) { const pc = j.posCampo || j.pos; const i = pc.indexOf(':'); return i === -1 ? pc : pc.slice(0, i); }
+// Coluna (esquerda→direita) dentro da linha de posição, se atribuída — null se o jogador nunca
+// passou por autoEscalar/uma troca que preserva slot (dado legado ou recém-promovido a titular
+// fora do fluxo normal). renderCampoTatico cai de volta pro sort por OVR só nesse caso.
+function slotIdxCampo(j) { const pc = j.posCampo || ''; const i = pc.indexOf(':'); return i === -1 ? null : parseInt(pc.slice(i + 1), 10); }
 // Quem está fora desta partida especificamente (expulso, ou lesão que já tirou o jogador de
 // campo) — usado pra força de ataque/defesa não contar quem não está mais jogando, mesmo que
 // o objeto do jogador continue com titular:true (só muda no momento da substituição de fato).
@@ -5374,10 +5382,14 @@ function autoEscalar(sel, esqF, comparador) {
   sel.jogadores.forEach(j => { j.titular = false; j.posCampo = j.pos; });
   const selecionados = new Set();
   const slotsFaltando = [];
+  // Índice de coluna (esquerda→direita) por posição, atribuído aqui e HERDADO por qualquer troca
+  // manual futura (abrirEscolhaPosicao etc.) — é o que permite renderCampoTatico desenhar sempre
+  // o mesmo jogador no mesmo círculo, em vez de reordenar por OVR a cada render.
+  const proxColuna = { GOL:0, DEF:0, MEI:0, ATA:0 };
   // 1ª passagem: preencher com jogadores da posição correta
   Object.entries(counts).forEach(([pos, count]) => {
     const take = byPos[pos].slice(0, count);
-    take.forEach(j => { j.titular = true; j.posCampo = pos; selecionados.add(j); });
+    take.forEach(j => { j.titular = true; j.posCampo = pos + ':' + (proxColuna[pos]++); selecionados.add(j); });
     for (let k = take.length; k < count; k++) slotsFaltando.push(pos);
   });
   // 2ª passagem: completar até 11 com os melhores disponíveis pelo mesmo critério, assumindo os slots vagos (fora de posição)
@@ -5386,7 +5398,7 @@ function autoEscalar(sel, esqF, comparador) {
       .filter(j => !selecionados.has(j) && !jogadorIndisponivelCopa(j))
       .sort(cmp)
       .slice(0, slotsFaltando.length)
-      .forEach((j, i) => { j.titular = true; j.posCampo = slotsFaltando[i]; });
+      .forEach((j, i) => { const pos = slotsFaltando[i]; j.titular = true; j.posCampo = pos + ':' + (proxColuna[pos]++); });
   }
 }
 const CMP_VIGOR_ESCALACAO = (a, b) => (b.cansaco ?? 100) - (a.cansaco ?? 100);
@@ -6273,14 +6285,15 @@ function abrirCopaPlantel(selId) {
       if (!jogador || jogadorIndisponivelCopa(jogador)) return;
       if (jogador.titular) { abrirEscolhaPosicao(selId, posCampoCopa(jogador), jogador.nome); return; }
       const titMesma = sel.jogadores.filter(t => t.titular && posCampoCopa(t) === jogador.pos).sort((a,b) => a.ovr - b.ovr);
-      let sai = titMesma[0], slot = jogador.pos;
+      let sai = titMesma[0];
       if (!sai) {
         const todos = sel.jogadores.filter(t => t.titular).sort((a,b) => a.ovr - b.ovr);
-        sai = todos[0]; slot = sai ? posCampoCopa(sai) : jogador.pos;
+        sai = todos[0];
       }
       if (!sai) return;
+      const slotHerdado = sai.posCampo; // herda a coluna exata de quem sai, não só a posição base
       sai.titular = false; sai.posCampo = sai.pos;
-      jogador.titular = true; jogador.posCampo = slot;
+      jogador.titular = true; jogador.posCampo = slotHerdado;
       atualizarPlantelStats(sel);
       abrirCopaPlantel(selId);
     });
@@ -6446,45 +6459,90 @@ function proximoAdversario(selId){
 function reRenderCampoAtual(selId){
   if(!document.getElementById('copaPlantel').classList.contains('hidden'))abrirCopaPlantel(selId);
   else if(!document.getElementById('painelCopaPainel').classList.contains('hidden'))renderCopaPainel(selId);
+  // 3º caso: troca feita pelo campo tático DENTRO do intervalo/prorrogação (copaLiveSub) — sem
+  // isso o campo do intervalo ficaria com o SVG desatualizado (jogador antigo) até a próxima ação.
+  else if(typeof liveSubPendente!=='undefined' && liveSubPendente && !document.getElementById('copaLiveSub').classList.contains('hidden')){
+    const partidaLive = (typeof livePartidas!=='undefined') && livePartidas.find(p => p.a===selId || p.b===selId);
+    if (partidaLive) renderSubstituicoes(partidaLive, selId, true);
+  }
 }
 // pos = slot do CAMPO (onde vai atuar). Lista reservas da posição natural e também os
 // demais reservas como "fora de posição" (com OVR efetivo penalizado à mostra).
 function abrirEscolhaPosicao(selId,pos,nomeAtual){
   const sel=(copa&&copa.selMap&&copa.selMap[selId])||BANCO_SELECOES.find(s=>s.id===selId);if(!sel)return;
-  const disp=sel.jogadores.filter(j=>!j.titular&&!jogadorIndisponivelCopa(j));
+  // Contexto de intervalo (partida ao vivo): a MESMA tela de escolha, reaproveitada quando o
+  // clique vem do campo tático do intervalo — mas com as 2 regras que só existem numa partida:
+  // limite de 4 trocas e "quem já saiu não volta" (liveSubPendente já é o sinal existente de
+  // "estamos na tela de substituições", setado no início de renderSubstituicoes).
+  const partidaLive = (typeof liveSubPendente!=='undefined' && liveSubPendente && typeof livePartidas!=='undefined')
+    ? livePartidas.find(p => p.a===selId || p.b===selId) : null;
+  const jaSaiu = partidaLive ? new Set((partidaLive.saiuDoJogoPorSel && partidaLive.saiuDoJogoPorSel[selId]) || []) : new Set();
+  const limiteAtingido = !!(partidaLive && typeof liveSubCount!=='undefined' && liveSubCount>=4);
+  const atualObj = sel.jogadores.find(j=>j.nome===nomeAtual);
+  const vigorAtual = atualObj ? Math.round(atualObj.cansaco??100) : null;
+  const vigorCor = v => v>=80?'#4ade80':v>=50?'#eab308':'#ef4444';
+  const disp=sel.jogadores.filter(j=>!j.titular&&!jogadorIndisponivelCopa(j)&&!jaSaiu.has(j.nome));
   const mesma=disp.filter(j=>j.pos===pos).sort((a,b)=>b.ovr-a.ovr);
   const outras=disp.filter(j=>j.pos!==pos).sort((a,b)=>b.ovr-a.ovr);
   let ov=document.getElementById('plantelOverlayCopa');
   if(!ov){ov=document.createElement('div');ov.id='plantelOverlayCopa';document.body.appendChild(ov);}
   const posNome={GOL:'Goleiro',DEF:'Defesa',MEI:'Meio-campo',ATA:'Ataque'};
   const posL={GOL:'G',DEF:'D',MEI:'M',ATA:'A'};
-  const penDe=j=>(pos==='GOL'||j.pos==='GOL')?0.72:0.90;
+  // Mesmo cálculo de penalidade fora-de-posição já usado no campo tático (fatorForaPosicaoCopa) —
+  // antes esta tela tinha sua própria fórmula local (penDe), com números que podiam divergir do
+  // que o campo mostrava pro MESMO jogador na MESMA posição.
+  const ratingNaPosicao=j=>Math.round(j.ovr*fatorForaPosicaoCopa({pos:j.pos, posCampo:pos}));
   const linha=(j,fora)=>{
     const lenda=(j.traits||[]).includes('lenda');
-    const ovrEf=fora?Math.round(j.ovr*penDe(j)):j.ovr;
-    const penTxt=fora?`<span style="font-size:8px;color:#f97316;flex-shrink:0;">${j.ovr}→</span>`:'';
+    const ovrEf=fora?ratingNaPosicao(j):j.ovr;
+    const penTxt=fora?`<span style="font-size:8px;color:#f97316;flex-shrink:0;">OVR base ${j.ovr} →</span>`:'';
+    const vg=Math.round(j.cansaco??100);
+    const vigorTxt=`<span style="font-size:8px;color:${vigorCor(vg)};flex-shrink:0;font-family:monospace;">${vg}⚡</span>`;
     return '<div data-esc-nome="'+j.nome.replace(/"/g,'&quot;')+'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;margin-bottom:3px;background:rgba(255,255,255,.03);'+(fora?'opacity:.85;':'')+'">'
       +'<span style="font-size:9px;width:16px;text-align:center;color:'+(fora?'#f97316':'#4ade80')+';font-weight:900;flex-shrink:0;">'+(posL[j.pos]||'?')+'</span>'
       +'<span style="flex:1;font-size:12.5px;color:'+(lenda?'#f0c040':'var(--areia)')+';'+(lenda?'font-weight:700;':'')+'">'+(lenda?'★ ':'')+j.nome+'</span>'
+      +vigorTxt
       +penTxt
       +'<span style="font-family:monospace;font-size:12px;font-weight:700;color:'+(fora?'#f97316':'#eab308')+';">'+ovrEf+'</span></div>';
   };
   const secMesma=mesma.length?mesma.map(j=>linha(j,false)).join(''):'<div style="font-size:11px;color:var(--cinza);padding:4px 10px 8px;">Sem reservas de '+(posNome[pos]||pos)+' disponíveis.</div>';
-  const secOutras=outras.length?'<div style="font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#f97316;margin:10px 8px 5px;">⚠ Fora de posição ('+((pos==='GOL')?'-28%':'-10% a -28%')+' de força)</div>'+outras.map(j=>linha(j,true)).join(''):'';
+  const secOutras=outras.length?'<div style="font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#f97316;margin:10px 8px 5px;">⚠ Fora de posição ('+((pos==='GOL')?'-28%':'-10% a -28%')+' de força — rating mostrado já é o efetivo nesta posição)</div>'+outras.map(j=>linha(j,true)).join(''):'';
+  const vigorHeaderTxt = vigorAtual!=null ? `<div style="font-size:9.5px;color:${vigorCor(vigorAtual)};margin-top:2px;font-family:monospace;">Vigor de quem sai: ${vigorAtual}</div>` : '';
+  const corpo = limiteAtingido
+    ? '<div style="padding:16px 10px;text-align:center;font-size:12px;color:var(--cinza);">🚫 As 4 substituições desta partida já foram usadas.</div>'
+    : '<div style="padding:10px;">'+secMesma+secOutras+'</div>';
   ov.innerHTML='<div onclick="if(event.target===this)fecharPlantelSelecao()" style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:3000;display:flex;align-items:center;justify-content:center;padding:14px;">'
     +'<div style="background:linear-gradient(165deg,#0f2c1c,#07150c);border:1px solid rgba(217,164,74,.4);border-radius:14px;max-width:380px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.7);">'
       +'<div style="padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:#0d2418;z-index:1;">'
         +'<div><div style="font-weight:900;font-size:14px;color:var(--ouro);">'+(posNome[pos]||pos)+' — quem joga aqui?</div>'
-          +'<div style="font-size:10px;color:var(--cinza);margin-top:2px;">Escolha quem entra no lugar de '+nomeAtual+'</div></div>'
+          +'<div style="font-size:10px;color:var(--cinza);margin-top:2px;">Escolha quem entra no lugar de '+nomeAtual+'</div>'
+          +vigorHeaderTxt+'</div>'
         +'<button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;">×</button></div>'
-      +'<div style="padding:10px;">'+secMesma+secOutras+'</div></div></div>';
+      +corpo+'</div></div>';
   ov.style.display='block';
+  if (limiteAtingido) return;
   ov.querySelectorAll('[data-esc-nome]').forEach(el=>el.addEventListener('click',()=>{
     const novo=sel.jogadores.find(j=>j.nome===el.dataset.escNome);
     const atual=sel.jogadores.find(j=>j.nome===nomeAtual);
     if(novo&&!novo.titular){
+      const slotHerdado = atual ? atual.posCampo : pos; // coluna exata de quem sai, capturada ANTES do reset abaixo
       if(atual){ atual.titular=false; atual.posCampo=atual.pos; }
-      novo.titular=true; novo.posCampo=pos;
+      novo.titular=true; novo.posCampo=slotHerdado;
+      // Contexto de intervalo: aplica exatamente a mesma contabilidade que o clique na lista já
+      // fazia (renderSubstituicoes) — sem isso, trocar pelo campo furaria o limite de 4 e a regra
+      // de "quem sai não volta".
+      if (partidaLive) {
+        liveSubCount++;
+        partidaLive.subsUsadas = partidaLive.subsUsadas || {};
+        partidaLive.subsUsadas[selId] = liveSubCount;
+        partidaLive._forcaMudou = true;
+        partidaLive.saiuDoJogoPorSel = partidaLive.saiuDoJogoPorSel || {};
+        if (atual) partidaLive.saiuDoJogoPorSel[selId] = [...(partidaLive.saiuDoJogoPorSel[selId] || []), atual.nome];
+        if (!copa.onlineCopa && atual) {
+          const ladoSub = partidaLive.a === selId ? 'A' : 'B';
+          reatribuirEventosFuturosCopa(partidaLive, ladoSub, atual.nome);
+        }
+      }
     }
     fecharPlantelSelecao();
     reRenderCampoAtual(selId);
@@ -6669,7 +6727,7 @@ function bktColHTML(label, jogos) {
 }
 
 // ── Live Jornada Engine ──────────────────────────────────────────
-let liveTimer = null, liveMinuto = 0, livePartidas = [], liveSubPendente = false, liveSubCount = 0, liveSubSelecionado = null;
+let liveTimer = null, liveMinuto = 0, livePartidas = [], liveSubPendente = false, liveSubCount = 0;
 let liveIntervaloFeito = false; // intervalo por flag (não ===45): um pênalti no 45' pausava o tick e o intervalo era pulado
 let livePenaltiPendente = false, livePenaltiPartida = null, livePenaltiEv = null;
 let liveSubQueue = [];  // [{partida, selId}] fila de substituições pendentes no intervalo
@@ -7129,6 +7187,7 @@ function tentarSubstituicaoAutomaticaCopa(partida, lado, nomeSaindo) {
   const jaExpulso = ((lado === 'A' ? partida.vermelhosA : partida.vermelhosB) || []).includes(nomeSaindo);
   if (jaExpulso) return null;
   const posAlvo = posCampoCopa(jOut);
+  const slotAlvo = jOut.posCampo; // coluna exata de quem sai (com índice) — herdada por quem entra
   const foraDeCampo = jogadoresForaDaPartida(partida, lado);
   foraDeCampo.add(nomeSaindo);
   // Quem já saiu desta partida (troca manual ou automática anterior) não pode voltar — mesma
@@ -7139,7 +7198,7 @@ function tentarSubstituicaoAutomaticaCopa(partida, lado, nomeSaindo) {
   const mesmaPos = banco.filter(j => posCampoCopa(j) === posAlvo);
   const jIn = (mesmaPos.length ? mesmaPos : banco).sort((a, b) => b.ovr - a.ovr)[0];
   jOut.titular = false; jOut.posCampo = jOut.pos;
-  jIn.titular = true; jIn.posCampo = posAlvo;
+  jIn.titular = true; jIn.posCampo = slotAlvo;
   partida.subsUsadas = partida.subsUsadas || {};
   partida.subsUsadas[selId] = usadas + 1;
   partida.saiuDoJogoPorSel = partida.saiuDoJogoPorSel || {};
@@ -7325,7 +7384,7 @@ function tickLive() {
 function renderSubstituicoes(partida, selId, manterContagem) {
   // manterContagem=true nas re-renderizações após cada troca — sem isso o contador zerava
   // a cada substituição e o limite de 4 nunca era aplicado.
-  liveSubPendente = true; liveSubSelecionado = null;
+  liveSubPendente = true;
   // As 4 trocas são do jogo INTEIRO (1º/2º tempo + prorrogação), não "4 por parada" — por isso
   // a contagem começa de onde ficou (partida.subsUsadas), nunca zera ao entrar na prorrogação.
   if (partida) { partida.subsUsadas = partida.subsUsadas || {}; }
@@ -7350,21 +7409,19 @@ function renderSubstituicoes(partida, selId, manterContagem) {
   const subTitulo = quemLabel ? `${quemLabel} — Substituições` : 'Substituições';
 
   const posOrd = { GOL:0, DEF:1, MEI:2, ATA:3 };
-  const posL = { GOL:'G', DEF:'D', MEI:'M', ATA:'A' };
   const sorted = (arr) => [...arr].sort((a,b)=>(posOrd[a.pos]??4)-(posOrd[b.pos]??4));
   // Jogador que JÁ saiu do jogo nesta partida (via substituição) não pode voltar — regra real
   // do futebol. Rastreado por partida (não pelo elenco todo), senão ele ficaria de fora das
   // PRÓXIMAS partidas também, o que seria errado — a restrição vale só pra este jogo.
   if (partida) partida.saiuDoJogoPorSel = partida.saiuDoJogoPorSel || {};
   const jaSaiuDoJogo = new Set((partida?.saiuDoJogoPorSel?.[selId]) || []);
-  const tit = sorted(sel.jogadores.filter(j=>j.titular));
   const res = sorted(sel.jogadores.filter(j=>!j.titular && !jaSaiuDoJogo.has(j.nome)));
   // Ocorrências do 1º tempo desta partida (lado do meu time)
   const _lado = partida && partida.a === selId ? 'A' : 'B';
   const expulsos = (partida && (_lado==='A' ? partida.vermelhosA : partida.vermelhosB)) || [];
   const lesionadosJogo = (partida && (_lado==='A' ? partida.lesaoA : partida.lesaoB)) || [];
   const amarelosJogo = (partida && (_lado==='A' ? partida.amarelosA : partida.amarelosB)) || [];
-  const mkRow = (j, isBanc) => {
+  const mkRow = (j) => {
     const t = j.traits||[];
     const star = t.includes('lenda') ? '★ ' : '';
     const exp = expulsos.includes(j.nome);
@@ -7373,10 +7430,15 @@ function renderSubstituicoes(partida, selId, manterContagem) {
     const statusIcon = exp ? ` <span style="font-size:8px;font-weight:900;color:#fca5a5;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.5);border-radius:3px;padding:0 4px;vertical-align:middle;">🟥 EXPULSO</span>`
       : les ? ` <span style="font-size:8px;font-weight:900;color:#fdba74;background:rgba(249,115,22,.16);border:1px solid rgba(249,115,22,.45);border-radius:3px;padding:0 4px;vertical-align:middle;">🤕 LESIONADO</span>`
       : ama ? ' <span style="font-size:10px;vertical-align:middle;">🟨</span>' : '';
-    const extraStyle = exp ? 'opacity:.45;text-decoration:line-through;cursor:not-allowed;' : les ? 'background:rgba(249,115,22,.08);' : '';
-    return `<div class="sub-player${isBanc?' banc':''}" data-nome="${j.nome}" data-banc="${isBanc}"${exp?' data-expulso="1"':''} style="${extraStyle}">
+    const extraStyle = exp ? 'opacity:.45;text-decoration:line-through;' : les ? 'background:rgba(249,115,22,.08);' : '';
+    // Banco agora é só leitura (a troca acontece pelo campo) — vigor por jogador é o mesmo pedido
+    // de "bater o olho e já saber quem precisa entrar", só que pro lado de quem está de fora.
+    const vg = Math.round(j.cansaco ?? 100);
+    const vgCor = vg>=80?'#4ade80':vg>=50?'#eab308':'#ef4444';
+    return `<div class="sub-player banc" style="cursor:default;${extraStyle}">
       ${posBadgeCopa(j.pos)}
-      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${star}${j.nome}${statusIcon}</span>
+      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${star}${j.nome}${statusIcon}</span>
+      <span style="font-size:9px;color:${vgCor};font-family:monospace;font-weight:700;flex-shrink:0;">${vg}⚡</span>
       <span class="sovr">${j.ovr}</span>
     </div>`;
   };
@@ -7406,6 +7468,13 @@ function renderSubstituicoes(partida, selId, manterContagem) {
       <span style="font-weight:900;font-size:15px;letter-spacing:1px;white-space:nowrap;">${partida.golsA} × ${partida.golsB}</span>
       <span style="font-weight:700;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_sBI.pais}</span>
     </div>` : '';
+  // Campo tático vira o centro da tela de substituição: cada titular aparece exatamente na
+  // coluna em que foi colocado (posCampoCopa/slotIdxCampo), com o vigor já pintado no anel do
+  // círculo — o pedido do playtest era "bater o olho e já saber quem precisa sair" sem abrir
+  // painel nenhum. Clicar num círculo abre o mesmo seletor de posição (abrirEscolhaPosicao), que
+  // já reconhece o contexto de intervalo (limite de 4 trocas, quem já saiu não volta).
+  const podeEditarCampo = liveSubCount < 4;
+  const campoHTML = partida ? renderCampoTatico(sel, esqAtual, corTime, podeEditarCampo, jogadoresForaDaPartida(partida, _lado)) : '';
   document.getElementById('copaLiveSub').innerHTML = `
     <div class="sub-wrap" style="border:1.5px solid ${corBorda}88;">
       <div style="background:linear-gradient(120deg,${corTime} 0%,${sel.cor2||corTime} 130%);color:${txtTime};border-radius:12px 12px 0 0;padding:4px 13px 12px;margin:-12px -12px 11px;box-shadow:0 3px 12px rgba(0,0,0,.3);">
@@ -7416,11 +7485,10 @@ function renderSubstituicoes(partida, selId, manterContagem) {
         ${placarIntervalo}
       </div>
       ${alertasHTML}
-      <p style="font-size:11px;color:var(--cinza);margin:0 0 8px;">Clique num reserva e depois num titular para substituir.</p>
-      <div class="sub-cols">
-        <div class="sub-col"><div class="sub-col-h">Titulares</div><div id="subTit">${tit.map(j=>mkRow(j,false)).join('')}</div></div>
-        <div class="sub-col"><div class="sub-col-h">Banco</div><div id="subBanc">${res.map(j=>mkRow(j,true)).join('')}</div></div>
-      </div>
+      <p style="font-size:11px;color:var(--cinza);margin:0 0 8px;">${podeEditarCampo ? 'Toque num titular no campo pra escolher quem entra no lugar dele.' : '🚫 As 4 substituições já foram usadas — o campo não aceita mais trocas.'}</p>
+      <div id="subCampoWrap" style="max-width:230px;margin:0 auto 10px;">${campoHTML}</div>
+      <div class="sub-col-h">Banco</div>
+      <div id="subBanc" style="display:flex;flex-direction:column;gap:3px;margin-bottom:4px;">${res.map(j=>mkRow(j)).join('')}</div>
       ${emProrrogacao ? '' : `
       <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;">
         <div style="font-size:10px;font-weight:700;color:rgba(232,245,233,.45);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">⚙ Tática para a 2ª Metade</div>
@@ -7430,40 +7498,9 @@ function renderSubstituicoes(partida, selId, manterContagem) {
       </div>`}
     </div>`;
   document.getElementById('copaLiveSub').classList.remove('hidden');
-  document.getElementById('copaLiveSub').querySelectorAll('.sub-player').forEach(el => {
-    el.addEventListener('click', () => {
-      if (el.dataset.expulso === '1') return; // expulso não sai nem entra
-      const isBanc = el.dataset.banc === 'true';
-      if (isBanc) {
-        document.querySelectorAll('.sub-player.banc').forEach(e=>e.classList.remove('selecionado'));
-        el.classList.add('selecionado');
-        liveSubSelecionado = el.dataset.nome;
-      } else if (liveSubSelecionado && liveSubCount < 4) {
-        const nomeOut = el.dataset.nome, nomeIn = liveSubSelecionado;
-        const jOut = sel.jogadores.find(j=>j.nome===nomeOut);
-        const jIn  = sel.jogadores.find(j=>j.nome===nomeIn);
-        if (jOut && jIn) {
-          jOut.titular = false; jIn.titular = true; liveSubCount++;
-          if (partida) {
-            partida.subsUsadas = partida.subsUsadas || {}; partida.subsUsadas[selId] = liveSubCount;
-            partida._forcaMudou = true;
-            // Quem sai não pode voltar pro jogo (regra real) — marca só nesta partida.
-            partida.saiuDoJogoPorSel = partida.saiuDoJogoPorSel || {};
-            partida.saiuDoJogoPorSel[selId] = [...(partida.saiuDoJogoPorSel[selId] || []), nomeOut];
-          }
-          jIn.posCampo = posCampoCopa(jOut); jOut.posCampo = jOut.pos; // quem entra herda o setor do campo
-          // Quem saiu não marca mais nesta partida (offline; no online os eventos são compartilhados)
-          if (!copa.onlineCopa && partida) {
-            const ladoSub = partida.a === selId ? 'A' : 'B';
-            reatribuirEventosFuturosCopa(partida, ladoSub, nomeOut);
-          }
-        }
-        liveSubSelecionado = null;
-        document.getElementById('copaLiveSub').querySelectorAll('.sub-player').forEach(e=>e.classList.remove('selecionado'));
-        renderSubstituicoes(partida, selId, true);
-      }
-    });
-  });
+  // A troca em si acontece pelo campo (onclick já embutido no SVG de renderCampoTatico, que abre
+  // abrirEscolhaPosicao) — o listener de clique na lista foi retirado junto com a lista de
+  // titulares; o banco agora é só leitura (mkRow não gera mais data-nome/data-banc).
   document.getElementById('copaLiveSub').querySelectorAll('.sub-esq-row').forEach(el => {
     el.addEventListener('click', () => {
       const novoEsq = el.dataset.esq;
@@ -8203,7 +8240,7 @@ function iniciarJornada() {
 }
 
 
-function renderCampoTatico(sel, esqF, corTime, editavel) {
+function renderCampoTatico(sel, esqF, corTime, editavel, foraDaPartida) {
   // Blindagem: se por qualquer motivo (sync online em trânsito, corrida de eventos) a escalação
   // não bater com o esquema pedido, corrige na hora em vez de desenhar um campo com jogador em
   // branco. Sem isso, um estado momentaneamente inconsistente virava um campo quebrado pro usuário.
@@ -8221,11 +8258,19 @@ function renderCampoTatico(sel, esqF, corTime, editavel) {
   const lines = [1, ...parts]; // [1, DEF, MID..., ATA]
   const nLines = lines.length;
 
-  // Sort titulares pela posição EM CAMPO: GOL→DEF→MEI→ATA
+  // Sort titulares pela posição EM CAMPO: GOL→DEF→MEI→ATA; dentro da mesma linha, pela COLUNA
+  // atribuída (slotIdxCampo) — não por OVR, senão o jogador escalado manualmente "pula" de
+  // círculo sempre que o OVR relativo do grupo muda (lesão, troca de outro titular etc.), mesmo
+  // sem ninguém ter mexido nele. Fallback pro OVR só quando não há coluna atribuída (dado legado).
   const posOrd = { GOL:0, DEF:1, MEI:2, ATA:3 };
   const tit = sel.jogadores.filter(j=>j.titular)
-    .sort((a,b) => (posOrd[posCampoCopa(a)]??4)-(posOrd[posCampoCopa(b)]??4) || b.ovr-a.ovr);
-  const _indispCampo = j => !!(j.lesionado || j.suspenso > 0);
+    .sort((a,b) => {
+      const porLinha = (posOrd[posCampoCopa(a)]??4)-(posOrd[posCampoCopa(b)]??4);
+      if (porLinha) return porLinha;
+      const sa = slotIdxCampo(a), sb = slotIdxCampo(b);
+      return (sa != null && sb != null) ? sa - sb : b.ovr - a.ovr;
+    });
+  const _indispCampo = j => !!(j.lesionado || j.suspenso > 0 || (foraDaPartida && foraDaPartida.has(j.nome)));
   // Papel de cada linha do esquema: [GOL, DEF, MEI..., ATA]
   const rolesPorLinha = (nL) => Array.from({length:nL}, (_,li) => li===0?'GOL' : li===1?'DEF' : li===nL-1?'ATA' : 'MEI');
 
@@ -8291,12 +8336,17 @@ function renderCampoTatico(sel, esqF, corTime, editavel) {
         <text x="${x}" y="${y+24}" text-anchor="middle" font-size="8" font-weight="700" fill="rgba(255,255,255,.6)" font-family="sans-serif">${nome}</text>
       </g>`;
     }
-    // Cansaço baixo: anel laranja
-    const cansacoBaixo = cansacoVal < 35;
-    const cansacoMedio = cansacoVal < 60 && cansacoVal >= 35;
+    // Vigor no campo (pedido do playtest: bater o olho no intervalo e já saber quem precisa
+    // sair, sem abrir painel nenhum): 🟢 80-100 normal · 🟡 50-79 anel amarelo · 🔴 <50 anel
+    // vermelho + leve glow. Faixa própria do campo (diferente das 70/40 usadas na tabela do
+    // Painel, que é uma leitura densa com o número exato à mostra — aqui é leitura rápida à
+    // distância). Cor do vigor médio é amarelo (não laranja) pra não colidir visualmente com o
+    // laranja já usado por "fora de posição" — são informações diferentes (geografia vs cansaço).
+    const cansacoBaixo = cansacoVal < 50;
+    const cansacoMedio = cansacoVal < 80 && cansacoVal >= 50;
     const glow = isLenda ? `filter:drop-shadow(0 0 4px #f0c040);` : cansacoBaixo ? `filter:drop-shadow(0 0 3px #ef4444);` : '';
-    const borderClr = isLenda ? '#f0c040' : fora ? '#f97316' : temAmarelo ? '#eab308' : cansacoBaixo ? '#ef4444' : cansacoMedio ? '#f97316' : (circleTxt === '#fff' ? 'rgba(255,255,255,.4)' : 'rgba(0,0,0,.3)');
-    const strokeW = (isLenda || fora || temAmarelo || cansacoBaixo) ? 2 : 1.5;
+    const borderClr = isLenda ? '#f0c040' : fora ? '#f97316' : temAmarelo ? '#eab308' : cansacoBaixo ? '#ef4444' : cansacoMedio ? '#eab308' : (circleTxt === '#fff' ? 'rgba(255,255,255,.4)' : 'rgba(0,0,0,.3)');
+    const strokeW = (isLenda || fora || temAmarelo || cansacoBaixo || cansacoMedio) ? 2 : 1.5;
     const dash = fora ? ' stroke-dasharray="3.5 2.5"' : '';
     const attrs = editavel
       ? ` style="${glow}cursor:pointer;" onclick="abrirEscolhaPosicao('${sel.id}','${pos}','${escFull}')"`
@@ -8582,14 +8632,15 @@ function renderCopaPainel(selId) {
       if (!jogador || jogadorIndisponivelCopa(jogador)) return;
       if (jogador.titular) { abrirEscolhaPosicao(selId, posCampoCopa(jogador), jogador.nome); return; }
       const titMesma = sel.jogadores.filter(t => t.titular && posCampoCopa(t) === jogador.pos).sort((a,b) => a.ovr - b.ovr);
-      let sai = titMesma[0], slot = jogador.pos;
+      let sai = titMesma[0];
       if (!sai) {
         const todos = sel.jogadores.filter(t => t.titular).sort((a,b) => a.ovr - b.ovr);
-        sai = todos[0]; slot = sai ? posCampoCopa(sai) : jogador.pos;
+        sai = todos[0];
       }
       if (!sai) return;
+      const slotHerdado = sai.posCampo; // herda a coluna exata de quem sai, não só a posição base
       sai.titular = false; sai.posCampo = sai.pos;
-      jogador.titular = true; jogador.posCampo = slot;
+      jogador.titular = true; jogador.posCampo = slotHerdado;
       renderCopaPainel(selId);
     });
   });
