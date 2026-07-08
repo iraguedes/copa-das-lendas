@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '76'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '77'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -1793,7 +1793,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v76 – Fim de Grupos e Adversário Legível</div>
+  <div class="rodapezinho">v77 – Sai → Entra</div>
 </div>
 
 <script>
@@ -6508,31 +6508,51 @@ function abrirEscolhaPosicao(selId,pos,nomeAtual){
   // antes esta tela tinha sua própria fórmula local (penDe), com números que podiam divergir do
   // que o campo mostrava pro MESMO jogador na MESMA posição.
   const ratingNaPosicao=j=>Math.round(j.ovr*fatorForaPosicaoCopa({pos:j.pos, posCampo:pos}));
+  // Linha de candidato: fora-de-posição ganha borda tracejada laranja à esquerda — reaproveita a MESMA
+  // convenção (tracejado = fora de posição) já usada no círculo do jogador no campo tático, em vez de
+  // inventar um código visual novo. Dá pra escanear a diferença natural×improvisado só pela forma da
+  // borda, sem precisar ler o badge de posição nem a cor do OVR.
   const linha=(j,fora)=>{
     const lenda=(j.traits||[]).includes('lenda');
     const ovrEf=fora?ratingNaPosicao(j):j.ovr;
     const penTxt=fora?`<span style="font-size:8px;color:#f97316;flex-shrink:0;">OVR base ${j.ovr} →</span>`:'';
     const vg=Math.round(j.cansaco??100);
     const vigorTxt=`<span style="font-size:8px;color:${vigorCor(vg)};flex-shrink:0;font-family:monospace;">${vg}⚡</span>`;
-    return '<div data-esc-nome="'+j.nome.replace(/"/g,'&quot;')+'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;margin-bottom:3px;background:rgba(255,255,255,.03);'+(fora?'opacity:.85;':'')+'">'
+    const bordaFora=fora?'border-left:2px dashed rgba(249,115,22,.55);':'';
+    return '<div data-esc-nome="'+j.nome.replace(/"/g,'&quot;')+'" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;margin-bottom:3px;background:rgba(255,255,255,.03);'+bordaFora+(fora?'opacity:.85;':'')+'">'
       +'<span style="font-size:9px;width:16px;text-align:center;color:'+(fora?'#f97316':'#4ade80')+';font-weight:900;flex-shrink:0;">'+(posL[j.pos]||'?')+'</span>'
       +'<span style="flex:1;font-size:12.5px;color:'+(lenda?'#f0c040':'var(--areia)')+';'+(lenda?'font-weight:700;':'')+'">'+(lenda?'★ ':'')+j.nome+'</span>'
       +vigorTxt
       +penTxt
       +'<span style="font-family:monospace;font-size:12px;font-weight:700;color:'+(fora?'#f97316':'#eab308')+';">'+ovrEf+'</span></div>';
   };
-  const secMesma=mesma.length?mesma.map(j=>linha(j,false)).join(''):'<div style="font-size:11px;color:var(--cinza);padding:4px 10px 8px;">Sem reservas de '+(posNome[pos]||pos)+' disponíveis.</div>';
-  const secOutras=outras.length?'<div style="font-size:9px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#f97316;margin:10px 8px 5px;">⚠ Fora de posição ('+((pos==='GOL')?'-28%':'-10% a -28%')+' de força — rating mostrado já é o efetivo nesta posição)</div>'+outras.map(j=>linha(j,true)).join(''):'';
-  const vigorHeaderTxt = vigorAtual!=null ? `<div style="font-size:9.5px;color:${vigorCor(vigorAtual)};margin-top:2px;font-family:monospace;">Vigor de quem sai: ${vigorAtual}</div>` : '';
+  // Cabeçalhos das 2 seções em pé de igualdade (mesmo tamanho/posição, só cor/texto mudam) — antes só a
+  // seção de improvisados tinha um bloco de aviso grande, a de naturais não tinha cabeçalho nenhum, o
+  // que quebrava a simetria visual e dificultava separar os grupos num relance.
+  const rotuloNatural='<div style="font-size:9px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;color:#4ade80;margin:0 2px 5px;">Natural da posição</div>';
+  const secMesma=rotuloNatural+(mesma.length?mesma.map(j=>linha(j,false)).join(''):'<div style="font-size:11px;color:var(--cinza);padding:0 2px 8px;">Sem reservas de '+(posNome[pos]||pos)+' disponíveis.</div>');
+  const faixaPen=(pos==='GOL')?'-28%':'-10% a -28%';
+  const secOutras=outras.length?'<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin:12px 2px 5px;"><span style="font-size:9px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;color:#f97316;">Fora de posição</span><span style="font-size:8px;font-family:monospace;font-weight:700;color:#f97316;background:rgba(249,115,22,.14);border-radius:4px;padding:1px 5px;">'+faixaPen+'</span></div>'+outras.map(j=>linha(j,true)).join(''):'';
+  // "Quem sai" ganha a MESMA anatomia visual das linhas de candidato (badge/tag + nome + vigor), só que
+  // com uma tag "SAI" e borda vermelha à esquerda em vez de badge de posição — o cérebro reconhece o
+  // formato de "linha de jogador" na hora, sem precisar ler a frase "escolha quem entra no lugar de X"
+  // que existia antes. Fundo neutro (não vermelho cheio) pra não colidir com o vermelho já usado quando
+  // o vigor de quem sai também está baixo — são dois sinais visuais independentes.
+  const lendaSai = atualObj && (atualObj.traits||[]).includes('lenda');
+  const cardSaiHTML = atualObj ? `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;background:rgba(255,255,255,.04);border-left:3px solid #ef4444;border-radius:0 6px 6px 0;padding:6px 10px;">
+      <span style="flex-shrink:0;font-size:7.5px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;color:#ef4444;">Sai</span>
+      <span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:${lendaSai?'#f0c040':'var(--areia)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lendaSai?'★ ':''}${nomeAtual}</span>
+      <span style="flex-shrink:0;font-size:8px;font-family:monospace;color:${vigorCor(vigorAtual)};">${vigorAtual}⚡</span>
+      <span style="flex-shrink:0;font-size:11px;color:rgba(255,255,255,.3);">↓</span>
+    </div>` : '';
   const corpo = limiteAtingido
     ? '<div style="padding:16px 10px;text-align:center;font-size:12px;color:var(--cinza);">🚫 As 4 substituições desta partida já foram usadas.</div>'
     : '<div style="padding:10px;">'+secMesma+secOutras+'</div>';
   ov.innerHTML='<div onclick="if(event.target===this)fecharPlantelSelecao()" style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:3000;display:flex;align-items:center;justify-content:center;padding:14px;">'
     +'<div style="background:linear-gradient(165deg,#0f2c1c,#07150c);border:1px solid rgba(217,164,74,.4);border-radius:14px;max-width:380px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.7);">'
       +'<div style="padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:#0d2418;z-index:1;">'
-        +'<div><div style="font-weight:900;font-size:14px;color:var(--ouro);">'+(posNome[pos]||pos)+' — quem joga aqui?</div>'
-          +'<div style="font-size:10px;color:var(--cinza);margin-top:2px;">Escolha quem entra no lugar de '+nomeAtual+'</div>'
-          +vigorHeaderTxt+'</div>'
+        +'<div style="flex:1;min-width:0;"><div style="font-weight:900;font-size:14px;color:var(--ouro);">'+(posNome[pos]||pos)+' — quem joga aqui?</div>'
+          +cardSaiHTML+'</div>'
         +'<button onclick="fecharPlantelSelecao()" style="background:rgba(255,255,255,.08);color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;">×</button></div>'
       +corpo+'</div></div>';
   ov.style.display='block';
