@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '74'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '75'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -764,6 +764,24 @@
   .sub-player.selecionado{border-color:#22c55e;background:rgba(34,197,94,.16);box-shadow:0 0 10px rgba(34,197,94,.2);}
   .sub-player .sp{color:var(--cinza);font-size:9px;flex-shrink:0;}
   .sub-player .sovr{color:#eab308;font-family:monospace;font-size:11px;font-weight:700;margin-left:auto;flex-shrink:0;}
+  /* Intervalo v75: campo + banco na mesma linha (lado a lado), sem precisar rolar pra ver o banco.
+     Esquema tático virou tira horizontal de chips (era a maior seção da tela, mais alta que o campo). */
+  .sub-mainrow{display:grid;grid-template-columns:11fr 9fr;gap:8px;align-items:start;max-width:400px;margin:0 auto;}
+  #subCampoWrap .campo-tatico{margin-top:0;}
+  .sub-banco-col{display:flex;flex-direction:column;min-width:0;}
+  .sub-banco-col .sub-col-h{margin-bottom:4px;text-align:left;}
+  .sub-banco-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;}
+  .sub-card{display:flex;flex-direction:column;gap:2px;padding:3px 5px;border-radius:6px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);min-width:0;}
+  .sub-card-l1{display:flex;align-items:center;gap:3px;min-width:0;}
+  .sub-card-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9.5px;color:var(--areia);}
+  .sub-card-status{font-size:9px;flex-shrink:0;}
+  .sub-card-l2{display:flex;justify-content:space-between;align-items:center;font-size:9px;font-family:monospace;font-weight:700;padding-left:1px;}
+  .sub-card-l2 .sovr{color:#eab308;}
+  .sub-esq-wrap{margin-top:6px;border-top:1px solid rgba(255,255,255,.08);padding-top:5px;}
+  .sub-esq-h{font-size:9px;font-weight:700;color:rgba(232,245,233,.45);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+  .sub-esq-chips{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;scrollbar-width:none;}
+  .sub-esq-chips::-webkit-scrollbar{display:none;}
+  .sub-esq-chips .sub-esq-row{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:52px;padding:6px 9px;border-radius:9px;cursor:pointer;transition:background .15s;}
 
   /* ===== Mobile — Copa das Lendas ===== */
   @media(max-width:640px){
@@ -1775,7 +1793,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v74 – Campo Tático no Intervalo</div>
+  <div class="rodapezinho">v75 – Intervalo sem Rolagem</div>
 </div>
 
 <script>
@@ -7421,25 +7439,23 @@ function renderSubstituicoes(partida, selId, manterContagem) {
   const expulsos = (partida && (_lado==='A' ? partida.vermelhosA : partida.vermelhosB)) || [];
   const lesionadosJogo = (partida && (_lado==='A' ? partida.lesaoA : partida.lesaoB)) || [];
   const amarelosJogo = (partida && (_lado==='A' ? partida.amarelosA : partida.amarelosB)) || [];
-  const mkRow = (j) => {
+  // Banco agora fica AO LADO do campo (grade de 2 colunas), não mais abaixo dele numa lista — pedido do
+  // playtest: a rolagem pra alcançar o banco quebrava o fluxo "clica no campo → escolhe o reserva". Cartão
+  // compacto em vez de linha larga: mesma informação (posição/nome/vigor/OVR), só reorganizada em 2 linhas
+  // dentro de um card estreito. Continua só leitura (a troca acontece clicando no campo).
+  const mkCard = (j) => {
     const t = j.traits||[];
-    const star = t.includes('lenda') ? '★ ' : '';
+    const star = t.includes('lenda') ? '★' : '';
     const exp = expulsos.includes(j.nome);
     const les = lesionadosJogo.includes(j.nome);
     const ama = !exp && !les && amarelosJogo.includes(j.nome);
-    const statusIcon = exp ? ` <span style="font-size:8px;font-weight:900;color:#fca5a5;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.5);border-radius:3px;padding:0 4px;vertical-align:middle;">🟥 EXPULSO</span>`
-      : les ? ` <span style="font-size:8px;font-weight:900;color:#fdba74;background:rgba(249,115,22,.16);border:1px solid rgba(249,115,22,.45);border-radius:3px;padding:0 4px;vertical-align:middle;">🤕 LESIONADO</span>`
-      : ama ? ' <span style="font-size:10px;vertical-align:middle;">🟨</span>' : '';
-    const extraStyle = exp ? 'opacity:.45;text-decoration:line-through;' : les ? 'background:rgba(249,115,22,.08);' : '';
-    // Banco agora é só leitura (a troca acontece pelo campo) — vigor por jogador é o mesmo pedido
-    // de "bater o olho e já saber quem precisa entrar", só que pro lado de quem está de fora.
+    const statusIcon = exp ? '🟥' : les ? '🤕' : ama ? '🟨' : '';
+    const extraStyle = exp ? 'opacity:.45;text-decoration:line-through;' : les ? 'background:rgba(249,115,22,.1);' : '';
     const vg = Math.round(j.cansaco ?? 100);
     const vgCor = vg>=80?'#4ade80':vg>=50?'#eab308':'#ef4444';
-    return `<div class="sub-player banc" style="cursor:default;${extraStyle}">
-      ${posBadgeCopa(j.pos)}
-      <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${star}${j.nome}${statusIcon}</span>
-      <span style="font-size:9px;color:${vgCor};font-family:monospace;font-weight:700;flex-shrink:0;">${vg}⚡</span>
-      <span class="sovr">${j.ovr}</span>
+    return `<div class="sub-card" style="${extraStyle}" title="${j.nome}">
+      <div class="sub-card-l1">${posBadgeCopa(j.pos)}<span class="sub-card-nome">${star}${j.nome}</span>${statusIcon?`<span class="sub-card-status">${statusIcon}</span>`:''}</div>
+      <div class="sub-card-l2"><span style="color:${vgCor};">${vg}⚡</span><span class="sovr">${j.ovr}</span></div>
     </div>`;
   };
   // Alertas do intervalo (expulsão não pode ser substituída; lesão deve ser)
@@ -7450,22 +7466,23 @@ function renderSubstituicoes(partida, selId, manterContagem) {
   // pra trocar; leve continua titular e o aviso segue valendo como recomendação opcional.
   lesionadosJogo.filter(n => sel.jogadores.find(j => j.nome === n)?.titular).forEach(n => _ocorr.push(`<div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.4);border-radius:6px;padding:6px 9px;font-size:11px;color:#fdba74;">🤕 <b>${n}</b> se lesionou no 1º tempo — recomendado substituir.</div>`));
   const alertasHTML = _ocorr.length ? `<div style="display:flex;flex-direction:column;gap:4px;margin:0 0 9px;">${_ocorr.join('')}</div>` : '';
+  // Seletor de esquema virou uma tira horizontal de chips (rolável) em vez de 5 linhas empilhadas — era a
+  // maior "gordura" da tela do intervalo (mais alta que o próprio campo), apesar de ser usada bem mais raro
+  // que a troca de jogador. Mesma informação (código, bônus ATK/DEF), só compactada horizontalmente.
   const esqAtual = copa.minhasEsquemas?.[selId] || '4-4-2';
-  const esqRows = ESQUEMAS_COPA.map(e2 => {
+  const esqChips = ESQUEMAS_COPA.map(e2 => {
     const isSel = e2.f === esqAtual;
-    return `<div class="sub-esq-row${isSel?' sub-esq-sel':''}" data-esq="${e2.f}" style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;cursor:pointer;background:${isSel?corTime+'33':'transparent'};border:1px solid ${isSel?corBorda+'88':'transparent'};margin-bottom:3px;transition:background .15s;">
-      <span style="font-family:monospace;font-size:11px;font-weight:900;min-width:52px;color:${isSel?'var(--areia)':'rgba(232,245,233,.65)'};">${e2.f}</span>
-      <span style="font-size:10px;color:rgba(232,245,233,.45);flex:1;">${e2.n}</span>
-      <span style="font-size:9px;font-weight:700;color:#f87171;">${e2.a>0?'+':''}${e2.a}A</span>
-      <span style="font-size:9px;font-weight:700;color:#60a5fa;">${e2.d>0?'+':''}${e2.d}D</span>
+    return `<div class="sub-esq-row${isSel?' sub-esq-sel':''}" data-esq="${e2.f}" title="${e2.n}" style="background:${isSel?corTime+'40':'rgba(255,255,255,.04)'};border:1px solid ${isSel?corBorda+'aa':'rgba(255,255,255,.08)'};">
+      <span style="font-family:monospace;font-size:11.5px;font-weight:900;color:${isSel?'var(--areia)':'rgba(232,245,233,.7)'};">${e2.f}</span>
+      <span style="font-size:7.5px;font-weight:700;white-space:nowrap;"><span style="color:#f87171;">${e2.a>0?'+':''}${e2.a}A</span> <span style="color:#60a5fa;">${e2.d>0?'+':''}${e2.d}D</span></span>
     </div>`;
   }).join('');
   const _sAI = copa.selMap[partida?.a], _sBI = copa.selMap[partida?.b];
   // Grid de 3 colunas (não flex): garante que o placar fique sempre exatamente no centro,
   // com os nomes das seleções ajustados/alinhados em direção a ele, não soltos nas pontas.
-  const placarIntervalo = (_sAI && _sBI) ? `<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;font-size:11px;margin-top:1px;opacity:.92;">
+  const placarIntervalo = (_sAI && _sBI) ? `<div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;font-size:10px;line-height:1.1;opacity:.92;">
       <span style="font-weight:700;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_sAI.pais}</span>
-      <span style="font-weight:900;font-size:15px;letter-spacing:1px;white-space:nowrap;">${partida.golsA} × ${partida.golsB}</span>
+      <span style="font-weight:900;font-size:13px;letter-spacing:1px;white-space:nowrap;">${partida.golsA} × ${partida.golsB}</span>
       <span style="font-weight:700;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_sBI.pais}</span>
     </div>` : '';
   // Campo tático vira o centro da tela de substituição: cada titular aparece exatamente na
@@ -7475,32 +7492,41 @@ function renderSubstituicoes(partida, selId, manterContagem) {
   // já reconhece o contexto de intervalo (limite de 4 trocas, quem já saiu não volta).
   const podeEditarCampo = liveSubCount < 4;
   const campoHTML = partida ? renderCampoTatico(sel, esqAtual, corTime, podeEditarCampo, jogadoresForaDaPartida(partida, _lado)) : '';
+  // Layout v75 (pedido do playtest depois da v74: rolar a tela pra alcançar o banco quebrava o fluxo
+  // "clica no campo → escolhe o reserva"): campo e banco agora dividem a MESMA linha horizontal — o campo
+  // define a altura da linha, o banco vira uma grade de 2 colunas ao lado dele em vez de lista abaixo. O
+  // seletor de esquema (a maior "gordura" da tela antiga, quase do tamanho do campo) virou uma tira
+  // horizontal de chips. Header e texto de instrução também comprimidos. Nenhum dado que já era visível
+  // sumiu — só a apresentação ficou mais densa, pra tudo caber numa tela de celular sem rolar.
   document.getElementById('copaLiveSub').innerHTML = `
     <div class="sub-wrap" style="border:1.5px solid ${corBorda}88;">
-      <div style="background:linear-gradient(120deg,${corTime} 0%,${sel.cor2||corTime} 130%);color:${txtTime};border-radius:12px 12px 0 0;padding:4px 13px 12px;margin:-12px -12px 11px;box-shadow:0 3px 12px rgba(0,0,0,.3);">
+      <div style="background:linear-gradient(120deg,${corTime} 0%,${sel.cor2||corTime} 130%);color:${txtTime};border-radius:12px 12px 0 0;padding:4px 12px 5px;margin:-12px -12px 6px;box-shadow:0 3px 12px rgba(0,0,0,.3);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <span style="font-size:12.5px;font-weight:900;letter-spacing:.3px;">${subTitulo} <span style="background:${lumTime>0.52?'rgba(0,0,0,.15)':'rgba(255,255,255,.18)'};border-radius:10px;padding:1px 8px;font-size:10px;">${liveSubCount}/4</span></span>
-          <button id="btnContinuarSub" type="button" class="pequeno" style="background:${lumTime>0.52?'rgba(0,0,0,.2)':'rgba(255,255,255,.2)'};color:${txtTime};border:none;border-radius:8px;font-weight:900;">${liveSubQueue.length ? '▶ Próximo' : emProrrogacao ? '▶ Iniciar Prorrogação' : '▶ 2ª Metade'}</button>
+          <span style="font-size:11.5px;font-weight:900;letter-spacing:.3px;">${subTitulo} <span style="background:${lumTime>0.52?'rgba(0,0,0,.15)':'rgba(255,255,255,.18)'};border-radius:10px;padding:1px 8px;font-size:10px;">${liveSubCount}/4</span></span>
+          <button id="btnContinuarSub" type="button" class="pequeno" style="background:${lumTime>0.52?'rgba(0,0,0,.2)':'rgba(255,255,255,.2)'};color:${txtTime};border:none;border-radius:8px;font-weight:900;padding:5px 10px;">${liveSubQueue.length ? '▶ Próximo' : emProrrogacao ? '▶ Iniciar Prorrogação' : '▶ 2ª Metade'}</button>
         </div>
         ${placarIntervalo}
       </div>
       ${alertasHTML}
-      <p style="font-size:11px;color:var(--cinza);margin:0 0 8px;">${podeEditarCampo ? 'Toque num titular no campo pra escolher quem entra no lugar dele.' : '🚫 As 4 substituições já foram usadas — o campo não aceita mais trocas.'}</p>
-      <div id="subCampoWrap" style="max-width:230px;margin:0 auto 10px;">${campoHTML}</div>
-      <div class="sub-col-h">Banco</div>
-      <div id="subBanc" style="display:flex;flex-direction:column;gap:3px;margin-bottom:4px;">${res.map(j=>mkRow(j)).join('')}</div>
+      <p style="font-size:9.5px;color:var(--cinza);margin:0 0 4px;">${podeEditarCampo ? 'Toque num titular no campo pra trocar.' : '🚫 As 4 substituições já foram usadas.'}</p>
+      <div class="sub-mainrow">
+        <div id="subCampoWrap">${campoHTML}</div>
+        <div class="sub-banco-col">
+          <div class="sub-col-h">Banco</div>
+          <div id="subBanc" class="sub-banco-grid">${res.map(j=>mkCard(j)).join('')}</div>
+        </div>
+      </div>
       ${emProrrogacao ? '' : `
-      <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;">
-        <div style="font-size:10px;font-weight:700;color:rgba(232,245,233,.45);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">⚙ Tática para a 2ª Metade</div>
-        <div id="subEsqList">${esqRows}</div>
-        <div id="subEsqFeedback" style="font-size:10px;color:#22c55e;font-weight:700;min-height:14px;margin-top:4px;"></div>
-        ${copa?.onlineCopa ? `<div style="font-size:9.5px;color:rgba(232,245,233,.35);margin-top:5px;">Vale a partir do momento em que todos da sala confirmarem o intervalo.</div>` : ''}
+      <div class="sub-esq-wrap">
+        <div class="sub-esq-h">⚙ Tática 2ª Metade</div>
+        <div id="subEsqList" class="sub-esq-chips">${esqChips}</div>
+        <div id="subEsqFeedback" style="font-size:9.5px;color:#22c55e;font-weight:700;"></div>
+        ${copa?.onlineCopa ? `<div style="font-size:9px;color:rgba(232,245,233,.35);margin-top:2px;">Vale quando todos da sala confirmarem o intervalo.</div>` : ''}
       </div>`}
     </div>`;
   document.getElementById('copaLiveSub').classList.remove('hidden');
   // A troca em si acontece pelo campo (onclick já embutido no SVG de renderCampoTatico, que abre
-  // abrirEscolhaPosicao) — o listener de clique na lista foi retirado junto com a lista de
-  // titulares; o banco agora é só leitura (mkRow não gera mais data-nome/data-banc).
+  // abrirEscolhaPosicao) — o banco é só leitura (mkCard não gera nenhum listener).
   document.getElementById('copaLiveSub').querySelectorAll('.sub-esq-row').forEach(el => {
     el.addEventListener('click', () => {
       const novoEsq = el.dataset.esq;
