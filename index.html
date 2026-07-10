@@ -825,6 +825,11 @@
        card — o valor (-22px/-20px) é calibrado pro padding do .card no desktop (20px 22px); no
        mobile o .card cai pra 12px 10px, então sem este ajuste a barra vaza pra fora do cartão. */
     #copaSetupAcoes{margin:0 -10px -12px !important;padding:14px 10px 16px !important;}
+    /* Botão "Jogar" do Plantel: com elenco grande a tela rola bastante e o botão pode ficar fora
+       da viewport sem indicação nenhuma. Fixa como barra no rodapé (só ele, não o .plantel-confirm
+       inteiro — essa classe também é usada pelo botão "Ver Plantel" da tela de nomes). */
+    #btnConfirmarPlantel{position:fixed;left:0;right:0;bottom:0;margin:0 !important;border-radius:12px 12px 0 0;z-index:50;}
+    #copaPlantel{padding-bottom:78px !important;}
   }
 
   /* ===== Mobile landscape — Copa das Lendas (viewport baixo, típico de celular deitado).
@@ -1793,7 +1798,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v77 – Sai → Entra</div>
+  <div class="rodapezinho">v78 – Clareza Visual</div>
 </div>
 
 <script>
@@ -8524,7 +8529,7 @@ function renderCopaPainel(selId) {
           style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${tglBg};border:${tglBdr};box-sizing:border-box;"></span>
       </td>
       <td class="pos">${posBadgeCopa(j.pos)}</td>
-      <td style="color:${hdrTxt};">${star}${j.nome} ${statusIcons}</td>
+      <td style="color:${hdrTxt};width:100%;max-width:0;">${star}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;max-width:100%;vertical-align:middle;">${j.nome}</span> ${statusIcons}</td>
       <td class="ovr" style="color:${hdrTxt};">${j.ovr}</td>
       <td>${canEl} ${moralEl} ${badges}</td>
     </tr>`;
