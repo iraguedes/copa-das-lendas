@@ -13,7 +13,7 @@
     // recarrega uma vez apontando para ?_v=<VERSAO>. Como a query muda a cada bump de VERSÃO,
     // o navegador (e o cache do celular) é obrigado a buscar o HTML novo. Quando _v já bate,
     // não há mais redirect — sem loop e sem depender de "hard refresh" manual.
-    var VERSAO = '77'; // ⬆️ bump a cada deploy de mudança visível
+    var VERSAO = '79'; // ⬆️ bump a cada deploy de mudança visível
     try{
       var params = new URLSearchParams(location.search);
       if(params.get('_v') === VERSAO) return;
@@ -680,6 +680,14 @@
   #painelCopaLive .placar-vivo.destaque{color:#eab308;font-weight:700;}
   #painelCopaLive .placar-vivo .placar{color:var(--areia);}
   #painelCopaLive .placar-vivo.gol-flash{background:rgba(234,179,8,.32)!important;box-shadow:0 0 18px rgba(234,179,8,.35)!important;}
+  /* Cards que não são a própria partida ficam com um degrau a menos de saturação/brilho — o sinal de
+     cor mais forte da tela (borda + faixas de contexto) passa a reforçar, em vez de competir com,
+     qual card é o seu. */
+  #painelCopaLive .placar-vivo:not(.destaque){filter:saturate(.6) brightness(.95);}
+  /* Reencontro Histórico / Revanche / Campeã Anterior podem coincidir no mesmo confronto — se isso
+     acontecer, mantém só a primeira faixa (a ordem em que já são concatenadas no JS já é a prioridade
+     certa) em vez de empilhar 2-3 faixas coloridas no mesmo card. */
+  #painelCopaLive .card-banner ~ .card-banner{display:none;}
   #painelCopaLive .gol-recente{color:#22c55e;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
   .esc-toggle{user-select:none;transition:opacity .15s;}
   #painelCopaLive .time-nome-vivo{color:var(--areia);}
@@ -791,8 +799,9 @@
     .plantel-dir{width:100%;}
     /* Substituições do intervalo: uma coluna embaixo da outra */
     .sub-cols{flex-direction:column;gap:10px;}
-    /* Live: nomes menores e badges compactos para caber sem quebrar */
-    #painelCopaLive .placar-vivo .time-nome-vivo{font-size:11.5px !important;}
+    /* Live: nomes menores e badges compactos para caber sem quebrar — exceto no card da própria
+       partida (.destaque), que precisa manter o nome maior como sinal de destaque também no celular */
+    #painelCopaLive .placar-vivo:not(.destaque) .time-nome-vivo{font-size:11.5px !important;}
     #painelCopaLive .badge.humano{font-size:8px !important;padding:0 4px !important;}
     /* Nameplates das tabelas de grupo mais compactos */
     .sel-nameplate .sel-name-txt{font-size:10px !important;}
@@ -1798,7 +1807,7 @@
     <button class="secondary" id="btnReset" type="button">Reiniciar tudo</button>
   </div>
 
-  <div class="rodapezinho">v78 – Clareza Visual</div>
+  <div class="rodapezinho">v79 – Ao Vivo, Foco no Seu Jogo</div>
 </div>
 
 <script>
@@ -6952,7 +6961,11 @@ function posBadgeCopa(pos) {
 // Nome do time em gradiente com as duas cores da seleção (texto vibrante)
 function estiloNomeVibrante(sel, fontPx, bold) {
   const { c1, c2 } = coresVibrantes(sel);
-  return `font-size:${fontPx}px;font-weight:${bold ? 900 : 700};background:linear-gradient(90deg,${c1} 20%,${c2} 90%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 7px ${c1}55);`;
+  // O brilho (drop-shadow) só entra junto com o negrito (bold=true) — nas telas onde bold é sempre
+  // true não muda nada; no card ao vivo, onde bold segue "é o seu time nessa partida", o brilho
+  // deixa de aparecer incondicionalmente em todo nome e vira mais um sinal exclusivo do seu time.
+  const glow = bold ? `filter:drop-shadow(0 0 7px ${c1}55);` : '';
+  return `font-size:${fontPx}px;font-weight:${bold ? 900 : 700};background:linear-gradient(90deg,${c1} 20%,${c2} 90%);-webkit-background-clip:text;background-clip:text;color:transparent;${glow}`;
 }
 
 // Reencontro Histórico: confrontos reais e icônicos da história das Copas. Quando o sorteio
@@ -7010,13 +7023,13 @@ function iniciarLiveGrid() {
     const zebraInfo = zebraProbConteudo(p, null);
     const probHTML = `<div class="zebra-prob-linha" style="${zebraInfo ? zebraInfo.style : 'display:none;'}">${zebraInfo ? zebraInfo.html : ''}</div>`;
     const reencontro = buscarReencontroHistorico(p.a, p.b);
-    const reencontroHTML = reencontro ? `<div style="text-align:center;font-size:9px;font-weight:800;color:#f0c040;background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.3);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${reencontro.resumo.replace(/"/g,'&quot;')}">🏛️ REENCONTRO HISTÓRICO — ${reencontro.fase} de ${reencontro.ano}: ${reencontro.placar}</div>` : '';
+    const reencontroHTML = reencontro ? `<div class="card-banner" style="text-align:center;font-size:9px;font-weight:800;color:#f0c040;background:rgba(240,192,64,.12);border:1px solid rgba(240,192,64,.3);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${reencontro.resumo.replace(/"/g,'&quot;')}">🏛️ REENCONTRO HISTÓRICO — ${reencontro.fase} de ${reencontro.ano}: ${reencontro.placar}</div>` : '';
     // Fantasmas / Revanche: o adversário desta partida já eliminou algum time seu numa copa anterior?
     const fantasma = (eMinhA || eMinhB) ? (copa.fantasmas || []).find(f => f.eliminadorId === (eMinhA ? p.b : p.a)) : null;
-    const fantasmaHTML = fantasma ? `<div style="text-align:center;font-size:9px;font-weight:800;color:#c084fc;background:rgba(147,51,234,.14);border:1px solid rgba(192,132,252,.35);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${fantasma.eliminadorNome} eliminou ${fantasma.minhaSelecaoNome} numa copa anterior neste aparelho">👻 REVANCHE! ${fantasma.eliminadorNome} já eliminou você antes</div>` : '';
+    const fantasmaHTML = fantasma ? `<div class="card-banner" style="text-align:center;font-size:9px;font-weight:800;color:#c084fc;background:rgba(147,51,234,.14);border:1px solid rgba(192,132,252,.35);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${fantasma.eliminadorNome} eliminou ${fantasma.minhaSelecaoNome} numa copa anterior neste aparelho">👻 REVANCHE! ${fantasma.eliminadorNome} já eliminou você antes</div>` : '';
     // Campeã anterior tenta defender o título (histórico local deste aparelho)
     const campeaAnt = copa.campeaAnterior && (copa.campeaAnterior.selId === p.a || copa.campeaAnterior.selId === p.b) ? copa.campeaAnterior : null;
-    const campeaAntHTML = campeaAnt ? `<div style="text-align:center;font-size:9px;font-weight:800;color:#93c5fd;background:rgba(59,130,246,.14);border:1px solid rgba(147,197,253,.35);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${campeaAnt.nome} venceu a última copa disputada neste aparelho">👑 ${campeaAnt.nome} tenta defender o título!</div>` : '';
+    const campeaAntHTML = campeaAnt ? `<div class="card-banner" style="text-align:center;font-size:9px;font-weight:800;color:#93c5fd;background:rgba(59,130,246,.14);border:1px solid rgba(147,197,253,.35);border-radius:5px;padding:2px 6px;margin-bottom:4px;" title="${campeaAnt.nome} venceu a última copa disputada neste aparelho">👑 ${campeaAnt.nome} tenta defender o título!</div>` : '';
     const cardStyle = `display:block;border-bottom:none;` +
       `background:linear-gradient(105deg,${vibA.c1}${isMinha?'2e':'16'} 0%,rgba(9,24,14,.6) 32%,rgba(9,24,14,.6) 68%,${vibB.c1}${isMinha?'2e':'16'} 100%);` +
       `border:1px solid rgba(255,255,255,${isMinha?'.15':'.06'});border-left:3px solid ${vibA.c1};border-right:3px solid ${vibB.c1};` +
@@ -7032,7 +7045,7 @@ function iniciarLiveGrid() {
         <span class="time-grupo time-grupo-direita" data-ver-sel="${p.b}" style="cursor:pointer;">${badgeB}${nomeB}</span>
       </div>
       ${probHTML}
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;min-height:${isMinha?'15px':'0px'};">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;min-height:${isMinha?'15px':'0px'};">
         <span style="display:inline-flex;gap:6px;align-items:center;min-width:0;overflow:hidden;">
           <span class="eventos-vivo" data-lado="A">${badgesStatusLive(p,'A')}</span><span class="gol-recente" data-lado="A"></span>
         </span>
